@@ -19,6 +19,7 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
+import { useEffect, useRef } from 'react';
 import dayjs from 'dayjs';
 import { useSearchParams } from 'react-router';
 import { EmptyState } from '../../components/EmptyState';
@@ -105,6 +106,11 @@ export function OutboxPage() {
     setParams(next, { replace: true });
   };
   const current = q.data?.find((m) => m.id === selected);
+  const detailRef = useRef<HTMLDivElement>(null);
+  const currentId = current?.id;
+  useEffect(() => {
+    if (currentId !== undefined) detailRef.current?.scrollIntoView?.({ block: 'start' });
+  }, [currentId]);
 
   return (
     <div className={s.page}>
@@ -116,7 +122,11 @@ export function OutboxPage() {
         </MessageBarBody>
       </MessageBar>
 
-      {current && <MessageDetail msg={current} onClose={() => setParam('message', null)} />}
+      {current && (
+        <div ref={detailRef}>
+          <MessageDetail msg={current} onClose={() => setParam('message', null)} />
+        </div>
+      )}
 
       <div className={s.filters}>
         <Select

@@ -28,7 +28,8 @@ import { useUsers } from '../../users/api';
 import { useBulkItems, useItems, usePatchItem, type ItemOut, type ItemPatchIn } from '../api';
 import { AssessmentFilters } from '../assessment/AssessmentFilters';
 import { GateSummaryBar } from '../assessment/GateSummaryBar';
-import { ItemRow, ROW_GRID, type RowPermissions } from '../assessment/ItemRow';
+import { ItemRow, type RowPermissions } from '../assessment/ItemRow';
+import { ROW_GRID, ROW_MIN_WIDTH, STICKY } from '../assessment/rowLayout';
 import { ConditionDialog, GapDialog, NaDialog } from '../assessment/StatusDialogs';
 import { useAssessmentFilters } from '../assessment/useAssessmentFilters';
 import type { TabProps } from '../types';
@@ -39,12 +40,12 @@ const useStyles = makeStyles({
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: tokens.borderRadiusMedium,
   },
-  inner: { minWidth: '1400px' },
+  inner: { minWidth: ROW_MIN_WIDTH },
   head: {
     display: 'grid',
     gridTemplateColumns: ROW_GRID,
-    columnGap: tokens.spacingHorizontalS,
-    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalS}`,
+    columnGap: tokens.spacingHorizontalXS,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalS} ${tokens.spacingVerticalS} 0`,
     backgroundColor: tokens.colorNeutralBackground3,
     fontWeight: tokens.fontWeightSemibold,
     fontSize: tokens.fontSizeBase200,
@@ -150,13 +151,24 @@ export function AssessmentTab({ transitionId }: TabProps) {
   useEffect(() => {
     if (!values.item || !list || scrolledFor.current === values.item) return;
     if (!list.some((i) => i.item_id === values.item)) return;
-    const t = window.setTimeout(() => {
+    const target = values.item;
+    const go = () =>
       document
-        .getElementById(`item-${values.item}`)
-        ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      scrolledFor.current = values.item;
-    }, 50);
-    return () => window.clearTimeout(t);
+        .getElementById(`item-${target}`)
+        ?.scrollIntoView({ block: 'center', behavior: 'auto' });
+    // scroll once rendered, then again after the layout (expanded detail, grid) has settled
+    let raf = 0;
+    const t1 = window.setTimeout(() => {
+      go();
+      scrolledFor.current = target;
+      raf = window.requestAnimationFrame(go);
+    }, 80);
+    const t2 = window.setTimeout(go, 500);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.cancelAnimationFrame(raf);
+    };
   }, [values.item, list]);
 
   const perms: RowPermissions = useMemo(
@@ -326,14 +338,14 @@ export function AssessmentTab({ transitionId }: TabProps) {
         <div className={s.scroller}>
           <div className={s.inner} role="table" aria-label="Checklist items">
             <div className={s.head} role="row">
-              <span />
-              <span />
-              <span>ID</span>
-              <span>Item</span>
+              <span style={STICKY.c1} />
+              <span style={STICKY.c2} />
+              <span style={STICKY.c3}>ID</span>
+              <span style={STICKY.c4}>Item</span>
               <span>Source</span>
               <span>Lens</span>
               <span>Owner</span>
-              <span>Status</span>
+              <span style={STICKY.status}>Status</span>
               <span>Severity</span>
               <span>DE</span>
               <span>Evid.</span>

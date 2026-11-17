@@ -26,6 +26,7 @@ import { LoadingState } from '../../components/LoadingState';
 import { PageHeader } from '../../components/PageHeader';
 import { useApiErrorToast } from '../../hooks/useApiErrorToast';
 import { ReasonButton } from '../gates/ReasonButton';
+import { roleLabel, useSuccessToast } from '../gates/useSuccessToast';
 import { useMe } from '../users/api';
 import {
   useActOnApproval,
@@ -101,7 +102,7 @@ function StepChain({ steps }: { steps: ApprovalStep[] }) {
           <Caption1>
             {st.decided_by
               ? `${st.decided_by.name}${st.decided_at ? ` · ${st.decided_at.slice(0, 10)}` : ''}`
-              : (st.approver?.name ?? st.role)}
+              : (st.approver?.name ?? roleLabel(st.role))}
           </Caption1>
           {st.comment && <Caption1>"{st.comment}"</Caption1>}
           {st.status === 'Pending' && st.waiting_days > 0 && (
@@ -122,6 +123,7 @@ function ActDialog(props: {
   const [comment, setComment] = useState('');
   const act = useActOnApproval();
   const showError = useApiErrorToast();
+  const showSuccess = useSuccessToast();
   const reject = action === 'reject';
   const step = request.current_step;
   const invalid = reject && !comment.trim();
@@ -130,7 +132,13 @@ function ActDialog(props: {
     if (step === null) return;
     act.mutate(
       { request, step, action, comment: comment.trim() },
-      { onSuccess: props.onClose, onError: showError },
+      {
+        onSuccess: () => {
+          showSuccess(reject ? 'Request rejected' : 'Step approved');
+          props.onClose();
+        },
+        onError: showError,
+      },
     );
   };
 

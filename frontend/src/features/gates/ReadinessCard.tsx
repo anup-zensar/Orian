@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { Badge, Body1, Caption1, Subtitle2, makeStyles, tokens } from '@fluentui/react-components';
+import {
+  Badge,
+  Body1,
+  Button,
+  Caption1,
+  Subtitle2,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components';
 import { Sparkle16Regular } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router';
 import { ActorBadge } from '../../components/ActorBadge';
@@ -8,6 +16,7 @@ import { LensChip } from '../../components/LensChip';
 import { useApiErrorToast } from '../../hooks/useApiErrorToast';
 import { ApprovalDraftDialog } from './ApprovalDraftDialog';
 import { ReasonButton } from './ReasonButton';
+import { roleLabel } from './useSuccessToast';
 import type { Readiness, RecommendedAction } from './api';
 import { useDraftApprovalRequest, useDraftChaser, type Draft } from '../drafts/api';
 import type { Lens } from '../../theme/tokens';
@@ -44,6 +53,26 @@ const useStyles = makeStyles({
   },
 });
 
+const KIND_ORDER: RecommendedAction['kind'][] = [
+  'request_exception',
+  'open_ocet',
+  'create_support_model',
+  'draft_chaser',
+  'create_action',
+  'request_approval',
+  'request_inputs',
+];
+const KIND_TITLES: Record<string, string> = {
+  request_exception: 'Request exceptions',
+  open_ocet: 'OCET',
+  create_support_model: 'Support model',
+  draft_chaser: 'Chasers',
+  create_action: 'Actions',
+  request_approval: 'Approval',
+  request_inputs: 'Inputs',
+};
+const MAX_ACTIONS = 5;
+
 const LENSES: Lens[] = ['Business', 'Technical', 'Compliance'];
 const asLens = (v: string): Lens | null => (LENSES.includes(v as Lens) ? (v as Lens) : null);
 
@@ -73,6 +102,7 @@ export function ReadinessCard(props: {
   const chaser = useDraftChaser(props.transitionId);
   const approvalDraft = useDraftApprovalRequest(props.transitionId);
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   const itemLink = (itemId: string) => `${base}/assessment?item=${encodeURIComponent(itemId)}`;
   const firstItem = (a: RecommendedAction) => a.item_ids[0];
@@ -121,6 +151,46 @@ export function ReadinessCard(props: {
     a.kind === 'request_approval' && !r.can_request_approval
       ? [r.request_denied_reason ?? 'Approval cannot be requested yet']
       : [];
+
+  const criticalIds = new Set(
+    [...r.blocking.flatMap((g) => g.items), ...r.critical_gaps]
+      .filter((i) => i.gap_severity === 'Critical' || i.status === 'Non-compliant')
+      .map((i) => i.item_id),
+  );
+  const rank = (a: RecommendedAction) => {
+    const k = KIND_ORDER.indexOf(a.kind);
+    const crit = a.item_ids.some((id) => criticalIds.has(id)) ? 0 : 1;
+    return k * 2 + crit;
+  };
+  const sorted = r.recommended_actions
+    .map((a, idx) => ({ a, idx }))
+    .sort((x, y) => {
+      // request_approval first when present (primary), then by importance
+      const px = x.a.kind === 'request_approval' ? -1 : 0;
+      const py = y.a.kind === 'request_approval' ? -1 : 0;
+      return px - py || rank(x.a) - rank(y.a) || x.idx - y.idx;
+    })
+    .map((x) => x.a);
+  const visible = showAll ? [] : sorted.slice(0, MAX_ACTIONS);
+  const hidden = sorted.slice(MAX_ACTIONS);
+  const hiddenGroups = KIND_ORDER.map((k) => ({ k, list: hidden.filter((a) => a.kind === k) })).filter(
+    (g) => g.list.length > 0,
+  );
+  const renderAction = (a: RecommendedAction) => (
+    <ReasonButton
+      key={a.key}
+      appearance={a.kind === 'request_approval' ? 'primary' : 'secondary'}
+      reasons={reasonsFor(a)}
+      onClick={() => runAction(a)}
+    >
+      {isBusy(a) ? 'Working...' : a.label}
+    </ReasonButton>
+  );
+  const needsDisabledApproval =
+    r.gate_type === 'decision' &&
+    r.verdict !== 'Ready' &&
+    !r.can_request_approval &&
+    !r.recommended_actions.some((a) => a.kind === 'request_approval');
 
   return (
     <div className={s.root}>
@@ -281,7 +351,7 @@ export function ReadinessCard(props: {
                     {st.status}
                   </Badge>
                 </span>
-                <Caption1>{st.approver?.name ?? st.role}</Caption1>
+                <Caption1>{st.approver?.name ?? roleLabel(st.role)}</Caption1>
               </div>
             ))}
           </div>
@@ -299,18 +369,37 @@ export function ReadinessCard(props: {
           <Caption1>by {r.narrative_by}</Caption1>
         </div>
         <Body1 style={{ whiteSpace: 'pre-wrap' }}>{r.narrative}</Body1>
-        {r.recommended_actions.length > 0 && (
-          <div className={s.row} role="group" aria-label="Recommended actions">
-            {r.recommended_actions.map((a) => (
-              <ReasonButton
-                key={a.key}
-                appearance={a.kind === 'request_approval' ? 'primary' : 'secondary'}
-                reasons={reasonsFor(a)}
-                onClick={() => runAction(a)}
-              >
-                {isBusy(a) ? 'Working...' : a.label}
-              </ReasonButton>
-            ))}
+        {(r.recommended_actions.length > 0 || needsDisabledApproval) && (
+          <div className={s.group}>
+            <div className={s.row} role="group" aria-label="Recommended actions">
+              {needsDisabledApproval && (
+                <ReasonButton
+                  appearance="primary"
+                  reasons={[r.request_denied_reason ?? 'Approval cannot be requested yet']}
+                >
+                  Request approval
+                </ReasonButton>
+              )}
+              {visible.map(renderAction)}
+              {hidden.length > 0 && (
+                <Button appearance="subtle" onClick={() => setShowAll((v) => !v)}>
+                  {showAll ? 'Show fewer' : `Show all (${sorted.length})`}
+                </Button>
+              )}
+            </div>
+            {showAll && (
+              <>
+                <div className={s.row}>{sorted.slice(0, MAX_ACTIONS).map(renderAction)}</div>
+                {hiddenGroups.map((g) => (
+                  <div key={g.k} className={s.group}>
+                    <Caption1>
+                      {KIND_TITLES[g.k] ?? g.k} ({g.list.length})
+                    </Caption1>
+                    <div className={s.row}>{g.list.map(renderAction)}</div>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         )}
         <Caption1>

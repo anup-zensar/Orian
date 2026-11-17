@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Controller, useFieldArray, useForm, useWatch, type Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -246,6 +246,9 @@ function IntakeForm(props: { reference: Reference; users: User[]; me: Me }) {
   const portfolio = useWatch({ control, name: 'portfolio' });
   const isAi = AI_TYPES.includes(projectType);
   const isRetail = portfolio === RETAIL;
+  useEffect(() => {
+    if (isRetail && getValues('sites').length === 0) append({ site_id: '', site_key: '' });
+  }, [isRetail, fields.length, getValues, append]);
   const canCreate = me.permissions.includes('create_transition');
   const denied = me.denied_reasons['create_transition'] ?? 'You cannot create transitions';
   const opts = reference.intake_options;
@@ -348,7 +351,16 @@ function IntakeForm(props: { reference: Reference; users: User[]; me: Me }) {
           </div>
           <div className={`${s.row} ${s.full}`}>
             <Field label="ServiceNow project ID" className={s.grow}>
-              <Input {...register('servicenow_project_id')} placeholder="e.g. PRJ0052210" />
+              <Input
+                {...register('servicenow_project_id')}
+                placeholder="e.g. PRJ0052210"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (!fetchSn.isPending) doFetch();
+                  }
+                }}
+              />
             </Field>
             <Button onClick={doFetch} disabled={fetchSn.isPending}>
               {fetchSn.isPending ? 'Fetching…' : 'Fetch from ServiceNow'}

@@ -10,6 +10,8 @@ import {
 } from '@fluentui/react-components';
 import { useApiErrorToast } from '../../hooks/useApiErrorToast';
 import { ReasonButton } from '../gates/ReasonButton';
+import { useSuccessToast } from '../gates/useSuccessToast';
+import { AppLink } from '../../components/AppLink';
 import { usePerm } from '../gates/usePerm';
 import { useDiscardDraft, usePatchDraft, useSendDraft, type Draft } from './api';
 import { SourceLabel } from './SourceLabel';
@@ -74,6 +76,8 @@ function DraftEditorInner(props: {
   const s = useStyles();
   const { draft } = props;
   const showError = useApiErrorToast();
+  const showSuccess = useSuccessToast();
+  const [editHtml, setEditHtml] = useState(false);
   const perm = usePerm('send_drafts');
   const patch = usePatchDraft();
   const send = useSendDraft();
@@ -97,11 +101,15 @@ function DraftEditorInner(props: {
       patch: { to: splitAddresses(to), cc: splitAddresses(cc), subject, body_html: body },
     });
 
-  const onSave = () => save().catch(showError);
+  const onSave = () =>
+    save()
+      .then(() => showSuccess('Draft saved'))
+      .catch(showError);
   const onSend = async () => {
     try {
       if (dirty) await save();
       const r = await send.mutateAsync(draft.id);
+      showSuccess('Sent – see Outbox', <AppLink to="/outbox">Open Outbox</AppLink>);
       props.onSent?.(r.draft);
     } catch (e) {
       showError(e);
@@ -109,7 +117,10 @@ function DraftEditorInner(props: {
   };
   const onDiscard = () =>
     discard.mutate(draft.id, {
-      onSuccess: () => props.onDiscarded?.(),
+      onSuccess: () => {
+        showSuccess('Draft discarded');
+        props.onDiscarded?.();
+      },
       onError: showError,
     });
 
@@ -132,21 +143,26 @@ function DraftEditorInner(props: {
         <Input value={subject} disabled={!editable} onChange={(_, d) => setSubject(d.value)} />
       </Field>
       <div className={s.split}>
-        <Field label="Body (HTML source)">
-          <Textarea
-            textarea={{ className: s.body }}
-            value={body}
-            disabled={!editable}
-            resize="vertical"
-            onChange={(_, d) => setBody(d.value)}
-          />
-        </Field>
-        <Field label="Live preview (sandboxed)">
+        {editHtml && (
+          <Field label="Body (HTML source)">
+            <Textarea
+              textarea={{ className: s.body }}
+              value={body}
+              disabled={!editable}
+              resize="vertical"
+              onChange={(_, d) => setBody(d.value)}
+            />
+          </Field>
+        )}
+        <Field label="Preview (sandboxed)">
           <EmailPreview html={body} title="Draft preview" />
         </Field>
       </div>
       {editable && (
         <div className={s.actions}>
+          <Button onClick={() => setEditHtml((v) => !v)}>
+            {editHtml ? 'Hide HTML' : 'Edit HTML'}
+          </Button>
           <ReasonButton
             appearance="primary"
             reasons={[perm.reason, ...(props.sendReasons ?? [])]}

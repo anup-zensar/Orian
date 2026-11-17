@@ -29,7 +29,6 @@ import { LoadingState } from '../../components/LoadingState';
 import { ErrorState } from '../../components/ErrorState';
 import { EmptyState } from '../../components/EmptyState';
 import { LensChip } from '../../components/LensChip';
-import { AiBadge } from '../../components/AiBadge';
 import { ActorBadge } from '../../components/ActorBadge';
 import type { Me } from '../../api/types';
 import type { Lens } from '../../theme/tokens';
@@ -311,7 +310,6 @@ function ScopeContent(props: {
         title="Orion agent – recommended applicability"
         actions={
           <span className={s.head}>
-            <AiBadge />
             <ActorBadge actor="Orion agent" />
           </span>
         }

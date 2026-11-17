@@ -27,17 +27,16 @@ import { ActorBadge } from '../../../components/ActorBadge';
 import { LensChip } from '../../../components/LensChip';
 import type { ActorType, Lens } from '../../../theme/tokens';
 import type { ItemOut } from '../api';
-
-export const ROW_GRID =
-  '32px 28px 84px minmax(260px, 1fr) 96px 104px 130px 190px 80px 70px 64px 170px 40px';
+import { ROW_GRID, STICKY } from './rowLayout';
 
 const useStyles = makeStyles({
   row: {
     display: 'grid',
     gridTemplateColumns: ROW_GRID,
     alignItems: 'center',
-    columnGap: tokens.spacingHorizontalS,
-    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+    columnGap: tokens.spacingHorizontalXS,
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS} ${tokens.spacingVerticalXS} 0`,
+    backgroundColor: tokens.colorNeutralBackground1,
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   highlight: {
@@ -46,6 +45,8 @@ const useStyles = makeStyles({
   },
   excluded: { color: tokens.colorNeutralForeground3 },
   title: { display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 },
+  titleText: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  cell: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   marks: { display: 'flex', gap: tokens.spacingHorizontalXS, flexWrap: 'wrap' },
   detail: {
     display: 'grid',
@@ -133,7 +134,7 @@ function ItemRowImpl(p: ItemRowProps) {
         className={mergeClasses(s.row, p.highlighted && s.highlight, excluded && s.excluded)}
         role="row"
       >
-        <div>
+        <div style={STICKY.c1}>
           {p.selectable && (
             <Checkbox
               aria-label={`Select ${item.item_id}`}
@@ -146,13 +147,16 @@ function ItemRowImpl(p: ItemRowProps) {
           appearance="subtle"
           size="small"
           icon={open ? <ChevronDown20Regular /> : <ChevronRight20Regular />}
+          style={STICKY.c2}
           aria-expanded={open}
           aria-label={open ? `Collapse ${item.item_id}` : `Expand ${item.item_id}`}
           onClick={() => setOpen((o) => !o)}
         />
-        <strong>{item.item_id}</strong>
-        <div className={s.title}>
-          <span>{item.title}</span>
+        <strong style={STICKY.c3}>{item.item_id}</strong>
+        <div className={s.title} style={STICKY.c4}>
+          <span className={s.titleText} title={item.title}>
+            {item.title}
+          </span>
           <div className={s.marks}>
             {item.tier_to_confirm && (
               <Badge size="small" appearance="tint" color="warning">
@@ -176,12 +180,14 @@ function ItemRowImpl(p: ItemRowProps) {
             )}
           </div>
         </div>
-        <Badge appearance="outline" shape="rounded">
+        <Badge appearance="outline" shape="rounded" size="small">
           {SOURCE_LABEL[item.source] ?? item.source}
         </Badge>
         <LensChip lens={item.lens as Lens} />
-        <Caption1>{item.owner?.name ?? 'Unassigned'}</Caption1>
-        <div>
+        <Caption1 className={s.cell} title={item.owner?.name ?? 'Unassigned'}>
+          {item.owner?.name ?? 'Unassigned'}
+        </Caption1>
+        <div style={STICKY.status}>
           {item.can_edit ? (
             statusSelect
           ) : (
@@ -261,6 +267,8 @@ function ItemRowImpl(p: ItemRowProps) {
       </div>
       {open && (
         <div className={s.detail}>
+          <span className={s.label}>Item</span>
+          <span>{item.title}</span>
           <span className={s.label}>Description</span>
           <span>{item.description || '–'}</span>
           {item.detail && (

@@ -247,9 +247,11 @@ function ProposalStep(props: {
   const canConfirmNow = can('confirm_tier') && storedTier != null;
   const confirmReason = !can('confirm_tier')
     ? reasonFor('confirm_tier')
-    : storedTier == null
-      ? 'No tier proposed yet – the OR focal must propose one first'
-      : null;
+    : confirmed
+      ? `Tier already confirmed by ${who(tier?.confirmed_by_irm)}`
+      : storedTier == null
+        ? 'No tier proposed yet – the OR focal must propose one first'
+        : null;
   const changeValid = newTier !== '' && reason.trim().length > 0;
 
   return (
@@ -314,9 +316,18 @@ function ProposalStep(props: {
                     {`Confirm tier ${storedTier}`}
                   </Button>
                 )}
-                <Button disabled={!canConfirmNow} onClick={() => setChanging((v) => !v)}>
-                  Change tier
-                </Button>
+                {canConfirmNow ? (
+                  <Button onClick={() => setChanging((v) => !v)}>Change tier</Button>
+                ) : (
+                  <Tooltip
+                    content={confirmReason ?? 'No tier proposed yet'}
+                    relationship="description"
+                  >
+                    <span>
+                      <Button disabled>Change tier</Button>
+                    </span>
+                  </Tooltip>
+                )}
               </>
             )}
           </div>
