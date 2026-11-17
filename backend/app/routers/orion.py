@@ -5,13 +5,24 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlalchemy.orm import Session
 
-from app.deps import get_current_user, get_db
+from app.deps import get_current_user, get_db, require
 from app.domain.insights import build_insights
 from app.models import User
-from app.schemas.orion import InsightsOut
+from app.permissions import Perm
+from app.schemas.leadership import LeadershipUpdateCreateIn, LeadershipUpdateOut
+from app.schemas.orion import (
+    AcceptOut,
+    ChatIn,
+    ChatOut,
+    ExtractOut,
+    InsightsOut,
+    IntentCatalogOut,
+    ProposalOut,
+    ProposalStatus,
+)
 from app.schemas.transitions import TransitionFilters
 
 router = APIRouter(tags=["orion"], dependencies=[Depends(get_current_user)])
@@ -32,3 +43,115 @@ def get_insights(
     For scope=control-tower the optional TransitionFilters query params narrow the view so the
     card matches the filtered control tower; other scopes ignore them."""
     return build_insights(db, user, scope, scope_id, filters)
+
+
+@router.post("/orion/chat", response_model=ChatOut)
+def chat(
+    body: ChatIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> ChatOut:
+    """Orion assistant (FR-090). Exactly one of ``message`` / ``quick_action`` (400 otherwise).
+    Quick action without ``form_data`` -> its form; with ``form_data`` -> the result cards, per
+    ``domain/orion_chat.py``. Free text -> keyword intents (status, blocking, owner, glossary, red
+    transitions) or a fallback listing the quick actions. Never writes statuses/decisions (NFR-04);
+    recommendations come back as ``proposal`` messages. 404 unknown transition, 400 invalid gate,
+    403 when a form submit needs a permission the user lacks (RUN_REMINDERS for
+    draft_owner_reminders, GENERATE_LEADERSHIP_UPDATE for create_leadership_update). Every message
+    has generated_by "Orion agent".
+
+    Natural language: free text that is not a read-only intent is routed to the intent catalog
+    (``domain/nl_intake.py``): a description of a new transition -> proposal ``create_transition``;
+    commands such as "ask Tom to ... by Friday" -> ``create_action`` / ``draft_chaser`` /
+    ``update_item`` / ... proposal cards; decisions, sending, deleting and configuration changes are
+    refused in text (nothing is created). Up to 5 commands per message. A user without the permission
+    of a proposal still sees the card with ``can_accept`` false and the reason."""
+    raise NotImplementedError("M8")
+
+
+@router.post("/orion/extract", response_model=ExtractOut)
+async def extract(
+    text: str | None = Form(default=None, max_length=20000),
+    file: UploadFile | None = File(default=None),
+    transition_id: str | None = Form(default=None),
+    intent_hint: Literal["create_transition", "commands"] | None = Form(default=None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ExtractOut:
+    """Turn a pasted email, long text or an uploaded document (.txt .md .vtt .docx) into Orion cards
+    (multipart form; nothing is stored except OrionProposal rows). Behaviour per
+    ``domain.orion_chat.handle_extract``: without ``transition_id`` (or hint create_transition) the
+    text is read as a NEW TRANSITION description -> proposal ``create_transition`` whose payload holds
+    the intake prefill, missing fields, per-field source/confidence and a source excerpt; with a
+    ``transition_id`` (or hint commands) it is read as commands/evidence for that transition (meeting
+    notes -> several ``create_action`` proposals, a sign-off email -> ``add_evidence``).
+    Errors: 400 when neither or both of ``text`` and ``file`` are given, unsupported extension or no
+    readable text; 404 unknown ``transition_id``; 413 file over 5 MB; 422 text over 20000 characters
+    (the file text is silently cut at 20000 characters, ``truncated`` true). No permission is needed
+    to ask; ``can_accept`` on the cards tells whether this user may accept (create_transition needs
+    Perm.CREATE_TRANSITION). Never writes statuses/decisions (BR-050)."""
+    raise NotImplementedError("M8")
+
+
+@router.get("/orion/intents", response_model=IntentCatalogOut)
+def get_intents(
+    user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> IntentCatalogOut:
+    """The intent catalog for the panel's "Try saying" chips and help: label, examples, result type,
+    proposal kind and whether THIS user may accept/run it (``allowed`` / ``denied_reason``), plus the
+    plain-language list of what Orion refuses. Read-only, deterministic."""
+    raise NotImplementedError("M8")
+
+
+@router.get("/orion/proposals/{proposal_id}", response_model=ProposalOut)
+def get_proposal(
+    proposal_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> ProposalOut:
+    """One proposal in any status (404 unknown). Used by the intake page to load a
+    ``create_transition`` prefill (``/transitions/new?proposal=<id>``) and for deep links to a
+    proposal card. Any signed-in user may read."""
+    raise NotImplementedError("M8")
+
+
+@router.get("/orion/proposals", response_model=list[ProposalOut])
+def list_proposals(
+    transition_id: str | None = Query(default=None),
+    status: ProposalStatus | None = Query(default=None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[ProposalOut]:
+    """Stored proposals, newest first, optionally filtered; ``can_accept`` evaluated for the
+    current user (BR-050)."""
+    raise NotImplementedError("M8")
+
+
+@router.post("/orion/proposals/{proposal_id}/accept", response_model=AcceptOut)
+def accept_proposal(
+    proposal_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> AcceptOut:
+    """Execute the proposal's normal domain operation as the current user (that operation's
+    permission checks apply -> 403 with the reason, proposal stays Open). Audit actor_type "Human",
+    note "Accepted Orion proposal <id>". 404 unknown, 409 if not Open. Commits.
+    ``create_transition`` is a hand-off: nothing is created, ``navigate_to`` is
+    ``/transitions/new?proposal=<id>`` and the human clicks Create in the form. 403 when the current
+    user lacks the permission of the kind (CREATE_TRANSITION for create_transition)."""
+    raise NotImplementedError("M8")
+
+
+@router.post("/orion/proposals/{proposal_id}/dismiss", response_model=ProposalOut)
+def dismiss_proposal(
+    proposal_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> ProposalOut:
+    """Open -> Dismissed. 404 unknown, 409 if not Open. Commits."""
+    raise NotImplementedError("M8")
+
+
+@router.post("/orion/leadership-update", response_model=LeadershipUpdateOut)
+def create_leadership_update(
+    body: LeadershipUpdateCreateIn,
+    user: User = Depends(require(Perm.GENERATE_LEADERSHIP_UPDATE)),
+    db: Session = Depends(get_db),
+) -> LeadershipUpdateOut:
+    """Generate and store a leadership update (FR-080) via AIService.leadership_update from live
+    data (scope transition|portfolio|all; scope_id required unless all). 403 without
+    Perm.GENERATE_LEADERSHIP_UPDATE; 404 unknown transition/portfolio; 400 scope/scope_id mismatch.
+    Commits. Storyline step 10: GCC portfolio update shows the AtD approval and remaining risks."""
+    raise NotImplementedError("M8")

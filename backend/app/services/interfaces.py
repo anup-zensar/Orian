@@ -34,6 +34,39 @@ class ConfluencePage(TypedDict):
     url: str
 
 
+class IntakeExtraction(TypedDict):
+    """Result of ``AIService.extract_intake`` (no DB access; matching is done against ``vocab``).
+
+    ``fields`` maps an intake field name (a ``TransitionCreateIn`` key, plus ``sites`` and the
+    ``*_user_id`` role pickers) to {"value", "state" (found|inferred|ambiguous|missing), "source",
+    "confidence" (0..1), "evidence" (quoted excerpt), "candidates" ([{"value","label"}]), "note"}.
+    Only values that exist in ``vocab`` are returned (ids of users, exact option labels, exact
+    project type / portfolio / region names) - never invented ones.
+    """
+
+    fields: dict[str, dict[str, Any]]
+    servicenow_project_id: str | None
+    summary: str  # one short sentence, e.g. "Found 7 of 9 intake fields"
+
+
+class ParsedCommand(TypedDict):
+    """One command found in a free-text message by ``AIService.parse_command``.
+
+    ``intent`` is a key of ``domain.nl_intake.INTENT_CATALOG``; ``arguments`` holds raw, vocabulary
+    matched arguments (ids already resolved, e.g. {"owner_user_id": "U13", "item_ids": ["S3-019"],
+    "due_date": "2026-11-20"}); ``missing`` lists required argument names not found; ``ambiguous``
+    maps an argument name to candidate options; ``confidence`` is 0..1; ``excerpt`` is the part of the
+    message the command came from.
+    """
+
+    intent: str
+    arguments: dict[str, Any]
+    missing: list[str]
+    ambiguous: dict[str, list[dict[str, str]]]
+    confidence: float
+    excerpt: str
+
+
 class AIService(Protocol):
     """Orion agent (spec §10.1). Produces text and recommendations only – never decisions (BR-050)."""
 
@@ -69,6 +102,30 @@ class AIService(Protocol):
 
     def insights(self, scope_data: Mapping[str, Any]) -> list[dict[str, Any]]:
         """3–5 insight bullets with suggested action buttons (FR-010, FR-011)."""
+        ...
+
+    def extract_intake(
+        self, text: str, vocab: Mapping[str, Any], servicenow: Mapping[str, Any] | None = None
+    ) -> IntakeExtraction:
+        """Plain language / pasted email / document text -> intake fields (spec 8.4, FR-090).
+        ``vocab`` is built at runtime from the database by ``domain.nl_intake.build_vocabulary``
+        (project types, portfolios, regions, option lists, users with roles, flags such as
+        requires_sites / requires_tiering) - implementations must NOT carry hard-coded lists.
+        ``servicenow`` is the already looked-up record for a PRJ id found in the text (or None).
+        Read-only and side-effect free (BR-050)."""
+        ...
+
+    def parse_command(
+        self,
+        message: str,
+        catalog: Sequence[Mapping[str, Any]],
+        vocab: Mapping[str, Any],
+        context: Mapping[str, Any],
+    ) -> list[ParsedCommand]:
+        """Free text -> 0..5 commands drawn from ``catalog`` (intent keys, examples and argument
+        names of ``domain.nl_intake.INTENT_CATALOG``), arguments resolved against ``vocab``.
+        ``context`` carries transition_id, item_id, today (ISO) and the user's role. Never returns an
+        intent that is not in the catalog; unknown requests return []. Side-effect free (BR-050)."""
         ...
 
 
