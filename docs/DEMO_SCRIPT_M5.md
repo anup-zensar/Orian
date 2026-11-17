@@ -22,7 +22,7 @@ Key messages to weave in (say them early, repeat at the end):
 
 ### Step 1 – Login and Dashboard (2 min)
 1. Log in as **Asha Menon** (click her name on the login page). You land on the Dashboard: "Welcome back, Asha".
-2. Point to the KPI tiles at the top, then the **My work** card (her items and decisions due), **Orion insights**, **Portfolio summary** and **Recent activity**.
+2. Point to the KPI tiles at the top (My open items, My pending approvals, Transitions I own, Decisions due in 14 days, Critical gaps), then the **My work** card, **Orion insights** (AI badge – e.g. "Mobility Knowledge Agent: AtD in 21 days, blocked by 1 critical gap (S45-014 …). Draft a chaser?") and **Recent activity**. Optional aside: Leadership (switch to **Laura Evans**) sees portfolio summary tiles instead of My work.
 3. Say: "Asha is an operate-readiness focal. This is her day: what is mine, what is due, what Orion noticed. Everything here comes from the same data as the control tower."
 
 ### Step 2 – Control tower (3 min)
