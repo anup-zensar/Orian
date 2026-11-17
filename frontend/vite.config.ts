@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
 // Matches a node_modules path of any of the given packages on both / and \ separators.
@@ -6,16 +6,18 @@ const pkg = (names: string) => new RegExp(`node_modules[/\\\\](${names})`);
 
 // Dev server on 127.0.0.1:5173 (spec 5.4) with strictPort, so a port already used by another local
 // app fails loudly instead of silently splitting "localhost" between IPv4 and IPv6 (PLAN.md A-49).
-// Use another port with: npm run dev -- --port 5174. /api is proxied to the FastAPI backend.
+// Use another port with: npm run dev -- --port 5174. /api is proxied to the FastAPI backend at
+// ORION_API_URL (environment or .env file; default http://127.0.0.1:8000), so a second copy of the
+// app can run next to a demo without sharing its API (`vite preview` uses the same proxy).
 // Vendor chunks: the UI kit and the framework/data libs are cached separately from app code,
 // which keeps every chunk under the size warning without raising the limit.
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
   server: {
     host: '127.0.0.1',
     port: 5173,
     strictPort: true,
-    proxy: { '/api': 'http://127.0.0.1:8000' },
+    proxy: { '/api': loadEnv(mode, '.', 'ORION_').ORION_API_URL || 'http://127.0.0.1:8000' },
   },
   build: {
     rolldownOptions: {
@@ -43,4 +45,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));
