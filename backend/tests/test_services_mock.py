@@ -200,19 +200,19 @@ def test_factory_selection(db, monkeypatch, caplog):
     assert "SHOULD" in caplog.text
 
 
-def test_ai_and_generator_not_implemented_yet():
+def test_ai_service_methods_implemented_and_later_milestones_pending():
     ai = MockAIService()
-    calls = [
+    for call in (
         lambda: ai.readiness_narrative({}),
         lambda: ai.recommend_actions([]),
         lambda: ai.recommend_applicability([], {}),
         lambda: ai.draft_message("Chaser", {}),
+    ):
+        assert call() is not None
+    for call in (
         lambda: ai.leadership_update({}),
         lambda: ai.explain_ocet_change({}),
-        lambda: ai.chat("hi", {}),
-        lambda: ai.insights({}),
         lambda: MockSupportModelGenerator().generate({}, {}),
-    ]
-    for call in calls:
+    ):
         with pytest.raises(NotImplementedError, match=r"is implemented in M\d"):
             call()

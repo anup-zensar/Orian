@@ -22,7 +22,8 @@ export default defineConfig({
       output: {
         codeSplitting: {
           groups: [
-            { name: 'vendor-fluent-a', test: pkg('@fluentui[/\\\\]react-[a-d]'), priority: 30 },
+            { name: 'vendor-fluent-a', test: pkg('@fluentui[/\\\\]react-[a-b]'), priority: 30 },
+            { name: 'vendor-fluent-c', test: pkg('@fluentui[/\\\\]react-[c-d]'), priority: 30 },
             { name: 'vendor-fluent-m', test: pkg('@fluentui[/\\\\]react-[e-m]'), priority: 30 },
             { name: 'vendor-fluent-b', test: pkg('@fluentui[/\\\\]react-[n-z]'), priority: 30 },
             {

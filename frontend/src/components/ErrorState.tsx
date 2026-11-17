@@ -1,8 +1,15 @@
-import { MessageBar, MessageBarBody, MessageBarTitle } from '@fluentui/react-components';
+import {
+  Button,
+  MessageBar,
+  MessageBarActions,
+  MessageBarBody,
+  MessageBarTitle,
+} from '@fluentui/react-components';
 import { ApiError } from '../api/client';
 
-/** Shows an API error: the detail plus every reasons[] line. */
-export function ErrorState({ error }: { error: unknown }) {
+/** Shows an API error: the detail plus every reasons[] line, and a Retry button when ``onRetry``
+ * is given. */
+export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const detail = error instanceof ApiError ? error.detail : 'Something went wrong';
   const reasons = error instanceof ApiError ? error.reasons : [];
   return (
@@ -17,6 +24,11 @@ export function ErrorState({ error }: { error: unknown }) {
           </ul>
         )}
       </MessageBarBody>
+      {onRetry && (
+        <MessageBarActions>
+          <Button onClick={onRetry}>Retry</Button>
+        </MessageBarActions>
+      )}
     </MessageBar>
   );
 }
