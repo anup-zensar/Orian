@@ -52,51 +52,51 @@ Spec §16.1: repo scaffold, config, DB models, seed loader + synthesis, `/refere
 - [x] M1.11 Demo login page (users from `/users`, role badges, no password) + **Switch user** in the top bar on every page (FR‑001); app shell: left nav (all §8 items, Admin only for ADMIN), top bar (Orion name, global search placeholder, bell placeholder, Orion button → panel placeholder, user menu) (FR‑002); placeholder routes for every page incl. deep links; theme tokens for lens/RAG/actor colours (§12).
 - [x] M1.12 Tests: synthesis within ±3 points of every snapshot (§11.3), checklist counts per project type / Tier 2 exclusions (AC‑03 rule level), seed idempotency, auth/permissions, reference API. Backend `pytest` + frontend `npm run build` green; commit.
 
-### M2 Visibility  – status: `[ ]`
+### M2 Visibility  – status: `[x]` (done 2026‑11‑17)
 FR‑010, FR‑011, FR‑012, BR‑020, BR‑021, AC‑01, AC‑02.
-- [ ] M2.1 `GET /transitions?portfolio&region&gate&rag&type&q` with computed lens readiness, overall, open/critical gaps, RAG (live, never stored), next decision + days (FR‑012).
-- [ ] M2.2 `GET /control-tower?filters` → KPI tiles (active, red, decisions ≤ 14 d, with critical gaps, compliance < 70 %), heatmap portfolio × gate (count + worst RAG), readiness by region, register, escalation queue (red + blockers), decision calendar (45 days), operating rhythm (static, from prototype) (FR‑011).
-- [ ] M2.3 `GET /dashboard` role‑aware: KPI tiles, "My work" (items/actions/approvals with deep links), recent activity (last 10 audit events in my transitions), LEADERSHIP portfolio tiles (FR‑010).
-- [ ] M2.4 `AIService.insights()` mock + `GET /orion/insights?scope=dashboard|control-tower|transition` (Orion insights cards, AI badge) (FR‑010, FR‑011).
-- [ ] M2.5 UI: Transitions page (searchable register + "New transition"), Control tower (filters in URL, clickable KPI tiles, heatmap cell filter, Recharts region bars, register with B/T/C mini bars, escalation queue, calendar, insights card, operating rhythm card), Dashboard; global transition search in top bar.
-- [ ] M2.6 Tests: RAG table cases (BR‑021), list filters, control‑tower aggregates; 18 transitions visible (AC‑01).
+- [x] M2.1 `GET /transitions?portfolio&region&gate&rag&type&q` with computed lens readiness, overall, open/critical gaps, RAG (live, never stored), next decision + days (FR‑012).
+- [x] M2.2 `GET /control-tower?filters` → KPI tiles (active, red, decisions ≤ 14 d, with critical gaps, compliance < 70 %), heatmap portfolio × gate (count + worst RAG), readiness by region, register, escalation queue (red + blockers), decision calendar (45 days), operating rhythm (static, from prototype) (FR‑011).
+- [x] M2.3 `GET /dashboard` role‑aware: KPI tiles, "My work" (items/actions/approvals with deep links), recent activity (last 10 audit events in my transitions), LEADERSHIP portfolio tiles (FR‑010).
+- [x] M2.4 `AIService.insights()` mock + `GET /orion/insights?scope=dashboard|control-tower|transition` (Orion insights cards, AI badge) (FR‑010, FR‑011).
+- [x] M2.5 UI: Transitions page (searchable register + "New transition"), Control tower (filters in URL, clickable KPI tiles, heatmap cell filter, Recharts region bars, register with B/T/C mini bars, escalation queue, calendar, insights card, operating rhythm card), Dashboard; global transition search in top bar.
+- [x] M2.6 Tests: RAG table cases (BR‑021), list filters, control‑tower aggregates; 18 transitions visible (AC‑01).
 
-### M3 Intake  – status: `[ ]`
+### M3 Intake  – status: `[x]` (done 2026‑11‑17; adversarial review fixes follow in a separate commit)
 FR‑020, FR‑021, FR‑022, BR‑010, BR‑011, AC‑03, AC‑04, AC‑05.
-- [ ] M3.1 ServiceNow mock + `GET /integrations/servicenow/projects/{id}` (PRJ0052210, PRJ0049920; friendly not‑found).
-- [ ] M3.2 `POST /transitions` intake with validation: required fields, AI‑only required fields, Retail Site Systems ⇒ ≥ 1 site row with Site ID + Site key (AC‑05); defaults OR focal = current user (if OR focal), PM U10, Architect U11, OLM U12, IRM U14; next id `TR-00NN`.
-- [ ] M3.3 `rules/tiering.py` (BR‑011, ordered rules + rationale) + `POST /tiering/propose`; `PUT /transitions/{id}/tier` (OR focal proposes); `POST /transitions/{id}/tier/confirm` (IRM only, confirm or change with reason) (AC‑04).
-- [ ] M3.4 `GET/PUT /transitions/{id}/ai-profile` (questionnaire §6 AIProfile).
-- [ ] M3.5 `GET/PUT /transitions/{id}/scope` (golden set + counts; mandatory rows locked) + `AIService.recommend_applicability()` mock + "Accept all recommendations" (human click, BR‑050) (FR‑022).
-- [ ] M3.6 `POST /transitions/{id}/launch-assessment` creates TransitionItems (BR‑010); re‑assembly after tier change keeps statuses/evidence/notes and marks newly excluded items N/A (tier), audit with counts (BR‑010 step 7); proposed‑tier banner data.
-- [ ] M3.7 UI: intake form (labels/options per §8.4 + prototype §18), ServiceNow Fetch, repeatable site rows, live **Auto‑scope** panel; tiering wizard (3 steps, IRM confirm/change); scope page (golden set table, counts, Orion recommendation card, Launch).
-- [ ] M3.8 Tests: tiering cases (Tier 2 for internal/no writes/non‑sensitive/TQ4, Tier 4 when TQ2), only IRM confirms, assembly per project type (Normal/Infrastructure = Framework only; Agentic AI/Combined + playbook), Tier 2 excludes Tier 3/4‑only items as "not applicable (tier)" (AC‑03), Retail sites validation (AC‑05).
+- [x] M3.1 ServiceNow mock + `GET /integrations/servicenow/projects/{id}` (PRJ0052210, PRJ0049920; friendly not‑found).
+- [x] M3.2 `POST /transitions` intake with validation: required fields, AI‑only required fields, Retail Site Systems ⇒ ≥ 1 site row with Site ID + Site key (AC‑05); defaults OR focal = current user (if OR focal), PM U10, Architect U11, OLM U12, IRM U14; next id `TR-00NN`.
+- [x] M3.3 `rules/tiering.py` (BR‑011, ordered rules + rationale) + `POST /tiering/propose`; `PUT /transitions/{id}/tier` (OR focal proposes); `POST /transitions/{id}/tier/confirm` (IRM only, confirm or change with reason) (AC‑04).
+- [x] M3.4 `GET/PUT /transitions/{id}/ai-profile` (questionnaire §6 AIProfile).
+- [x] M3.5 `GET/PUT /transitions/{id}/scope` (golden set + counts; mandatory rows locked) + `AIService.recommend_applicability()` mock + "Accept all recommendations" (human click, BR‑050) (FR‑022).
+- [x] M3.6 `POST /transitions/{id}/launch-assessment` creates TransitionItems (BR‑010); re‑assembly after tier change keeps statuses/evidence/notes and marks newly excluded items N/A (tier), audit with counts (BR‑010 step 7); proposed‑tier banner data.
+- [x] M3.7 UI: intake form (labels/options per §8.4 + prototype §18), ServiceNow Fetch, repeatable site rows, live **Auto‑scope** panel; tiering wizard (3 steps, IRM confirm/change); scope page (golden set table, counts, Orion recommendation card, Launch).
+- [x] M3.8 Tests: tiering cases (Tier 2 for internal/no writes/non‑sensitive/TQ4, Tier 4 when TQ2), only IRM confirms, assembly per project type (Normal/Infrastructure = Framework only; Agentic AI/Combined + playbook), Tier 2 excludes Tier 3/4‑only items as "not applicable (tier)" (AC‑03), Retail sites validation (AC‑05).
 
-### M4 Workspace  – status: `[ ]`
+### M4 Workspace  – status: `[x]` (done 2026‑11‑17; adversarial review fixes follow in a separate commit)
 FR‑030, FR‑031, FR‑032, FR‑033, FR‑035, FR‑036, FR‑037, FR‑110, BR‑030, AC‑06, AC‑13.
-- [ ] M4.1 Workspace header (flavour chips, 7‑gate stepper with decision gates marked, overall readiness, RAG chip, next decision, OR focal, autonomous toggle (OR focal only) `POST /transitions/{id}/autonomous-mode`, Ask Orion) + tab routing `/transitions/:id/<tab>`.
-- [ ] M4.2 Overview tab: lens cards (readiness, done / in progress / not started / gaps, lens question, owner), open conditions, pending exceptions, risks, blocker, recent activity, gate history timeline.
-- [ ] M4.3 Assessment tab: `GET /transitions/{id}/items` filters (gate default ≤ current, lens, source, status, owner, mine, applicability incl. excluded, q), grouped by gate → lens; inline status (permission‑aware), severity, DE, evidence count, updated‑by badge, row menu; bulk owner / N/A (OR focal); gate summary bar; deep link `?item=` (FR‑031).
-- [ ] M4.4 `PATCH /items/{id}` + `POST /items/bulk` enforcing BR‑030 (Gap/Non‑compliant needs severity + note; N/A needs reason and OR focal (B/T) / IRM (C); Compliant with conditions creates a Condition; Compliant needs DE Yes/N/A) + audit before/after (AC‑06).
-- [ ] M4.5 Evidence tab: list/filter, upload (mock DocumentStore → fake SharePoint URL), link, email sign‑off text, review Accept/Reject (OR focal B/T, IRM C), download (FR‑033).
-- [ ] M4.6 Gaps & actions tab: gaps list (severity, lens, owner, days to decision); actions CRUD (`/transitions/{id}/actions`, `PATCH /actions/{id}`); Orion recommendation card per gap (mock, buttons → Create action (human) / Draft chaser) (FR‑032).
-- [ ] M4.7 Conditions / exceptions / risks tab: conditions table + close; exceptions list + "Request exception" (chain wiring in M5); risk register (FR‑035).
-- [ ] M4.8 Hypercare tab: defects CRUD, "No defects – tracker in place" confirmation (FR‑036).
-- [ ] M4.9 AI playbook tab (AI flavours): tier card, AI profile (editable), eval metrics table (target for tier, result input, auto pass/fail, manual toggle), **Import eval results (mock)** (flagship from seed; others deterministic plausible values), tier‑threshold banner (FR‑037).
-- [ ] M4.10 OCET + Support model link cards (status, version, totals) (FR‑030 h/i).
-- [ ] M4.11 Activity tab + global Audit trail page `GET /audit?transition_id&actor&actor_type&entity&from&to` with before/after diff (FR‑110, AC‑13).
-- [ ] M4.12 Tests: BR‑030 rules + permissions (AC‑06), evidence review permissions, audit written for each write.
+- [x] M4.1 Workspace header (flavour chips, 7‑gate stepper with decision gates marked, overall readiness, RAG chip, next decision, OR focal, autonomous toggle (OR focal only) `POST /transitions/{id}/autonomous-mode`, Ask Orion) + tab routing `/transitions/:id/<tab>`.
+- [x] M4.2 Overview tab: lens cards (readiness, done / in progress / not started / gaps, lens question, owner), open conditions, pending exceptions, risks, blocker, recent activity, gate history timeline.
+- [x] M4.3 Assessment tab: `GET /transitions/{id}/items` filters (gate default ≤ current, lens, source, status, owner, mine, applicability incl. excluded, q), grouped by gate → lens; inline status (permission‑aware), severity, DE, evidence count, updated‑by badge, row menu; bulk owner / N/A (OR focal); gate summary bar; deep link `?item=` (FR‑031).
+- [x] M4.4 `PATCH /items/{id}` + `POST /items/bulk` enforcing BR‑030 (Gap/Non‑compliant needs severity + note; N/A needs reason and OR focal (B/T) / IRM (C); Compliant with conditions creates a Condition; Compliant needs DE Yes/N/A) + audit before/after (AC‑06).
+- [x] M4.5 Evidence tab: list/filter, upload (mock DocumentStore → fake SharePoint URL), link, email sign‑off text, review Accept/Reject (OR focal B/T, IRM C), download (FR‑033).
+- [x] M4.6 Gaps & actions tab: gaps list (severity, lens, owner, days to decision); actions CRUD (`/transitions/{id}/actions`, `PATCH /actions/{id}`); Orion recommendation card per gap (mock, buttons → Create action (human) / Draft chaser) (FR‑032).
+- [x] M4.7 Conditions / exceptions / risks tab: conditions table + close; exceptions list + "Request exception" (chain wiring in M5); risk register (FR‑035).
+- [x] M4.8 Hypercare tab: defects CRUD, "No defects – tracker in place" confirmation (FR‑036).
+- [x] M4.9 AI playbook tab (AI flavours): tier card, AI profile (editable), eval metrics table (target for tier, result input, auto pass/fail, manual toggle), **Import eval results (mock)** (flagship from seed; others deterministic plausible values), tier‑threshold banner (FR‑037).
+- [x] M4.10 OCET + Support model link cards (FR‑030 h/i) – placeholders/link cards until the modules land (A‑59).
+- [x] M4.11 Activity tab + global Audit trail page `GET /audit?transition_id&actor&actor_type&entity&from&to` with before/after diff (FR‑110, AC‑13).
+- [x] M4.12 Tests: BR‑030 rules + permissions (AC‑06), evidence review permissions, audit written for each write.
 
-### M5 Gates & approvals  – status: `[ ]`
+### M5 Gates & approvals  – status: `[x]` (done 2026‑11‑17; adversarial review fixes follow in a separate commit)
 FR‑034, FR‑050, FR‑070, FR‑071 (core), FR‑072 (core), BR‑040, BR‑041, AC‑07 (first half), AC‑08.
-- [ ] M5.1 `rules/gates.py`: stage‑review validation (Proceed / Proceed with conditions / Hold; SG0 needs confirmed tier for AI; SG3 ignores Compliance lens), decision validation (Approve / Approve with conditions / Return), failed eval metrics as Technical blockers at AtD, AtO extra rules, Closure rules (no conditions), carried items + unit tests (BR‑040, AC‑08).
-- [ ] M5.2 `GET /transitions/{id}/readiness?gate=` → verdict (Ready / Ready with conditions / Not ready), why (blocking items by lens, critical gaps, conditions due, pending exceptions, failed evals, OCET, support model, chain status), Orion narrative (`AIService.readiness_narrative`), recommended actions (`AIService.recommend_actions`) as stored proposals (FR‑050).
-- [ ] M5.3 `POST /transitions/{id}/gates/{gate}/review`, `/request-approval`, `/decision`; gate advance; conditions created from dialog; Return cancels chain + requires note (BR‑040).
-- [ ] M5.4 Approval chains (BR‑041): types OCET / AtD / AtO / SUPPORT_MODEL / EXCEPTION from config; sequential steps, role check, approve (comment optional) / reject (comment required → whole request Rejected + requester notified); completion hooks per type; exception chain CISO/BISO step mock‑approvable by IRM in demo mode.
-- [ ] M5.5 Notifications on each step: in‑app (bell) + mock email (Outbox) + mock Teams Adaptive Card (`services/cards/approval_request.json`) (BR‑041, §10.3–10.4).
-- [ ] M5.6 Drafts core (moved forward from M8 because approval requests are drafted in assistive mode): `OrionDraft` CRUD, `GET /orion/drafts`, `PATCH`, `send`, `discard`; MailService/NotificationService mocks write Outbox; `GET /outbox`; `GET /notifications` + read (FR‑071, FR‑072 core).
-- [ ] M5.7 UI: Gates & decisions tab (panel per gate, readiness check panel, chain status, Request approval → Orion draft dialog → Send, decision dialog with conditions editor, disabled reasons), Approvals inbox (Waiting for me / Requested by me / All), Orion drafts page (basic), Outbox page (email + Adaptive Card preview + raw JSON), notification bell.
-- [ ] M5.8 Tests: gate rules matrix, chain role enforcement, reject flow, flagship readiness = "Not ready for AtD" with scripted blockers (AC‑07 first half).
+- [x] M5.1 `rules/gates.py`: stage‑review validation (Proceed / Proceed with conditions / Hold; SG0 needs confirmed tier for AI; SG3 ignores Compliance lens), decision validation (Approve / Approve with conditions / Return), failed eval metrics as Technical blockers at AtD, AtO extra rules, Closure rules (no conditions), carried items + unit tests (BR‑040, AC‑08).
+- [x] M5.2 `GET /transitions/{id}/readiness?gate=` → verdict (Ready / Ready with conditions / Not ready), why (blocking items by lens, critical gaps, conditions due, pending exceptions, failed evals, OCET, support model, chain status), Orion narrative (`AIService.readiness_narrative`), recommended actions (`AIService.recommend_actions`) as stored proposals (FR‑050).
+- [x] M5.3 `POST /transitions/{id}/gates/{gate}/review`, `/request-approval`, `/decision`; gate advance; conditions created from dialog; Return cancels chain + requires note (BR‑040).
+- [x] M5.4 Approval chains (BR‑041): types OCET / AtD / AtO / SUPPORT_MODEL / EXCEPTION from config; sequential steps, role check, approve (comment optional) / reject (comment required → whole request Rejected + requester notified); completion hooks per type; exception chain CISO/BISO step mock‑approvable by IRM in demo mode.
+- [x] M5.5 Notifications on each step: in‑app (bell) + mock email (Outbox) + mock Teams Adaptive Card (`services/cards/approval_request.json`) (BR‑041, §10.3–10.4).
+- [x] M5.6 Drafts core (moved forward from M8 because approval requests are drafted in assistive mode): `OrionDraft` CRUD, `GET /orion/drafts`, `PATCH`, `send`, `discard`; MailService/NotificationService mocks write Outbox; `GET /outbox`; `GET /notifications` + read (FR‑071, FR‑072 core).
+- [x] M5.7 UI: Gates & decisions tab (panel per gate, readiness check panel, chain status, Request approval → Orion draft dialog → Send, decision dialog with conditions editor, disabled reasons), Approvals inbox (Waiting for me / Requested by me / All), Orion drafts page (basic), Outbox page (email + Adaptive Card preview + raw JSON), notification bell.
+- [x] M5.8 Tests: gate rules matrix, chain role enforcement, reject flow, flagship readiness = "Not ready for AtD" with scripted blockers (AC‑07 first half).
 
 ### M6 OCET  – status: `[ ]`
 FR‑060, BR‑070, AC‑09.
@@ -231,6 +231,22 @@ Recorded per spec §0 ("choose the simplest behaviour that keeps the demo story 
 - **A‑47 Middleware design.** Pure ASGI middlewares (no `BaseHTTPMiddleware`): security headers outermost, then CORS, request‑size limit (413 above `MAX_UPLOAD_MB`), then an unhandled‑error converter, so even 500 responses carry security and CORS headers and never leak internals. Framework 404/405 errors use the same `{detail, reasons}` body.
 - **A‑48 Configuration is validated** at startup (`AI_MODE` ∈ mock|live, `MAIL_MODE` ∈ mock|graph); `/admin/demo/*` endpoints answer 404 when `DEMO_MODE=false` (M9).
 - **A‑49 Dev server port.** Vite binds `127.0.0.1:5173` with `strictPort` (spec §5.4) and proxies `/api` to `127.0.0.1:8000`. On this machine another local app ("SP&A One", `node.exe`) already listens on `127.0.0.1:5173`; previously Vite silently took `[::1]:5173`, so `localhost:5173` could reach either app. Now a conflict fails with "Port 5173 is already in use"; run `scripts\dev.ps1 -WebPort 5174` (or `npm run dev -- --port 5174`) and open `http://127.0.0.1:5174`.
+- **A‑50 Overdue decisions count as due.** Filters and KPIs "decision within N days" include decisions whose date has passed (negative days) – they are the most urgent; the decision calendar lists them first.
+- **A‑51 "My transitions" / `mine=true`.** OR focal, PM, Architect, OLM and IRM see the transitions where they hold that role; Planner, Leadership and Admin are involved in all transitions (they act across the portfolio).
+- **A‑52 Insight buttons in M2 are navigation links** (e.g. "Draft a chaser" opens the gap); one‑click drafting and stored proposals arrive with the drafts queue (M5) and the Orion panel (M8). Insights never write data (BR‑050).
+- **A‑53 Parallel build of M3–M5 (user request: M5 by 13:30).** Contracts for M3–M5 were written first by four agents (schemas, endpoint signatures, cross‑area domain stubs), then eight builders implemented backend and frontend concurrently with strict file ownership; one integration pass and two reviews follow. Milestones are still committed separately.
+- **A‑54 Transition endpoints split.** `POST /transitions`, `GET/PATCH /transitions/{id}` and `POST /transitions/{id}/autonomous-mode` live in `routers/intake.py` (the list endpoint stays in `routers/transitions.py`); paths are exactly as in spec §9.
+- **A‑55 Items are created at launch** (`POST /launch-assessment`, spec §8.6/§9). Before launch, the OR focal's scope decisions are stored on the transition (`Transition.scope_decisions`) and the scope page previews the assembled checklist; after launch, applicability edits apply to the items directly.
+- **A‑56 Draft bodies are sanitised** (allow‑list HTML sanitiser, no new dependency) on edit and before sending, and the UI renders email HTML only inside a sandboxed iframe (VAPT: no stored XSS).
+- **A‑57 Approver rule.** A user may act on a step when their role equals the step role and, if a specific approver was chosen, they are that approver. The CISO/BISO step has no real user: in demo mode IRM approves it, labelled "(mock)" (spec §7.7).
+- **A‑58 "Ask Orion"** in the workspace header opens `/orion?transition=<id>` until the side panel is wired in M8.
+- **A‑59 OCET and Support model tabs** show link cards with the status of their linked items until the modules are built (M6, M7).
+- **A‑60 Mock AI per area.** `services/mock/ai.py` delegates to one module per capability (`ai_applicability`, `ai_readiness`, `ai_messages`, insights) so areas can be built in parallel.
+- **A‑61 Not‑launched transitions** (no items yet) show 0 % readiness with a Grey RAG and are left out of readiness averages (region chart, portfolio tiles) and the "Compliance < 70 %" KPI; their insight says the assessment has not been launched and links to the scope page.
+- **A‑62 Escalation queue** = every Red transition plus every transition with a blocker note (Red first, then soonest decision). The reason line adds the lowest lens whenever it is below 70 % (e.g. "3 critical gaps · Technical readiness 49 % · AtD decision in 4 days").
+- **A‑63 Control‑tower context.** KPI tiles are computed over the filters except the tile keys, and the heatmap over the filters except portfolio and gate, so users keep the portfolio context after clicking a tile or cell; the register, region chart, escalations, calendar and Orion card use all filters.
+- **A‑64 My work** returns up to 200 rows (the UI shows 25 with "Show all"); "My open items" counts checklist items only, approvals are counted separately (A‑57 rule shared with the approvals inbox).
+- **A‑65 Insight wording.** Item titles in insight sentences use the short label before " - ", " (" or ": " (else a word‑boundary cut near 60 characters); drafting actions are hidden for Leadership (read‑only).
 
 ---
 
@@ -252,3 +268,5 @@ Recorded per spec §0 ("choose the simplest behaviour that keeps the demo story 
 |---|---|---|
 | 2026‑11‑17 | Setup | Spec pack extracted; repo initialised (`main` = spec pack, work on `build/mvp`); PLAN.md created; toolchain verified (A‑01, A‑02, A‑19). |
 | 2026‑11‑17 | M1 Foundation | Done. Backend: 164 tests green (rules, synthesis ±3 per A‑37, seed, API core, security, services, cards), ruff + black clean, `pip-audit` 0 known vulns over the full pin set. Frontend: strict build + lint green, `npm audit` 0 vulns after React Router 7.18.5 (A‑43). Live smoke test via the Vite proxy (users, /me 401/200, 404/405 contract, security headers, deep link). Review findings (21) fixed or documented (A‑36…A‑49). Python 3.15.2 still blocked by the corporate filter, also via winget (A‑01). |
+| 2026‑11‑17 | M2 Visibility | Done. Dashboard, control tower (heatmap, region chart, register, escalations, calendar, operating rhythm), transitions list, Orion insights. Review: 0 high; 17 fixes applied (A‑61…A‑65). Storyline step 2 verified in the browser (Forecourt POS refresh Red, 3 critical gaps, decision in 4 days). |
+| 2026‑11‑17 | M3–M5 (parallel, A‑53) | Done. Contracts written by 4 agents, built by 8 parallel builders, integrated in one pass: ~400 backend tests, strict build + lint, npm audit 0; live API walk of storyline steps 3 (SMSM Photo Capture → Tier 2 → IRM confirm → scope → launch: 72 + 208/8 + golden set + 2), 4, 5 (flagship Not ready for AtD incl. EV‑03/EV‑12; chaser → outbox email + Teams card) and 8 (EX‑01 IRM + CISO/BISO mock → S45‑014 covered; CON‑001 closed); browser smoke test of all 18 new routes. Commits grouped per milestone. |

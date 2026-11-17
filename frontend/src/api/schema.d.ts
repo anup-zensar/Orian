@@ -4,473 +4,10257 @@
  */
 
 export interface paths {
-  '/api/v1/reference': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/reference": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Reference */
+        get: operations["get_reference_api_v1_reference_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get Reference */
-    get: operations['get_reference_api_v1_reference_get'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/users': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Users */
+        get: operations["list_users_api_v1_users_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** List Users */
-    get: operations['list_users_api_v1_users_get'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/me': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Me */
+        get: operations["get_me_api_v1_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get Me */
-    get: operations['get_me_api_v1_me_get'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/health': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/transitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Transitions
+         * @description All transitions matching ``filters`` with live readiness per lens, gaps, RAG and next decision
+         *     (FR-012, BR-020, BR-021). Sorted by days to next decision (soonest first, no date last), then name.
+         */
+        get: operations["list_transitions_api_v1_transitions_get"];
+        put?: never;
+        /**
+         * Create Transition
+         * @description Create a transition from the intake form (spec §8.4, FR-020). OR focal / PM / Admin only (403).
+         *
+         *     Validations (422 with one reason per problem, listed in ``reasons``):
+         *     - project_type, portfolio, region, audience, write_actions, sensitive_data, target_gate,
+         *       investment_type, delivery_method must be options from reference.json (project types come from
+         *       FlavourRule, portfolios from Portfolio).
+         *     - Project type Agentic AI or Combined (FlavourRule.requires_tiering): audience, write_actions and
+         *       sensitive_data are required.
+         *     - Portfolio Retail Site Systems (AC-05): at least one ``sites`` row and every row must have both
+         *       Site ID and Site key (trimmed, non-empty). Fully blank rows are dropped first; for other
+         *       portfolios sites are ignored (stored as []).
+         *     - or_focal_user_id is required; every role picker must reference an existing user whose role matches
+         *       (or_focal -> OR_FOCAL, pm -> PM, architect -> ARCHITECT, olm -> OLM, irm -> IRM).
+         *     - name is trimmed and non-empty.
+         *
+         *     Behaviour: new id = ``app.domain.ids.next_id(db, Transition.id, "TR-")``; current_gate "SG0";
+         *     status Active; autonomous_mode False; no items yet (assessment_launched_at None, scope_decisions
+         *     {}); created_by = current user; no TierAssessment row yet. Audit event "Transition created" with
+         *     actor source Human. Returns the full detail (201). The UI continues to the tiering wizard when
+         *     ``requires_tiering`` else to the Scope page.
+         */
+        post: operations["create_transition_api_v1_transitions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Health */
-    get: operations['health_health_get'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
+    "/api/v1/transitions/{transition_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Transition
+         * @description Full detail for the workspace header, overview lens cards and stepper (spec §8.7).
+         *
+         *     404 "Transition not found" for an unknown id. Any signed-in role may read.
+         *     Built with ``app.domain.transition_detail.build_transition_detail``.
+         */
+        get: operations["get_transition_api_v1_transitions__transition_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Transition
+         * @description Edit intake fields (only fields present in the body, via ``model_fields_set``).
+         *
+         *     403 for roles without CREATE_TRANSITION; 404 unknown id; 409 "Transition is closed" when status is
+         *     Closed; 422 with the same option / role / site validations as create, evaluated on the merged
+         *     result (a field explicitly set to null clears an optional field; required fields cannot be null).
+         *
+         *     BR-010 re-assembly: if the assessment is launched and project_type or portfolio changes, rebuild
+         *     the plan with ``rules.checklist.assemble_checklist`` (library = active PlaybookItems, flavour
+         *     checklists from FlavourRule of the new type, tier = confirmed or proposed tier, roles of the
+         *     transition) and persist ``rules.checklist.reassemble(existing, planned, library)`` (added items are
+         *     created, excluded ones become Not applicable with excluded_by, existing statuses/evidence/notes of
+         *     items that still apply are kept, a human's own N/A is never overridden). Switching to a type that
+         *     requires tiering without a tier assessment keeps tier None (all AI items apply, A-35). Audit event
+         *     with the re-assembly counts {added, excluded, restored}. A change of pm/architect/olm/irm does not
+         *     reassign existing item owners. Before launch only the fields change. Audit Human for every edit with
+         *     the changed field names in the note.
+         */
+        patch: operations["update_transition_api_v1_transitions__transition_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/autonomous-mode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set Autonomous Mode
+         * @description Turn autonomous mode on/off (FR-081): when on, Orion may auto-send Chaser / Reminder /
+         *     Input request drafts but never Approval request or Leadership update (BR-050).
+         *
+         *     403 without TOGGLE_AUTONOMOUS; 404 unknown id. Idempotent when the value is unchanged (no audit).
+         *     Audit event Human "Autonomous mode on/off".
+         */
+        post: operations["set_autonomous_mode_api_v1_transitions__transition_id__autonomous_mode_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/control-tower": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Control Tower
+         * @description Portfolio-wide view over the filtered transitions: KPI tiles (active, red, decisions <= 14 days,
+         *     with critical gaps, compliance readiness < 70 %), heatmap portfolio x gate (count + worst RAG),
+         *     readiness by region, the register (``transitions``), escalation queue, decision calendar (45 days), operating rhythm.
+         */
+        get: operations["get_control_tower_api_v1_control_tower_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard
+         * @description KPI tiles (my open items, my pending approvals, transitions I own (OR focal), decisions due in
+         *     14 days, critical gaps in my transitions), "My work", recent activity; LEADERSHIP gets portfolio
+         *     tiles instead of "My work".
+         */
+        get: operations["get_dashboard_api_v1_dashboard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tiering/propose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Propose Tier
+         * @description Pure BR-011 rule (spec §7.2), no persistence; used live by the wizard. Any signed-in role.
+         *
+         *     Evaluated in order: TQ2 or TQ3 yes or sensitive_data "SOX / MC" -> Tier 4; TQ1 yes or audience
+         *     "External" or sensitive_data "Personal sensitive" or write_actions "Yes" -> Tier 3; TQ5 yes ->
+         *     Tier 1; TQ4 yes -> Tier 2; else Tier 3. Rationale lists the facts that applied ("Internal
+         *     audience", "No write actions", "TQ4 = yes -> Tier 2"). ``tier`` is the definition card from
+         *     reference tiers, ``dimensions`` the three tier dimensions. 422 when an answers key is not TQ1..TQ5
+         *     or an intake value is not a reference option.
+         */
+        post: operations["propose_tier_api_v1_tiering_propose_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/tier": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Propose Transition Tier
+         * @description OR focal proposes the tier. The server computes the proposal (BR-011) from the transition's
+         *     audience / write_actions / sensitive_data and ``body.answers``; client-supplied tiers are not
+         *     accepted.
+         *
+         *     403 without PROPOSE_TIER; 404 unknown id; 409 "Tiering applies to AI project types only" when the
+         *     flavour does not require tiering; 409 "Tier already confirmed – IRM must change it" when the
+         *     tier is already Confirmed (the OR focal may not overwrite a confirmed tier).
+         *     Upserts TierAssessment (answers, proposed_tier, rationale, proposed_by = user), sets
+         *     Transition.risk_tier = proposed and tier_status "Proposed". If the assessment is already launched
+         *     re-assemble (BR-010 step 7) with the new proposed tier and put counts in ``reassembly``.
+         *     Audit Human "Tier proposed".
+         */
+        put: operations["propose_transition_tier_api_v1_transitions__transition_id__tier_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/tier/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Transition Tier
+         * @description IRM confirms the proposed tier or changes it ("Change tier"). Orion never does this.
+         *
+         *     403 without CONFIRM_TIER (IRM only); 404 unknown id; 409 "No tier proposed yet" when no proposal
+         *     exists; 422 "Reason required to change the tier" when body.tier differs from the proposal and
+         *     ``reason`` is blank. Sets confirmed_tier, confirmed_by_irm = user, confirmed_by_or_focal = the
+         *     proposer, confirmed_at = now (app clock), change_reason (only when changed),
+         *     Transition.risk_tier = confirmed and tier_status "Confirmed". If the assessment is launched and
+         *     the tier changed versus the tier currently applied, re-assemble (BR-010 step 7) and return counts
+         *     in ``reassembly``. Audit Human "Tier confirmed" / "Tier changed" with the reason.
+         */
+        post: operations["confirm_transition_tier_api_v1_transitions__transition_id__tier_confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/ai-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Ai Profile
+         * @description AI profile questionnaire (spec §8.5 step 3). 404 unknown id; 409 "AI profile applies to AI
+         *     project types only" for non-AI flavours. Returns empty defaults when none was saved yet.
+         */
+        get: operations["get_ai_profile_api_v1_transitions__transition_id__ai_profile_get"];
+        /**
+         * Put Ai Profile
+         * @description Replace the AI profile (upsert). 403 without EDIT_AI_PROFILE; 404 unknown id; 409 for non-AI
+         *     flavours. Audit Human "AI profile updated".
+         */
+        put: operations["put_ai_profile_api_v1_transitions__transition_id__ai_profile_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/scope": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Scope
+         * @description Portfolio scope page data (spec §8.6). 404 unknown id.
+         *
+         *     ``golden_set``: the portfolio's active PORTFOLIO library items (type "Mandatory" when mandatory,
+         *     else "Portfolio"); ``common``: COMMON items (type "Common"). Each row: id, requirement (title),
+         *     gate / gate_short, owner_hint, lens, lens_is_suggested, ``applies`` and ``locked``
+         *     (mandatory -> locked, always "Yes"). ``applies`` source: after launch the TransitionItem
+         *     applicability (Applies -> Yes, Not applicable -> No, To confirm); before launch Transition.scope_
+         *     decisions, falling back to the BR-010 default (mandatory / always -> Yes, else To confirm).
+         *     ``reason`` from the decision / na_reason.
+         *     ``counts`` {framework, ai_applicable, ai_excluded, golden_set_applies, golden_set_to_confirm,
+         *     common, total}: from stored items after launch, else from ``assemble_checklist`` with the
+         *     confirmed or proposed tier (None tier -> all AI items apply) with scope_decisions applied; total =
+         *     applicable items. ``tier_banner`` only for AI flavours: {tier, status, text} where text is
+         *     "Checklist based on proposed Tier N — confirm tier to finalise" when Proposed,
+         *     "Checklist based on confirmed Tier N" when Confirmed, "Tier not proposed yet" when none.
+         *     ``recommendations``: for rows still "To confirm" only, from
+         *     ``AIService.recommend_applicability(items, flavour)`` (Orion agent, advisory, never persisted).
+         *     ``launched`` = assessment_launched_at is set. Any signed-in role.
+         */
+        get: operations["get_scope_api_v1_transitions__transition_id__scope_get"];
+        /**
+         * Update Scope
+         * @description Record applicability decisions (OR focal). 403 without CONFIRM_SCOPE; 404 unknown id.
+         *
+         *     422 when an item_id is not a golden-set / common row of this transition's portfolio. 409 (with a
+         *     reason per row) when a decision sets a locked (mandatory / always) row to "No" or "To confirm".
+         *     Before launch decisions are stored in Transition.scope_decisions ({item_id: {applies, reason}});
+         *     after launch they are applied to TransitionItem: Yes -> Applies, No -> Not applicable with
+         *     na_reason = reason (excluded_by None, lens N/A status via na_status_for), To confirm ->
+         *     To confirm; setting "No" on an item that already has progress is allowed (human decision).
+         *     Audit Human with counts; note "Accepted Orion recommendations" when source is
+         *     "orion_recommendation" (the UI sends the recommended values; the server still validates each
+         *     row). Returns the refreshed ScopeOut.
+         */
+        put: operations["update_scope_api_v1_transitions__transition_id__scope_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/launch-assessment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Launch Assessment
+         * @description Launch the readiness assessment (FR-022, BR-010). 403 without CONFIRM_SCOPE; 404 unknown id.
+         *
+         *     409 with reasons: "Assessment already launched"; "Propose a tier before launching" when the flavour
+         *     requires tiering and no tier is proposed. Creates TransitionItems from
+         *     ``assemble_checklist(library, project_type, portfolio, tier, flavour checklists, roles)`` using the
+         *     confirmed tier, else the proposed one; applies Transition.scope_decisions (Yes -> Applies, No ->
+         *     Not applicable with na_reason, status via na_status_for; excluded_by None); owners per BR-010
+         *     step 6; sets assessment_launched_at (app clock). Audit Human "Assessment launched" with counts.
+         *     Returns {transition_id, counts (summarize_counts), redirect "/transitions/<id>/assessment"}.
+         */
+        post: operations["launch_assessment_api_v1_transitions__transition_id__launch_assessment_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Items
+         * @description Checklist for one transition (spec 8.7 a/b, FR-031). Any signed-in user.
+         *
+         *     * 404 when the transition does not exist.
+         *     * Before the assessment is launched (``assessment_launched_at`` null) there are no TransitionItems:
+         *       return ``items=[]``, zero summaries and zero counts (not an error).
+         *     * ``filters.gate`` defaults to the transition's ``current_gate``; unless ``all_gates`` is true only
+         *       items whose ``due_gate`` is at or before it (``GATE_ORDER``) are returned. Unknown gate code: 422.
+         *     * ``applicability`` defaults to "applies" (Applies); "excluded" = Not applicable (tier, project type,
+         *       portfolio or manual N/A, ``excluded_by`` says which); "to_confirm"; "all".
+         *     * ``mine`` = items owned by the current user; ``owner`` = a user id; ``q`` searches id/title/
+         *       description/owner name. ``status`` and ``lens`` are exact matches.
+         *     * ``summary`` always has three rows (Business, Technical, Compliance) for the EFFECTIVE gate over
+         *       applicable items (BR-020: done / in progress / not started / open gaps / critical gaps / readiness
+         *       percent, items covered by an open condition due after the current gate count as done-equivalent per
+         *       the shared readiness rule). It ignores the lens/source/status/owner/q filters.
+         *     * ``excluded_count`` / ``excluded_by_tier_count`` count the transition's Not applicable items
+         *       (all gates) so the UI can show "N items excluded by tier".
+         *     * Sort: due gate order, lens order (Business, Technical, Compliance), playbook ``sort_order``.
+         *     * Per-row ``can_edit`` / ``edit_denied_reason`` are computed for the current user: Compliance items
+         *       need ``Perm.UPDATE_C_STATUS`` (IRM), Business/Technical need ``Perm.UPDATE_BT_STATUS``
+         *       (OR focal, PM, Architect, OLM); the reason is ``DENIAL_REASONS`` of the missing permission.
+         */
+        get: operations["list_items_api_v1_transitions__transition_id__items_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Patch Item
+         * @description Update one TransitionItem (``item_id`` is the integer TransitionItem.id). Only fields in
+         *     ``body.model_fields_set`` are applied. Enforces BR-030 / spec 7.5 and writes ONE AuditEvent
+         *     (entity "TransitionItem", action "updated", before/after of changed fields, actor_type Human).
+         *     ``last_updated_by`` = user, ``last_updated_source`` = "Human". Orion never calls this (BR-050).
+         *
+         *     Errors:
+         *     * 404 item not found.
+         *     * 403 (reason from ``DENIAL_REASONS``): status change on a Compliance item without
+         *       ``Perm.UPDATE_C_STATUS``; status change on a B/T item without ``Perm.UPDATE_BT_STATUS``;
+         *       ``design_effectiveness`` without ``Perm.UPDATE_C_STATUS``; ``applicability`` / N/A on a B/T item
+         *       without ``Perm.CONFIRM_SCOPE`` (OR focal); N/A on a Compliance item without
+         *       ``Perm.UPDATE_C_STATUS`` (IRM). Owner and note changes: ``Perm.UPDATE_BT_STATUS`` for B/T items,
+         *       ``Perm.UPDATE_C_STATUS`` or the item's current owner for Compliance items.
+         *     * 422 invalid input (reasons list): status not in ``STATUSES_BY_LENS[lens]``; unknown owner user;
+         *       ``gap_severity`` not Critical/Major/Minor.
+         *     * 409 business-rule violation (reasons list):
+         *       - status Gap / Non-compliant needs ``gap_severity`` AND a non-empty note (given now or already on
+         *         the item);
+         *       - N/A / Not applicable status (or applicability "Not applicable") needs ``na_reason``; applicability
+         *         "Not applicable" also sets the lens N/A status, applicability "Applies" restores "Not started"
+         *         when the item was N/A;
+         *       - "Compliant with conditions" requires ``body.condition`` (owner, due_gate, text) and creates the
+         *         Condition via ``app.domain.conditions.create_condition`` (set_at_gate = transition.current_gate,
+         *         actor Human); due gate must not be before the current gate;
+         *       - "Compliant" requires design_effectiveness Yes or N/A (given now or stored);
+         *       - the item's transition is Closed; or the assessment has not been launched.
+         *     * Leaving a Gap status clears ``gap_severity``. Leaving "Compliant with conditions" does NOT close
+         *       the Condition automatically. Setting Complete/Compliant on an item with an Open condition leaves the
+         *       condition open (humans close it).
+         *     Returns the refreshed ``ItemOut`` (can_edit computed for the caller).
+         */
+        patch: operations["patch_item_api_v1_items__item_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/items/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Items
+         * @description Bulk actions for the OR focal (spec 8.7 b): set owner and/or mark N/A with a reason.
+         *
+         *     * 403 unless OR focal (``Perm.CONFIRM_SCOPE``).
+         *     * 422 when neither ``owner_user_id`` nor ``mark_na`` is given, ``mark_na.reason`` is blank, or the owner
+         *       user does not exist.
+         *     * Each id is processed independently; ``skipped`` gets {id, reason} for unknown ids, items of a
+         *       transition the user is not allowed to change, Compliance items when marking N/A (only IRM may mark
+         *       Compliance N/A, so the OR focal cannot), and items already N/A. Others are in ``updated``.
+         *     * One AuditEvent per updated item (Human). Marking N/A sets applicability "Not applicable", the lens
+         *       N/A status, ``na_reason``.
+         */
+        post: operations["bulk_items_api_v1_items_bulk_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Evidence
+         * @description Evidence of a transition, newest first (spec 8.7 d). 404 when the transition does not exist.
+         *     ``item`` filters by playbook item id, ``type`` and ``status`` by exact value.
+         *     ``can_review`` / ``review_denied_reason`` are per current user: items of the Business/Technical lens
+         *     need ``Perm.REVIEW_EVIDENCE_BT`` (OR focal), Compliance items ``Perm.REVIEW_EVIDENCE_C`` (IRM);
+         *     evidence without an item counts as Business/Technical; already Accepted/Rejected evidence can still be
+         *     re-reviewed by a permitted user.
+         */
+        get: operations["list_evidence_api_v1_transitions__transition_id__evidence_get"];
+        put?: never;
+        /**
+         * Add Evidence
+         * @description Upload a file, add a link or record an email sign-off (multipart form; spec 8.7 d, 10.5).
+         *
+         *     * 403 without ``Perm.MANAGE_EVIDENCE``; 404 unknown transition or ``item_id`` not a TransitionItem of
+         *       this transition.
+         *     * 422: ``Document``/``Recording`` need a file (or url); ``Link`` needs ``url``; ``Email sign-off`` needs
+         *       ``text``; ``Generated`` is system-only and is rejected here.
+         *     * A file is saved through ``DocumentStore.save(transition_id, filename, bytes)``; ``url`` of the record
+         *       becomes the fake SharePoint URL it returns and ``file_path`` the storage path. Links store ``url``
+         *       as given (no file, ``has_file`` false).
+         *     * Creates Evidence ``EVD-nnn`` (``next_id``) with status "Submitted", ``submitted_by`` = user and one
+         *       AuditEvent (entity "Evidence", action "created", Human). Returns 201 with ``EvidenceOut``.
+         */
+        post: operations["add_evidence_api_v1_transitions__transition_id__evidence_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evidence/{evidence_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Review Evidence
+         * @description Accept or Reject evidence (spec 8.7 d). The required permission depends on the linked item's
+         *     lens: OR focal (``Perm.REVIEW_EVIDENCE_BT``) for Business/Technical items and evidence without an item,
+         *     IRM (``Perm.REVIEW_EVIDENCE_C``) for Compliance items.
+         *
+         *     * 404 unknown evidence. 403 with the matching ``DENIAL_REASONS`` text.
+         *     * 422 when ``decision`` is Reject and ``note`` is blank ("Rejection needs a note").
+         *     * Sets status Accepted/Rejected, ``reviewed_by``, ``reviewed_at`` (clock.now()), ``review_note``;
+         *       one AuditEvent (entity "Evidence", action "accepted"/"rejected", before/after status, Human).
+         */
+        post: operations["review_evidence_api_v1_evidence__evidence_id__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evidence/{evidence_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Evidence
+         * @description Download the stored file via ``DocumentStore.read`` (Content-Disposition attachment with the
+         *     original file name, correct media type guessed from the extension). 404 for unknown evidence and for
+         *     link / email sign-off evidence without a stored file ("This evidence is a link, nothing to download").
+         */
+        get: operations["download_evidence_api_v1_evidence__evidence_id__download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Actions
+         * @description Actions of a transition (spec 8.7 c). 404 unknown transition. Sorted: Open / In progress first (by
+         *     due date, soonest first, no date last), then Done / Cancelled (newest first).
+         *     ``days_until_due`` = due_date - clock.today(); ``overdue`` = due in the past and status Open /
+         *     In progress.
+         */
+        get: operations["list_actions_api_v1_transitions__transition_id__actions_get"];
+        put?: never;
+        /**
+         * Create Action
+         * @description Create an action ``ACT-nnn`` (``next_id``), status "Open", origin "Human", ``created_by`` = user.
+         *
+         *     * 403 without ``Perm.MANAGE_ACTIONS``; 404 unknown transition.
+         *     * 422: unknown owner user; any ``item_ids`` entry that is not an item of this transition; blank title.
+         *     * 409 when the transition is Closed.
+         *     * One AuditEvent (entity "Action", action "created", after snapshot, Human). 201 with ``ActionOut``.
+         */
+        post: operations["create_action_api_v1_transitions__transition_id__actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/actions/{action_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Patch Action
+         * @description Edit or close an action; only fields in ``model_fields_set`` are applied.
+         *
+         *     * 403 without ``Perm.MANAGE_ACTIONS``; 404 unknown action; 422 unknown owner / blank title.
+         *     * 409 when a Done or Cancelled action is edited other than reopening it (status Open / In progress).
+         *     * One AuditEvent (entity "Action", action "updated" or "closed" when status becomes Done/Cancelled,
+         *       before/after, Human).
+         */
+        patch: operations["patch_action_api_v1_actions__action_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/conditions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Conditions
+         * @description Conditions of a transition (spec 8.7 f): Open first (by due gate order), then Closed (newest
+         *     closed first). 404 unknown transition. ``covers_now`` = status Open and ``due_gate`` strictly after
+         *     the transition's ``current_gate`` (GATE_ORDER). Gate shorts from ``GATE_SHORT``.
+         */
+        get: operations["list_conditions_api_v1_transitions__transition_id__conditions_get"];
+        put?: never;
+        /**
+         * Create Condition Endpoint
+         * @description Add a condition by hand (the ... menu "add condition", spec 8.7 b/f). Delegates to
+         *     ``app.domain.conditions.create_condition`` with set_at_gate = transition.current_gate, actor Human.
+         *
+         *     * 403 without ``Perm.MANAGE_CONDITIONS`` (OR focal, IRM); 404 unknown transition or ``item_id`` not an
+         *       item of this transition.
+         *     * 422: unknown owner, unknown ``due_gate``, due gate before the current gate, blank text.
+         *     * 409 when the transition is Closed.
+         */
+        post: operations["create_condition_endpoint_api_v1_transitions__transition_id__conditions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conditions/{condition_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Patch Condition
+         * @description Close a condition (``status`` "Closed" + ``close_note``) or edit owner / due_gate / text.
+         *
+         *     * 403 without ``Perm.MANAGE_CONDITIONS``; 404 unknown condition.
+         *     * 422: closing without ``close_note``; unknown owner / gate; due gate before ``set_at_gate``.
+         *     * 409: any edit of an already Closed condition ("Condition is already closed").
+         *     * Closing sets ``closed_by`` = user, ``closed_at`` = clock.now(); AuditEvent (entity "Condition",
+         *       action "closed" or "updated", before/after, Human). Closing does NOT change the item's status; the
+         *       item is no longer covered and counts as open again (BR-020).
+         */
+        patch: operations["patch_condition_api_v1_conditions__condition_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/exceptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Exceptions
+         * @description Exceptions of a transition ordered by ref (spec 8.7 f). 404 if the transition is unknown.
+         */
+        get: operations["list_exceptions_api_v1_transitions__transition_id__exceptions_get"];
+        put?: never;
+        /**
+         * Create Exception
+         * @description Request an exception for a Compliance item (BR-041, FR-035).
+         *
+         *     404 unknown transition. 422 when ``item_id`` is not a playbook item of this transition's
+         *     scope. 409 when the item's lens is not Compliance (reason "Exceptions apply to Compliance
+         *     items only") or a Pending exception already exists for the item. Creates ExceptionRecord
+         *     (ref via next_id "EX-", status "Pending CISO/BISO", requested_by user) and the EXCEPTION
+         *     approval chain (IRM -> CISO_BISO) through ``domain.approvals.create_approval_request`` with
+         *     subject_id=ref; stores approval_request_id; audits; commits. Returns 201.
+         */
+        post: operations["create_exception_api_v1_transitions__transition_id__exceptions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/risks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Risks
+         * @description Risk register of a transition (spec 8.7 f), sorted by rating (High, Medium, Low) then id.
+         *     404 unknown transition.
+         */
+        get: operations["list_risks_api_v1_transitions__transition_id__risks_get"];
+        put?: never;
+        /**
+         * Create Risk
+         * @description Add a risk ``CR-nn`` (``next_id``).
+         *
+         *     * 403 without ``Perm.MANAGE_RISKS`` (OR focal, IRM); 404 unknown transition.
+         *     * 422: blank title; ``item_ids`` entries that are not items of this transition.
+         *     * One AuditEvent (entity "Risk", action "created", Human). 201 with ``RiskOut``.
+         */
+        post: operations["create_risk_api_v1_transitions__transition_id__risks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/defects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Hypercare
+         * @description Hypercare tracker (spec 8.7 g): defects sorted Open first, then priority P1..P4, then id, plus
+         *     ``no_defects_confirmed`` (Transition.hypercare_no_defects_confirmed), ``tracker_in_place`` (at least one
+         *     defect OR no_defects_confirmed) and ``open_p1_p2`` (Open defects of priority P1 or P2). These feed the
+         *     AtO rules and closure items UD-002 / UD-003. 404 unknown transition.
+         */
+        get: operations["get_hypercare_api_v1_transitions__transition_id__defects_get"];
+        put?: never;
+        /**
+         * Create Defect
+         * @description Log a defect ``DEF-nnn`` (status Open).
+         *
+         *     * 403 without ``Perm.MANAGE_DEFECTS`` (OR focal, PM, Architect, OLM); 404 unknown transition.
+         *     * 422: blank title; unknown owner.
+         *     * 409 when the transition is Closed.
+         *     * Logging a defect resets ``hypercare_no_defects_confirmed`` to false. One AuditEvent (entity
+         *       "HypercareDefect", action "created", Human). 201 with ``DefectOut``.
+         */
+        post: operations["create_defect_api_v1_transitions__transition_id__defects_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/defects/{defect_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Patch Defect
+         * @description Edit a defect (title, priority, status Open/Resolved, owner); only fields in ``model_fields_set``
+         *     are applied. 403 without ``Perm.MANAGE_DEFECTS``; 404 unknown defect; 422 unknown owner / blank title.
+         *     AuditEvent (entity "HypercareDefect", action "updated" or "resolved", before/after, Human).
+         */
+        patch: operations["patch_defect_api_v1_defects__defect_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/defects/confirm-none": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm No Defects
+         * @description Tick / untick "No defects - tracker in place" (spec 8.7 g).
+         *
+         *     * 403 without ``Perm.MANAGE_DEFECTS``; 404 unknown transition.
+         *     * 409 when ``confirmed`` is true while any defect exists ("Resolve or remove defects first": confirming
+         *       "no defects" is only valid for an empty tracker); unticking is always allowed.
+         *     * Sets Transition.hypercare_no_defects_confirmed; AuditEvent (entity "Transition", action
+         *       "hypercare_no_defects_confirmed", before/after, Human). Returns the refreshed ``HypercareOut``.
+         */
+        post: operations["confirm_no_defects_api_v1_transitions__transition_id__defects_confirm_none_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/eval-metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Eval Metrics
+         * @description Eval metrics table for the transition's tier (spec 7.5, 8.7 j).
+         *
+         *     * 404 unknown transition. 409 when ``project_type`` is not an AI flavour (``AI_PROJECT_TYPES``:
+         *       Agentic AI, Combined): "Eval metrics apply to AI flavours only".
+         *     * Tier = confirmed tier if confirmed, else the proposed tier, else ``null`` (then the lowest tier's
+         *       targets are shown and ``tier`` is null). Rows = EvalTarget for that tier ordered by sort_order, joined
+         *       with the EvalResult of the transition.
+         *     * ``status``: "not evaluated" when no result; for ``evaluation == "auto"`` pass/fail is computed from
+         *       ``operator`` / ``value`` vs ``result_number`` (abs<= means absolute value <= value); for manual
+         *       metrics from the stored ``passed`` toggle.
+         *     * ``banner`` = "Targets currently identical for all tiers - tier-specific thresholds to be confirmed
+         *       by the S&T team (editable in Admin)." while ``targets_confirmed`` is false, else "".
+         *     * ``failed_count`` counts fail rows (Technical blockers at SG4_ATD), ``not_evaluated_count`` the rest
+         *       (warning only).
+         */
+        get: operations["get_eval_metrics_api_v1_transitions__transition_id__eval_metrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/eval-results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Eval Results
+         * @description Upsert results for the listed metrics (spec 8.7 j). Source "Manual", ``evaluated_at`` =
+         *     clock.now().
+         *
+         *     * 403 without ``Perm.EDIT_EVAL_RESULTS`` (OR focal, PM, Architect); 404 unknown transition.
+         *     * 409 for non-AI flavours.
+         *     * 422: ``metric_id`` not an EvalTarget; auto metric without ``value_number``; manual metric with
+         *       neither ``passed`` nor a value.
+         *     * Auto metrics: ``passed`` is computed server-side and any client ``passed`` is ignored. One AuditEvent
+         *       per changed metric (entity "EvalResult", entity_id metric id, action "updated", before/after, Human).
+         *     Returns the refreshed table (same as GET).
+         */
+        put: operations["put_eval_results_api_v1_transitions__transition_id__eval_results_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/eval-results/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Eval Results
+         * @description "Import eval results (mock)" (spec 8.7 j). Overwrites results for every metric of the tier with
+         *     source "Imported (mock)", ``evaluated_at`` = clock.now().
+         *
+         *     * Flagship transition: values from ``sample_transitions.json`` ``eval_results`` (e.g. hallucination
+         *       rate 3.1 vs <= 2 target, which fails). Others: deterministic plausible values (seeded by
+         *       transition id and metric id) that pass auto targets with a small margin.
+         *     * 403 without ``Perm.EDIT_EVAL_RESULTS``; 404 unknown transition; 409 for non-AI flavours.
+         *     * AuditEvent (entity "EvalResult", entity_id transition id, action "imported", Human; the import is
+         *       triggered by a person, the data is mock). Returns the refreshed table.
+         */
+        post: operations["import_eval_results_api_v1_transitions__transition_id__eval_results_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Readiness
+         * @description Readiness check (FR-050, spec 8.9) for ``gate`` (default: the transition's current gate).
+         *
+         *     Read-only; any signed-in user. 404 unknown transition; 422 unknown gate code. Delegates to
+         *     ``domain.readiness_check.compute_readiness_check``. Rules produce verdict, blockers and decision
+         *     option states; the narrative and recommended actions are labelled "Orion agent".
+         */
+        get: operations["get_readiness_api_v1_transitions__transition_id__readiness_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/gates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Gates Overview
+         * @description Gate history for the Gates & decisions tab (spec 8.7e): all 7 gates in order with state
+         *     (before current = done, current, later = upcoming; a Closed transition has all done), the
+         *     GateReview records per gate (outcome, decider, time, note, conditions created), the number of carried
+         *     items per gate and, for decision gates, the latest approval chain (steps, approver, status).
+         */
+        get: operations["get_gates_overview_api_v1_transitions__transition_id__gates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/gates/{gate}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Stage Review
+         * @description Record a stage review (BR-040): Proceed / Proceed with conditions / Hold.
+         *
+         *     403 unless OR focal (Perm.RECORD_STAGE_REVIEW). 404 unknown transition. 409 (reasons[]) when: the gate
+         *     is not a stage-review gate (SG0, SG2, SG3, SG5_HYPERCARE), gate != the transition's current gate,
+         *     the transition is Closed, or ``rules.gates.validate_stage_review`` disallows the outcome (open
+         *     uncovered items, missing conditions, unconfirmed tier at SG0, Compliance rule, SG3 rule A-12).
+         *     422 for unknown outcome, Hold without note, condition with unknown due gate / not later than the gate /
+         *     missing owner or text. On success: creates the GateReview, creates one Condition per ``conditions``
+         *     entry via ``domain.conditions.create_condition`` (set_at_gate = gate, actor Human), advances
+         *     ``current_gate`` to the next gate after Proceed* (unchanged after Hold), writes audit events (Human)
+         *     and returns the review, ``new_current_gate`` and created condition ids.
+         */
+        post: operations["record_stage_review_api_v1_transitions__transition_id__gates__gate__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/gates/{gate}/request-approval": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Approval
+         * @description Request the AtD (OLM -> IRM) or AtO (IRM -> OLM) approval chain (BR-040 point 2, BR-041).
+         *
+         *     403 unless OR focal (Perm.SEND_DRAFTS). 404 unknown transition or ``draft_id``. 409 (reasons[]) when
+         *     the gate is not a decision gate, is not the current gate, a Pending/Approved chain already exists,
+         *     or the readiness verdict is "Not ready" (reasons = the blockers). Delegates to
+         *     ``domain.gate_actions.request_gate_approval``; the draft (if any) is marked Sent.
+         */
+        post: operations["request_approval_api_v1_transitions__transition_id__gates__gate__request_approval_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/gates/{gate}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Decision
+         * @description Record a decision-gate / closure outcome (BR-040 decision gates, points 3-8).
+         *
+         *     403 unless OR focal (Perm.RECORD_GATE_DECISION). 404 unknown transition. 409 (reasons[]) when the gate
+         *     is not SG4_ATD / SG6_ATO / CLOSURE, is not the current gate, or ``rules.gates.validate_decision``
+         *     disallows the outcome (chain not Approved, open uncovered items, Critical gaps, Compliance rule,
+         *     failed evals at SG4_ATD, AtO extras, closure rules). Decisions per gate: Approve / Approve with
+         *     conditions / Return (AtD, AtO) and Close / Return (CLOSURE; conditions not allowed). 422 for an
+         *     unknown decision, Return without a note, or invalid conditions (due gate must be later than the gate).
+         *     Return cancels the open approval chain (steps Cancelled) and keeps the gate. Approve* creates the
+         *     conditions (Human) and advances the gate (AtD -> Hypercare, AtO -> Closure); Close sets the
+         *     transition status to Closed. Audit events (Human). Returns the GateReview record.
+         */
+        post: operations["record_decision_api_v1_transitions__transition_id__gates__gate__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Approvals
+         * @description Approval requests, newest first (FR-070).
+         *
+         *     * mine: requests with a Pending step the user can act on (step approver == user, or step role
+         *       == user role; IRM also sees the CISO_BISO mock step), plus the user's finished ones when
+         *       ``status`` is given.
+         *     * requested: requests created_by the user.
+         *     * all: every request; only OR_FOCAL and ADMIN, else 403 "Only the OR focal or Admin can see
+         *       all approvals".
+         *     ``can_act``, ``act_denied_reason``, ``is_mock_step`` are computed for the calling user.
+         */
+        get: operations["list_approvals_api_v1_approvals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/approvals/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Approval
+         * @description One approval request with its steps. 404 if unknown.
+         */
+        get: operations["get_approval_api_v1_approvals__request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/approvals/{request_id}/steps/{step}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve Approval Step
+         * @description Approve a step via ``domain.approvals.approve_step`` and commit (BR-041).
+         *
+         *     404 unknown request or step. 403 when the user is not the step's approver/role (reason names
+         *     the required role). 409 when the request is not Pending or the step is not the current one
+         *     (sequential). Notifies the next approver (in-app + mock email + Teams card); the last approval
+         *     completes the request and runs the completion hook for its type.
+         */
+        post: operations["approve_approval_step_api_v1_approvals__request_id__steps__step__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/approvals/{request_id}/steps/{step}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject Approval Step
+         * @description Reject a step via ``domain.approvals.reject_step`` and commit. ``comment`` is required
+         *     (422 when blank). Same 403/404/409 rules as approve. The whole request becomes Rejected,
+         *     remaining steps Cancelled, the requester is notified, completion hook runs.
+         */
+        post: operations["reject_approval_step_api_v1_approvals__request_id__steps__step__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/ocet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Ocet
+         * @description Full OCET view of the CURRENT version (any authenticated role).
+         *
+         *     Returns estimate, years, all versions, current version with can_edit / can_submit flags and
+         *     reasons, lines with computed yearly amounts, category totals, grand total by year, horizon
+         *     total + label ("1.92M"), variance vs the previous version, approval chain (None until
+         *     submitted), Orion explanation (AIService.explain_ocet_change), worked example, info note and
+         *     reference lists. 404 when the transition does not exist OR has no OCET yet (the UI then offers
+         *     ``POST /transitions/{transition_id}/ocet``).
+         */
+        get: operations["get_ocet_api_v1_transitions__transition_id__ocet_get"];
+        put?: never;
+        /**
+         * Create Ocet
+         * @description Create an empty estimate: start_year = today.year + 1, horizon 5, currency USD, v1 Draft, no
+         *     lines. 403 without EDIT_OCET, 404 unknown transition, 409 when an estimate already exists.
+         */
+        post: operations["create_ocet_api_v1_transitions__transition_id__ocet_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ocet/versions/{version_id}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save Lines
+         * @description Bulk save lines of a version (spec 9). 403 without EDIT_OCET; 404 unknown version; 409 when
+         *     the version is not Draft / Inputs pending (reason: create a new version); 422 for unknown
+         *     category / pricing basis, growth outside [-100, 1000], negative base, override year outside the
+         *     horizon, missing ``override_reason`` while ``year_overrides`` is non-empty, or line / deleted ids
+         *     that do not belong to the version. Status becomes "Inputs pending" when any base amount is
+         *     missing, "Draft" otherwise. Returns the refreshed OcetOut (current version of the transition).
+         */
+        put: operations["save_lines_api_v1_ocet_versions__version_id__lines_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ocet/versions/{version_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Version
+         * @description Submit for approval: creates the OCET chain Planner -> OLM (approvals.create_approval_request,
+         *     type "OCET", subject_id = version id). 403 without EDIT_OCET; 404 unknown version; 409 with
+         *     ``reasons`` when status is not Draft, there are no lines, or any base amount is missing (one
+         *     reason per missing line). Version -> Submitted, previous version -> Superseded.
+         */
+        post: operations["submit_version_api_v1_ocet_versions__version_id__submit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/ocet/new-version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * New Version
+         * @description Create vN+1 (Draft) by copying the current version's lines. 403 without EDIT_OCET; 404 no
+         *     estimate; 409 when the current version is still editable or its approval chain is running.
+         *     The previous version becomes Superseded only when vN+1 is submitted.
+         */
+        post: operations["new_version_api_v1_transitions__transition_id__ocet_new_version_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ocet/versions/{version_id}/request-inputs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Inputs
+         * @description Request missing inputs: lines -> input_status Requested (input_requested_at = now) and one
+         *     Orion draft per input owner with a deep link to /transitions/<id>/ocet (never sent
+         *     automatically). 403 without EDIT_OCET; 404 unknown version; 409 when the version is not
+         *     editable; 422 for empty / foreign line ids or lines that already have a base amount.
+         */
+        post: operations["request_inputs_api_v1_ocet_versions__version_id__request_inputs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ocet/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compare
+         * @description Diff of two versions of the same estimate: rows by line (matched by line_key, status
+         *     added / removed / changed / same) and by category, plus totals. 404 unknown version id; 422
+         *     when the versions belong to different estimates.
+         */
+        get: operations["compare_api_v1_ocet_compare_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/support-model": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Support Model
+         * @description Latest support model of a transition (any signed-in user in scope).
+         *
+         *     404 unknown transition / outside scope. When nothing exists yet: id null, version 0, status
+         *     "Not started", empty inputs, landscape null (the screen shows step 1). Includes
+         *     ``can_edit`` / ``edit_denied_reason``, ``info_note``, ``linked_items`` (FW-027..FW-035 and
+         *     Support Model sheet items with status) and ``approval`` / ``pptx`` when present.
+         */
+        get: operations["get_support_model_api_v1_transitions__transition_id__support_model_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/support-model/inputs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Inputs
+         * @description Save inputs (multipart; both parts optional). Perm EDIT_SUPPORT_MODEL (OR focal, Architect).
+         *
+         *     403 without permission; 404 unknown transition; 409 when the latest model is In review or
+         *     Agreed; 422 for an extension outside .mp4 .m4a .vtt .txt .docx .pdf .png .jpg or an empty
+         *     file. Files are stored through DocumentStore (same filename replaces the old entry). A
+         *     confluence_url is fetched (ConfluenceService) and its title/summary/diagrams kept; blank clears
+         *     them. Creates a Draft v1 row when none exists. Audited.
+         */
+        post: operations["save_inputs_api_v1_transitions__transition_id__support_model_inputs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/confluence/fetch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confluence Fetch
+         * @description Confluence lookup on blur of the link field (mock, spec 10.5). Any signed-in user.
+         *
+         *     First seed page whose ``url_contains`` matches the URL (case-insensitive), else the generic
+         *     page. 422 for a blank or non-http(s) URL. Writes nothing.
+         */
+        post: operations["confluence_fetch_api_v1_integrations_confluence_fetch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transitions/{transition_id}/support-model/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate Support Model
+         * @description Generate the landscape from the saved inputs (mock generator, spec 10.6.1).
+         *
+         *     403 without permission; 404 unknown transition; 409 when no input was saved yet or the
+         *     latest model is In review. Overwrites a Draft landscape; after Agreed it creates version + 1.
+         *     The three ``steps`` (~1500 ms each) are only a hint for the client-side progress UI.
+         *     Audited as "Orion agent".
+         */
+        post: operations["generate_support_model_api_v1_transitions__transition_id__support_model_generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/support-models/{support_model_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Support Model
+         * @description Replace the landscape (canvas, side panels, questions, sources). Draft only.
+         *
+         *     403 without permission; 404 unknown id; 409 when status is not Draft; 422 for duplicate
+         *     component ids, unknown relation, or a child_of/target naming an unknown component. Audited
+         *     with before/after.
+         */
+        put: operations["update_support_model_api_v1_support_models__support_model_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/support-models/{support_model_id}/send-for-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Support Model For Review
+         * @description Draft -> In review; starts the SUPPORT_MODEL approval chain Architect -> OLM (BR-041).
+         *
+         *     403 without permission; 404 unknown id; 409 unless Draft, without a landscape, or a Pending
+         *     request already exists. Approvals are then decided via /approvals; on Approved the model is
+         *     Agreed and the linked items (FW-027..FW-035, Support Model sheet) become Complete (Workflow
+         *     rule); on Rejected it returns to Draft.
+         */
+        post: operations["send_support_model_for_review_api_v1_support_models__support_model_id__send_for_review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/support-models/{support_model_id}/pptx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate Pptx
+         * @description Build the 5-slide .pptx (python-pptx, spec 10.6.2), store it as Evidence type "Generated"
+         *     linked to FW-035 and return the download path (/evidence/<id>/download).
+         *
+         *     403 without permission; 404 unknown id; 409 when there is no landscape. Any status allowed;
+         *     each call is a new version (new Evidence row). Audited.
+         */
+        post: operations["generate_pptx_api_v1_support_models__support_model_id__pptx_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/support-models/{support_model_id}/questions/{question_index}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft Question
+         * @description Draft question to architect for open_questions[question_index].
+         *
+         *     Creates an Orion draft (Input request to the transition's architect, source Orion agent).
+         *     Nothing is sent. 403 without permission; 404 unknown id or index.
+         */
+        post: operations["draft_question_api_v1_support_models__support_model_id__questions__question_index__draft_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/support-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Support Models
+         * @description List page: latest model per transition in the user's scope, optional ``q`` substring filter
+         *     on transition name or central app, newest first.
+         */
+        get: operations["list_support_models_api_v1_support_models_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orion/insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Insights
+         * @description 3–5 Orion insights generated by ``AIService.insights`` from live data (FR-010, FR-011).
+         *     Read-only: insights only link or propose – they never change data (BR-050).
+         *     For scope=control-tower the optional TransitionFilters query params narrow the view so the
+         *     card matches the filtered control tower; other scopes ignore them.
+         */
+        get: operations["get_insights_api_v1_orion_insights_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orion/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Drafts
+         * @description Drafts, newest first, filtered by the optional params (FR-071). Readable by every role.
+         */
+        get: operations["list_drafts_api_v1_orion_drafts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orion/drafts/approval-request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft Approval Request
+         * @description Orion drafts the AtD/AtO approval request email (BR-050: nothing is sent).
+         *
+         *     404 unknown transition. 422 when ``gate`` is not an approval gate (SG4_ATD / the ATO gate).
+         *     409 when the gate is not ready to request approval or a Pending request exists (reasons from
+         *     the gate-actions domain). Creates a draft: kind "Approval request", created_source "Orion
+         *     agent", to = approvers of the chain's first step, cc = OR focal, text via
+         *     ``AIService.draft_message``, action {"type": "request_approval", "gate": gate}. Returns 201.
+         */
+        post: operations["draft_approval_request_api_v1_orion_drafts_approval_request_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orion/drafts/chaser": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft Chaser
+         * @description Orion drafts a chaser for open items (spec 10.1 template, BR-050: nothing is sent).
+         *
+         *     404 unknown transition. 422 when ``item_ids`` are not items of the transition or are Done.
+         *     Creates a draft: kind "Chaser", created_source "Orion agent", to = the items' owners (unique
+         *     emails), cc = OR focal, subject/body from ``AIService.draft_message("chaser", ctx)``,
+         *     related_ids = [transition_id, *item_ids]. Returns 201.
+         */
+        post: operations["draft_chaser_api_v1_orion_drafts_chaser_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orion/drafts/{draft_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Draft
+         * @description One draft. 404 if unknown.
+         */
+        get: operations["get_draft_api_v1_orion_drafts__draft_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit Draft
+         * @description Edit to/cc/subject/body of a draft before sending. 404 unknown; 409 unless status is Draft;
+         *     422 when ``to`` is empty or an address is malformed. Audited (Human). Commits.
+         */
+        patch: operations["edit_draft_api_v1_orion_drafts__draft_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/orion/drafts/{draft_id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Draft Endpoint
+         * @description Human send via ``domain.drafts.send_draft`` (BR-050): executes the draft action (e.g.
+         *     request_approval -> ``domain.gate_actions.request_gate_approval``) then sends mock email +
+         *     Teams card; draft becomes Sent. 404 unknown; 409 when not Draft or the action is blocked
+         *     (reasons returned). Commits. ``result.approval_request_id`` set for approval-request drafts.
+         */
+        post: operations["send_draft_endpoint_api_v1_orion_drafts__draft_id__send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orion/drafts/{draft_id}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Discard Draft
+         * @description Discard a draft (status Discarded, audited, never sent). 404 unknown; 409 unless Draft.
+         */
+        post: operations["discard_draft_api_v1_orion_drafts__draft_id__discard_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/outbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Outbox
+         * @description Every message sent through the mock Mail/Notification services, newest first (FR-072).
+         *     Readable by all roles. ``transition_id`` filters on related_ids membership.
+         */
+        get: operations["list_outbox_api_v1_outbox_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Notifications
+         * @description The current user's notifications, newest first (max 50), with the unread count.
+         */
+        get: operations["list_notifications_api_v1_notifications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read All Notifications
+         * @description Mark all of the current user's notifications read. Commits.
+         */
+        post: operations["read_all_notifications_api_v1_notifications_read_all_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/{notification_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read Notification
+         * @description Mark one notification read. 404 if unknown or owned by another user. Commits.
+         */
+        post: operations["read_notification_api_v1_notifications__notification_id__read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/servicenow/projects/{project_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Servicenow Project
+         * @description Mock ServiceNow lookup for the intake "Fetch" button (spec §8.4).
+         *
+         *     Uses ``ServiceNowService.get_project`` (services factory). The id is trimmed and upper-cased.
+         *     Returns name, project_type, investment_type, delivery_method, portfolio, region, market,
+         *     description and pm_name; ``pm_user_id`` is the id of the user with role PM whose name matches
+         *     ``pm_name`` case-insensitively (None when no match). 404 detail exactly
+         *     "Not found in ServiceNow (mock) – enter manually" when unknown. Any signed-in role.
+         */
+        get: operations["get_servicenow_project_api_v1_integrations_servicenow_projects__project_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/playbook-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Playbook Items
+         * @description Playbook library (spec 8.16). ADMIN only (403). All filters optional and combinable;
+         *     ordered by id. Includes inactive items unless ``active`` is given. 422 on an invalid
+         *     ``source``.
+         */
+        get: operations["list_playbook_items_api_v1_admin_playbook_items_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/playbook-items/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Playbook Item
+         * @description One playbook item. 403 non-admin; 404 unknown id.
+         */
+        get: operations["get_playbook_item_api_v1_admin_playbook_items__item_id__get"];
+        /**
+         * Update Playbook Item
+         * @description Edit title, description, gate, lens, applicable_tiers, mandatory, active. A lens change
+         *     clears ``lens_is_suggested`` (badge "lens suggested - confirm" disappears). Existing
+         *     transitions keep their items. Audited (PlaybookItem, Human). 403; 404 unknown id; 422 unknown
+         *     gate code, lens, or tier outside 1..4.
+         */
+        put: operations["update_playbook_item_api_v1_admin_playbook_items__item_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/flavour-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Flavour Rules
+         * @description Project type -> checklists + requires_tiering + note. 403 non-admin.
+         */
+        get: operations["get_flavour_rules_api_v1_admin_flavour_rules_get"];
+        /**
+         * Put Flavour Rules
+         * @description Update the listed rules (project types are not created or deleted). Audited (FlavourRule).
+         *     403; 422 unknown project_type or checklist source.
+         */
+        put: operations["put_flavour_rules_api_v1_admin_flavour_rules_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/portfolios/{name}/golden-set": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Golden Set
+         * @description Portfolio golden set (PORTFOLIO-source items) incl. deactivated rows. 403; 404 unknown
+         *     portfolio.
+         */
+        get: operations["get_golden_set_api_v1_admin_portfolios__name__golden_set_get"];
+        /**
+         * Put Golden Set
+         * @description Replace the list: items without id are created as "<CODE>-NN"; items with an existing id are
+         *     edited; existing items omitted are deactivated (active=false), never deleted (transitions may
+         *     use them). Audited (PlaybookItem). 403; 404 unknown portfolio; 422 unknown gate/lens, or an id
+         *     that is not in this portfolio.
+         */
+        put: operations["put_golden_set_api_v1_admin_portfolios__name__golden_set_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/eval-targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Eval Targets
+         * @description Grid metric x Tier 1-4 with parsed operator/value/unit and the "targets confirmed" flag.
+         *     403 non-admin.
+         */
+        get: operations["get_eval_targets_api_v1_admin_eval_targets_get"];
+        /**
+         * Put Eval Targets
+         * @description Update targets and the confirmed flag. Audited (EvalTarget). 403; 422 unknown metric_id,
+         *     tier outside 1..4, or a value without an operator.
+         */
+        put: operations["put_eval_targets_api_v1_admin_eval_targets_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/approval-chains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Approval Chains
+         * @description Steps per approval type (OCET, AtD, AtO, SUPPORT_MODEL, EXCEPTION) plus the allowed roles
+         *     (role list + CISO_BISO). 403 non-admin.
+         */
+        get: operations["get_approval_chains_api_v1_admin_approval_chains_get"];
+        /**
+         * Put Approval Chains
+         * @description Replace steps for the listed chain types (at least one step, numbered 1..n, role from the
+         *     allowed list). New requests use the new chain; existing requests keep theirs. Audited
+         *     (ApprovalChainConfig). 403; 422 invalid role / empty chain / bad numbering.
+         */
+        put: operations["put_approval_chains_api_v1_admin_approval_chains_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/reminder-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Reminder Rules
+         * @description Reminder rules R1-R7 with thresholds (params), enabled and autonomous_eligible flags.
+         */
+        get: operations["list_reminder_rules_api_v1_admin_reminder_rules_get"];
+        /**
+         * Put Reminder Rules
+         * @description Update enabled + params per rule (name/description/autonomous_eligible are read-only).
+         *     Audited (ReminderRule). 403; 422 unknown rule id, unknown param key, or non-positive
+         *     threshold.
+         */
+        put: operations["put_reminder_rules_api_v1_admin_reminder_rules_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Admin Users
+         * @description Read-only list of demo users and roles (role_label filled). 403 non-admin.
+         */
+        get: operations["list_admin_users_api_v1_admin_users_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/demo/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Demo Reset
+         * @description Re-seed all demo data (< 10 s, NFR-06) and clear the today override. 403 non-admin; 404
+         *     when DEMO_MODE=false. Returns elapsed seconds and counts. The client must re-fetch everything.
+         */
+        post: operations["demo_reset_api_v1_admin_demo_reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/demo/fast-forward": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Demo Fast Forward
+         * @description Fast-forward the flagship (spec 8.16, 13 step 9): complete every open item due at or before
+         *     the current gate except OCET/support-model-linked items and items under an exception, and
+         *     re-import eval results with all metrics passing. Audit actor "System", note "Demo
+         *     fast-forward". 403; 404 unknown transition or DEMO_MODE=false.
+         */
+        post: operations["demo_fast_forward_api_v1_admin_demo_fast_forward_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/demo/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Demo Get Today
+         * @description Current demo "today" with the active override and SEED_DATE. 403; 404 DEMO_MODE=false.
+         */
+        get: operations["demo_get_today_api_v1_admin_demo_today_get"];
+        put?: never;
+        /**
+         * Demo Set Today
+         * @description Set (date) or clear (null) the demo "today" override; persisted in AppSetting
+         *     "today_override" and applied in-process. Audited. 403; 404 DEMO_MODE=false; 422 bad date.
+         */
+        post: operations["demo_set_today_api_v1_admin_demo_today_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Audit
+         * @description Global audit trail (spec 8.17, NFR-03; workspace Activity tab uses ``transition_id``). Any signed-in
+         *     user can read it. Newest first (``at`` desc, ``id`` desc).
+         *
+         *     * All filters AND-combined. ``from`` / ``to`` are inclusive dates on ``at`` (clock timezone); ``from``
+         *       after ``to`` gives 422. ``entity`` is an exact match; ``actor`` is a user id; ``actor_type`` is
+         *       Human | Workflow rule | Orion agent | System.
+         *     * ``limit`` default 100, max 500; ``offset`` default 0; ``total`` = matching rows before paging.
+         *     * ``actor_name`` and ``transition_name`` are resolved; ``before`` / ``after`` are the stored JSON
+         *       snapshots for the diff view.
+         */
+        get: operations["list_audit_api_v1_audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Health */
+        get: operations["health_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-  schemas: {
-    /** AppInfoOut */
-    AppInfoOut: {
-      /** Demo Mode */
-      demo_mode: boolean;
-      /** Ai Mode */
-      ai_mode: string;
-      /** Mail Mode */
-      mail_mode: string;
-      /** Orion Mailbox */
-      orion_mailbox: string;
+    schemas: {
+        /**
+         * AIProfileIn
+         * @description All fields of spec §6 AIProfile (PUT replaces all).
+         */
+        AIProfileIn: {
+            /**
+             * Infrastructure Solution
+             * @default
+             */
+            infrastructure_solution: string;
+            /**
+             * Agentic Framework
+             * @default
+             */
+            agentic_framework: string;
+            /**
+             * Multi Agent Orchestration
+             * @default false
+             */
+            multi_agent_orchestration: boolean;
+            /**
+             * Number Of Users
+             * @default
+             */
+            number_of_users: string;
+            /**
+             * Agentic Workflows
+             * @default
+             */
+            agentic_workflows: string;
+            /**
+             * Models Used
+             * @default
+             */
+            models_used: string;
+            /**
+             * Data Sources
+             * @default
+             */
+            data_sources: string;
+            /**
+             * Hosting
+             * @default
+             */
+            hosting: string;
+            /**
+             * Write Actions Detail
+             * @default
+             */
+            write_actions_detail: string;
+        };
+        /** AIProfileOut */
+        AIProfileOut: {
+            /**
+             * Infrastructure Solution
+             * @default
+             */
+            infrastructure_solution: string;
+            /**
+             * Agentic Framework
+             * @default
+             */
+            agentic_framework: string;
+            /**
+             * Multi Agent Orchestration
+             * @default false
+             */
+            multi_agent_orchestration: boolean;
+            /**
+             * Number Of Users
+             * @default
+             */
+            number_of_users: string;
+            /**
+             * Agentic Workflows
+             * @default
+             */
+            agentic_workflows: string;
+            /**
+             * Models Used
+             * @default
+             */
+            models_used: string;
+            /**
+             * Data Sources
+             * @default
+             */
+            data_sources: string;
+            /**
+             * Hosting
+             * @default
+             */
+            hosting: string;
+            /**
+             * Write Actions Detail
+             * @default
+             */
+            write_actions_detail: string;
+            /** Transition Id */
+            transition_id: string;
+            /** Updated At */
+            updated_at?: string | null;
+        };
+        /** ActionCreateIn */
+        ActionCreateIn: {
+            /** Title */
+            title: string;
+            /**
+             * Item Ids
+             * @default []
+             */
+            item_ids: string[];
+            /** Owner User Id */
+            owner_user_id: string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /**
+             * Priority
+             * @default Medium
+             * @enum {string}
+             */
+            priority: "High" | "Medium" | "Low";
+        };
+        /** ActionOut */
+        ActionOut: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Item Ids */
+            item_ids: string[];
+            owner: components["schemas"]["PersonRef"] | null;
+            /** Due Date */
+            due_date: string | null;
+            /** Days Until Due */
+            days_until_due: number | null;
+            /** Overdue */
+            overdue: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "Open" | "In progress" | "Done" | "Cancelled";
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "High" | "Medium" | "Low";
+            /** Origin */
+            origin: string;
+            created_by: components["schemas"]["PersonRef"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ActionPatchIn */
+        ActionPatchIn: {
+            /** Title */
+            title?: string | null;
+            /** Owner User Id */
+            owner_user_id?: string | null;
+            /** Due Date */
+            due_date?: string | null;
+            /** Status */
+            status?: ("Open" | "In progress" | "Done" | "Cancelled") | null;
+            /** Priority */
+            priority?: ("High" | "Medium" | "Low") | null;
+        };
+        /** AppInfoOut */
+        AppInfoOut: {
+            /** Demo Mode */
+            demo_mode: boolean;
+            /** Ai Mode */
+            ai_mode: string;
+            /** Mail Mode */
+            mail_mode: string;
+            /** Orion Mailbox */
+            orion_mailbox: string;
+        };
+        /** ApprovalChainOut */
+        ApprovalChainOut: {
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "OCET" | "AtD" | "AtO" | "SUPPORT_MODEL" | "EXCEPTION";
+            /** Steps */
+            steps: components["schemas"]["ChainStep"][];
+        };
+        /** ApprovalChainStepOut */
+        ApprovalChainStepOut: {
+            /** Step */
+            step: number;
+            /** Role */
+            role: string;
+            /** Label */
+            label: string;
+        };
+        /** ApprovalChainsIn */
+        ApprovalChainsIn: {
+            /** Chains */
+            chains: components["schemas"]["ApprovalChainOut"][];
+        };
+        /** ApprovalChainsOut */
+        ApprovalChainsOut: {
+            /** Chains */
+            chains: components["schemas"]["ApprovalChainOut"][];
+            /**
+             * Roles
+             * @default []
+             */
+            roles: string[];
+            /**
+             * Notice
+             * @default Changes affect new transitions; existing transitions keep their items.
+             */
+            notice: string;
+        };
+        /** ApprovalDecisionIn */
+        ApprovalDecisionIn: {
+            /** Comment */
+            comment?: string | null;
+        };
+        /** ApprovalRejectIn */
+        ApprovalRejectIn: {
+            /** Comment */
+            comment: string;
+        };
+        /** ApprovalRequestDraftIn */
+        ApprovalRequestDraftIn: {
+            /** Transition Id */
+            transition_id: string;
+            /**
+             * Gate
+             * @description SG4_ATD or the ATO gate code (see rules/constants.py)
+             */
+            gate: string;
+        };
+        /** ApprovalRequestOut */
+        ApprovalRequestOut: {
+            /** Id */
+            id: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "OCET" | "AtD" | "AtO" | "SUPPORT_MODEL" | "EXCEPTION" | "RISK_ACCEPTANCE";
+            /** Type Label */
+            type_label: string;
+            /** Transition Id */
+            transition_id: string;
+            /** Transition Name */
+            transition_name: string;
+            /** Gate */
+            gate: string | null;
+            /** Gate Short */
+            gate_short: string | null;
+            /** Subject Id */
+            subject_id: string | null;
+            /** Subject Label */
+            subject_label: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "Pending" | "Approved" | "Rejected" | "Cancelled";
+            created_by: components["schemas"]["PersonRef"] | null;
+            /** Created Source */
+            created_source: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Age Days */
+            age_days: number;
+            /** Steps */
+            steps: components["schemas"]["app__schemas__approvals__ApprovalStepOut"][];
+            /** Current Step */
+            current_step: number | null;
+            /** Can Act */
+            can_act: boolean;
+            /** Act Denied Reason */
+            act_denied_reason: string | null;
+            /** Is Mock Step */
+            is_mock_step: boolean;
+            /** Link */
+            link: string;
+        };
+        /** AuditEventOut */
+        AuditEventOut: {
+            /** Id */
+            id: number;
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Actor User Id */
+            actor_user_id: string | null;
+            /** Actor Name */
+            actor_name: string | null;
+            /** Actor Type */
+            actor_type: string;
+            /** Transition Id */
+            transition_id: string | null;
+            /** Transition Name */
+            transition_name: string | null;
+            /** Entity */
+            entity: string;
+            /** Entity Id */
+            entity_id: string;
+            /** Action */
+            action: string;
+            /** Before */
+            before: {
+                [key: string]: unknown;
+            } | null;
+            /** After */
+            after: {
+                [key: string]: unknown;
+            } | null;
+            /** Note */
+            note: string;
+        };
+        /** AuditPageOut */
+        AuditPageOut: {
+            /** Items */
+            items: components["schemas"]["AuditEventOut"][];
+            /** Total */
+            total: number;
+        };
+        /** AutonomousModeIn */
+        AutonomousModeIn: {
+            /** Enabled */
+            enabled: boolean;
+        };
+        /** BlockingGroup */
+        BlockingGroup: {
+            /** Lens */
+            lens: string;
+            /** Items */
+            items: components["schemas"]["GateItemRef"][];
+        };
+        /** Body_add_evidence_api_v1_transitions__transition_id__evidence_post */
+        Body_add_evidence_api_v1_transitions__transition_id__evidence_post: {
+            /** Title */
+            title: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "Document" | "Link" | "Email sign-off" | "Recording" | "Generated";
+            /**
+             * Item Id
+             * @description Playbook item id, e.g. S45-014
+             */
+            item_id?: string | null;
+            /** Url */
+            url?: string | null;
+            /** Text */
+            text?: string | null;
+            /** File */
+            file?: string | null;
+        };
+        /** Body_save_inputs_api_v1_transitions__transition_id__support_model_inputs_post */
+        Body_save_inputs_api_v1_transitions__transition_id__support_model_inputs_post: {
+            /** Confluence Url */
+            confluence_url?: string | null;
+            /**
+             * Files
+             * @default []
+             */
+            files: string[];
+        };
+        /** BulkItemsIn */
+        BulkItemsIn: {
+            /** Item Ids */
+            item_ids: number[];
+            /** Owner User Id */
+            owner_user_id?: string | null;
+            mark_na?: components["schemas"]["BulkNaIn"] | null;
+        };
+        /** BulkNaIn */
+        BulkNaIn: {
+            /** Reason */
+            reason: string;
+        };
+        /** BulkResultOut */
+        BulkResultOut: {
+            /** Updated */
+            updated: number[];
+            /** Skipped */
+            skipped: components["schemas"]["BulkSkippedOut"][];
+        };
+        /** BulkSkippedOut */
+        BulkSkippedOut: {
+            /** Id */
+            id: number;
+            /** Reason */
+            reason: string;
+        };
+        /**
+         * CalendarEntryOut
+         * @description Decision calendar row (next 45 days of AtD / AtO / Closure decisions).
+         */
+        CalendarEntryOut: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Days */
+            days: number;
+            /** Transition Id */
+            transition_id: string;
+            /** Transition Name */
+            transition_name: string;
+            /** Gate */
+            gate: string;
+            /** Gate Short */
+            gate_short: string;
+            /** Decision */
+            decision: string;
+            /** Rag */
+            rag: string;
+            or_focal: components["schemas"]["PersonRef"];
+        };
+        /**
+         * CarriedItemOut
+         * @description Open item conditioned at an earlier gate: "Carried from SG3: S3-019 ... owner Asha, due AtD".
+         */
+        CarriedItemOut: {
+            /** Item Id */
+            item_id: string;
+            /** Title */
+            title: string;
+            /**
+             * Lens
+             * @default
+             */
+            lens: string;
+            /** Status */
+            status: string;
+            /** Condition Id */
+            condition_id: string;
+            /** Set At Gate */
+            set_at_gate: string;
+            /** Due Gate */
+            due_gate: string;
+            owner?: components["schemas"]["PersonRef"] | null;
+            /**
+             * Text
+             * @default
+             */
+            text: string;
+        };
+        /** CategoryTotalOut */
+        CategoryTotalOut: {
+            /** Category */
+            category: string;
+            /** Amounts */
+            amounts: components["schemas"]["YearAmount"][];
+            /** Total */
+            total: number;
+        };
+        /** ChainStep */
+        ChainStep: {
+            /** Step */
+            step: number;
+            /** Role */
+            role: string;
+            /** Label */
+            label: string;
+        };
+        /** ChaserDraftIn */
+        ChaserDraftIn: {
+            /** Transition Id */
+            transition_id: string;
+            /**
+             * Item Ids
+             * @description Playbook item ids to chase
+             */
+            item_ids: string[];
+        };
+        /**
+         * ChecklistCountsOut
+         * @description Active library sizes for the intake "Auto-scope" preview (spec §8.4).
+         */
+        ChecklistCountsOut: {
+            /** Framework */
+            framework: number;
+            /** Ai Playbook Total */
+            ai_playbook_total: number;
+            /** Ai Playbook By Tier */
+            ai_playbook_by_tier: {
+                [key: string]: number;
+            };
+            /** Common */
+            common: number;
+        };
+        /** CompareRowOut */
+        CompareRowOut: {
+            /** Key */
+            key: string;
+            /** Category */
+            category: string;
+            /** Description */
+            description: string;
+            /** From Total */
+            from_total: number;
+            /** To Total */
+            to_total: number;
+            /** Abs Change */
+            abs_change: number;
+            /** Pct Change */
+            pct_change: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "added" | "removed" | "changed" | "same";
+            /**
+             * From Yearly
+             * @default []
+             */
+            from_yearly: components["schemas"]["YearAmount"][];
+            /**
+             * To Yearly
+             * @default []
+             */
+            to_yearly: components["schemas"]["YearAmount"][];
+        };
+        /** CompareVersionRef */
+        CompareVersionRef: {
+            /** Id */
+            id: number;
+            /** Version */
+            version: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "Draft" | "Inputs pending" | "Submitted" | "Planner approved" | "Approved" | "Rejected" | "Superseded";
+            /** Total */
+            total: number;
+        };
+        /**
+         * ComponentIO
+         * @description A landscape component. ``relation`` is "bidirectional" | "inbound" | "outbound" |
+         *     "child_of:<name>" (name of another component). ``target`` is the component name the edge
+         *     points to (None = the central app). Layout is computed client-side (radial).
+         */
+        ComponentIO: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Type */
+            type: string;
+            /**
+             * Relation
+             * @default bidirectional
+             */
+            relation: string;
+            /** Target */
+            target?: string | null;
+        };
+        /** ConditionCreateIn */
+        ConditionCreateIn: {
+            /**
+             * Item Id
+             * @description Playbook item id the condition covers
+             */
+            item_id?: string | null;
+            /** Owner User Id */
+            owner_user_id: string;
+            /** Due Gate */
+            due_gate: string;
+            /** Text */
+            text: string;
+        };
+        /**
+         * ConditionIn
+         * @description Condition requested with a Proceed / Approve-with-conditions outcome (BR-040).
+         */
+        ConditionIn: {
+            /** Item Id */
+            item_id: string;
+            /** Owner User Id */
+            owner_user_id: string;
+            /** Due Gate */
+            due_gate: string;
+            /** Text */
+            text: string;
+        };
+        /** ConditionOut */
+        ConditionOut: {
+            /** Id */
+            id: string;
+            /** Item Id */
+            item_id: string | null;
+            /** Transition Item Id */
+            transition_item_id: number | null;
+            /** Item Title */
+            item_title: string | null;
+            /** Set At Gate */
+            set_at_gate: string;
+            /** Set At Gate Short */
+            set_at_gate_short: string;
+            /** Due Gate */
+            due_gate: string;
+            /** Due Gate Short */
+            due_gate_short: string;
+            owner: components["schemas"]["PersonRef"] | null;
+            /** Text */
+            text: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "Open" | "Closed";
+            /** Covers Now */
+            covers_now: boolean;
+            closed_by: components["schemas"]["PersonRef"] | null;
+            /** Closed At */
+            closed_at: string | null;
+            /** Close Note */
+            close_note: string | null;
+        };
+        /**
+         * ConditionPatchIn
+         * @description Either close (status "Closed" + close_note) or edit owner / due_gate / text of an Open condition.
+         */
+        ConditionPatchIn: {
+            /** Status */
+            status?: "Closed" | null;
+            /** Close Note */
+            close_note?: string | null;
+            /** Owner User Id */
+            owner_user_id?: string | null;
+            /** Due Gate */
+            due_gate?: string | null;
+            /** Text */
+            text?: string | null;
+        };
+        /** ConfirmNoDefectsIn */
+        ConfirmNoDefectsIn: {
+            /** Confirmed */
+            confirmed: boolean;
+        };
+        /** ConfluenceFetchIn */
+        ConfluenceFetchIn: {
+            /** Url */
+            url: string;
+        };
+        /** ConfluencePageOut */
+        ConfluencePageOut: {
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string;
+            /**
+             * Diagrams
+             * @default []
+             */
+            diagrams: string[];
+            /** Url */
+            url: string;
+        };
+        /** ConfluenceSummaryOut */
+        ConfluenceSummaryOut: {
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string;
+            /**
+             * Diagrams
+             * @default []
+             */
+            diagrams: string[];
+        };
+        /** ContactIO */
+        ContactIO: {
+            /**
+             * Party
+             * @default
+             */
+            party: string;
+            /**
+             * Role
+             * @default
+             */
+            role: string;
+            /**
+             * Email
+             * @default
+             */
+            email: string;
+            /**
+             * Sla
+             * @default
+             */
+            sla: string;
+        };
+        /** ControlTowerOut */
+        ControlTowerOut: {
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+            filters: components["schemas"]["TransitionFilters"];
+            /** Kpis */
+            kpis: components["schemas"]["KpiTileOut"][];
+            heatmap: components["schemas"]["HeatmapOut"];
+            /** Readiness By Region */
+            readiness_by_region: components["schemas"]["RegionReadinessOut"][];
+            /** Transitions */
+            transitions: components["schemas"]["TransitionSummaryOut"][];
+            /** Escalations */
+            escalations: components["schemas"]["EscalationOut"][];
+            /** Calendar */
+            calendar: components["schemas"]["CalendarEntryOut"][];
+            /** Operating Rhythm */
+            operating_rhythm: components["schemas"]["OperatingRhythmRowOut"][];
+        };
+        /** DashboardOut */
+        DashboardOut: {
+            user: components["schemas"]["UserOut"];
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+            /** Kpis */
+            kpis: components["schemas"]["KpiTileOut"][];
+            /** My Work */
+            my_work: components["schemas"]["WorkItemOut"][];
+            /** My Work Total */
+            my_work_total: number;
+            /** Portfolio Tiles */
+            portfolio_tiles: components["schemas"]["PortfolioTileOut"][];
+            /** Recent Activity */
+            recent_activity: components["schemas"]["AuditEventOut"][];
+        };
+        /**
+         * DecisionOption
+         * @description One outcome button of the decision / review dialog; ``reasons`` explain a disabled button
+         *     (tooltip, AC-08). ``reasons`` is empty when enabled.
+         */
+        DecisionOption: {
+            /** Outcome */
+            outcome: string;
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Reasons
+             * @default []
+             */
+            reasons: string[];
+        };
+        /** DefectCreateIn */
+        DefectCreateIn: {
+            /** Title */
+            title: string;
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "P1" | "P2" | "P3" | "P4";
+            /** Owner User Id */
+            owner_user_id?: string | null;
+        };
+        /** DefectOut */
+        DefectOut: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "P1" | "P2" | "P3" | "P4";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "Open" | "Resolved";
+            owner: components["schemas"]["PersonRef"] | null;
+        };
+        /** DefectPatchIn */
+        DefectPatchIn: {
+            /** Title */
+            title?: string | null;
+            /** Priority */
+            priority?: ("P1" | "P2" | "P3" | "P4") | null;
+            /** Status */
+            status?: ("Open" | "Resolved") | null;
+            /** Owner User Id */
+            owner_user_id?: string | null;
+        };
+        /** DemoResetOut */
+        DemoResetOut: {
+            /** Seconds */
+            seconds: number;
+            /** Transitions */
+            transitions: number;
+            /** Items */
+            items: number;
+        };
+        /** DraftOut */
+        DraftOut: {
+            /** Id */
+            id: number;
+            /** Transition Id */
+            transition_id: string | null;
+            /** Transition Name */
+            transition_name: string | null;
+            /** Kind */
+            kind: string;
+            /** To */
+            to: string[];
+            /** Cc */
+            cc: string[];
+            /** Subject */
+            subject: string;
+            /** Body Html */
+            body_html: string;
+            /** Rule Id */
+            rule_id: string | null;
+            /** Source Label */
+            source_label: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "Draft" | "Sent" | "Discarded";
+            /** Created Source */
+            created_source: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            sent_by: components["schemas"]["PersonRef"] | null;
+            /** Sent At */
+            sent_at: string | null;
+            /** Action */
+            action: {
+                [key: string]: unknown;
+            } | null;
+            /** Related Ids */
+            related_ids: string[];
+        };
+        /** DraftPatchIn */
+        DraftPatchIn: {
+            /** To */
+            to: string[];
+            /**
+             * Cc
+             * @default []
+             */
+            cc: string[];
+            /** Subject */
+            subject: string;
+            /** Body Html */
+            body_html: string;
+        };
+        /** DraftSendOut */
+        DraftSendOut: {
+            draft: components["schemas"]["DraftOut"];
+            /** Outbox Message Ids */
+            outbox_message_ids: number[];
+            result: components["schemas"]["DraftSendResult"];
+        };
+        /** DraftSendResult */
+        DraftSendResult: {
+            /** Approval Request Id */
+            approval_request_id?: string | null;
+        };
+        /**
+         * EnumsOut
+         * @description Small vocabularies used by forms and filters.
+         */
+        EnumsOut: {
+            /** Severities */
+            severities: string[];
+            /** Evidence Types */
+            evidence_types: string[];
+            /** Evidence Statuses */
+            evidence_statuses: string[];
+            /** Action Statuses */
+            action_statuses: string[];
+            /** Action Priorities */
+            action_priorities: string[];
+            /** Condition Statuses */
+            condition_statuses: string[];
+            /** Exception Statuses */
+            exception_statuses: string[];
+            /** Risk Ratings */
+            risk_ratings: string[];
+            /** Defect Priorities */
+            defect_priorities: string[];
+            /** Defect Statuses */
+            defect_statuses: string[];
+            /** Actor Types */
+            actor_types: string[];
+            /** Draft Kinds */
+            draft_kinds: string[];
+            /** Approval Types */
+            approval_types: string[];
+            /** Applicability */
+            applicability: string[];
+            /** Item Sources */
+            item_sources: string[];
+        };
+        /**
+         * ErrorOut
+         * @description Error body for 401/403/404/409/422 (see app.errors).
+         */
+        ErrorOut: {
+            /** Detail */
+            detail: string;
+            /**
+             * Reasons
+             * @default []
+             */
+            reasons: string[];
+        };
+        /**
+         * EscalationOut
+         * @description Escalation queue row: every Red transition plus any transition with a blocker note.
+         */
+        EscalationOut: {
+            /** Transition Id */
+            transition_id: string;
+            /** Transition Name */
+            transition_name: string;
+            /** Portfolio */
+            portfolio: string;
+            /** Current Gate Short */
+            current_gate_short: string;
+            /** Rag */
+            rag: string;
+            /** Reason */
+            reason: string;
+            /** Blocker Note */
+            blocker_note: string | null;
+            owner: components["schemas"]["PersonRef"];
+            /** Days To Next Decision */
+            days_to_next_decision: number | null;
+        };
+        /** EvalMetricIn */
+        EvalMetricIn: {
+            /** Metric Id */
+            metric_id: string;
+            /** Tiers */
+            tiers: components["schemas"]["EvalTierTargetIn"][];
+        };
+        /** EvalMetricOut */
+        EvalMetricOut: {
+            /** Metric Id */
+            metric_id: string;
+            /** Metric */
+            metric: string;
+            /** Evaluation */
+            evaluation: string;
+            /** Tiers */
+            tiers: components["schemas"]["EvalTierTargetOut"][];
+        };
+        /** EvalResultIn */
+        EvalResultIn: {
+            /** Metric Id */
+            metric_id: string;
+            /** Value Number */
+            value_number?: number | null;
+            /** Value Text */
+            value_text?: string | null;
+            /** Passed */
+            passed?: boolean | null;
+        };
+        /** EvalRowOut */
+        EvalRowOut: {
+            /** Metric Id */
+            metric_id: string;
+            /** Metric */
+            metric: string;
+            /** Target Text */
+            target_text: string;
+            /** Operator */
+            operator: string | null;
+            /** Value */
+            value: number | null;
+            /** Unit */
+            unit: string | null;
+            /**
+             * Evaluation
+             * @enum {string}
+             */
+            evaluation: "auto" | "manual";
+            /** Result Number */
+            result_number: number | null;
+            /** Result Text */
+            result_text: string | null;
+            /** Passed */
+            passed: boolean | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pass" | "fail" | "not evaluated";
+            /** Evaluated At */
+            evaluated_at: string | null;
+            /** Source */
+            source: string | null;
+        };
+        /** EvalTableOut */
+        EvalTableOut: {
+            /** Tier */
+            tier: number | null;
+            /** Targets Confirmed */
+            targets_confirmed: boolean;
+            /** Banner */
+            banner: string;
+            /** Rows */
+            rows: components["schemas"]["EvalRowOut"][];
+            /** Failed Count */
+            failed_count: number;
+            /** Not Evaluated Count */
+            not_evaluated_count: number;
+        };
+        /** EvalTargetsIn */
+        EvalTargetsIn: {
+            /** Confirmed */
+            confirmed: boolean;
+            /** Metrics */
+            metrics: components["schemas"]["EvalMetricIn"][];
+        };
+        /** EvalTargetsOut */
+        EvalTargetsOut: {
+            /** Confirmed */
+            confirmed: boolean;
+            /** Metrics */
+            metrics: components["schemas"]["EvalMetricOut"][];
+            /**
+             * Notice
+             * @default Changes affect new transitions; existing transitions keep their items.
+             */
+            notice: string;
+        };
+        /** EvalTierTargetIn */
+        EvalTierTargetIn: {
+            /** Tier */
+            tier: number;
+            /** Target Text */
+            target_text: string;
+            /** Operator */
+            operator?: (">=" | "<=" | "<" | ">" | "==" | "abs<=") | null;
+            /** Value */
+            value?: number | null;
+            /** Unit */
+            unit?: string | null;
+        };
+        /** EvalTierTargetOut */
+        EvalTierTargetOut: {
+            /** Tier */
+            tier: number;
+            /** Target Text */
+            target_text: string;
+            /** Operator */
+            operator?: string | null;
+            /** Value */
+            value?: number | null;
+            /** Unit */
+            unit?: string | null;
+        };
+        /** EvidenceOut */
+        EvidenceOut: {
+            /** Id */
+            id: string;
+            /** Transition Id */
+            transition_id: string;
+            /** Item Id */
+            item_id: string | null;
+            /** Transition Item Id */
+            transition_item_id: number | null;
+            /** Item Title */
+            item_title: string | null;
+            /** Title */
+            title: string;
+            /** Type */
+            type: string;
+            /** Url */
+            url: string;
+            /** Has File */
+            has_file: boolean;
+            /** Text */
+            text: string | null;
+            submitted_by: components["schemas"]["PersonRef"] | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "Submitted" | "Accepted" | "Rejected";
+            reviewed_by: components["schemas"]["PersonRef"] | null;
+            /** Reviewed At */
+            reviewed_at: string | null;
+            /** Review Note */
+            review_note: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Can Review */
+            can_review: boolean;
+            /** Review Denied Reason */
+            review_denied_reason: string | null;
+        };
+        /** EvidenceReviewIn */
+        EvidenceReviewIn: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "Accept" | "Reject";
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** ExceptionCreateIn */
+        ExceptionCreateIn: {
+            /**
+             * Item Id
+             * @description Playbook item id of a Compliance item
+             */
+            item_id: string;
+            /** Text */
+            text: string;
+        };
+        /** ExceptionOut */
+        ExceptionOut: {
+            /** Ref */
+            ref: string;
+            /** Transition Id */
+            transition_id: string;
+            /** Item Id */
+            item_id: string | null;
+            /** Item Title */
+            item_title: string | null;
+            /** Text */
+            text: string;
+            /** Status */
+            status: string;
+            /** Approval Request Id */
+            approval_request_id: string | null;
+            requested_by: components["schemas"]["PersonRef"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** FailedEvalOut */
+        FailedEvalOut: {
+            /** Metric Id */
+            metric_id: string;
+            /** Metric */
+            metric: string;
+            /** Result */
+            result: string;
+            /** Target Text */
+            target_text: string;
+        };
+        /** FastForwardIn */
+        FastForwardIn: {
+            /**
+             * Transition Id
+             * @default TR-0001
+             */
+            transition_id: string;
+        };
+        /** FastForwardOut */
+        FastForwardOut: {
+            /** Transition Id */
+            transition_id: string;
+            /** Items Completed */
+            items_completed: number;
+            /** Skipped Linked */
+            skipped_linked: number;
+            /** Skipped Exception */
+            skipped_exception: number;
+            /** Evals Passing */
+            evals_passing: number;
+            /** Readiness */
+            readiness?: string | null;
+        };
+        /** FlavourRuleIn */
+        FlavourRuleIn: {
+            /** Project Type */
+            project_type: string;
+            /** Checklists */
+            checklists: ("FRAMEWORK" | "AI_PLAYBOOK" | "PORTFOLIO" | "COMMON")[];
+            /**
+             * Requires Tiering
+             * @default false
+             */
+            requires_tiering: boolean;
+            /** Note */
+            note?: string | null;
+        };
+        /** FlavourRuleOut */
+        FlavourRuleOut: {
+            /** Project Type */
+            project_type: string;
+            /** Checklists */
+            checklists: string[];
+            /**
+             * Requires Tiering
+             * @default false
+             */
+            requires_tiering: boolean;
+            /** Note */
+            note?: string | null;
+        };
+        /**
+         * FlavourRulesIn
+         * @description PUT body: one entry per existing project_type (unknown types -> 422; none created/deleted).
+         */
+        FlavourRulesIn: {
+            /** Rules */
+            rules: components["schemas"]["FlavourRuleIn"][];
+        };
+        /** FlavourRulesOut */
+        FlavourRulesOut: {
+            /** Rules */
+            rules: components["schemas"]["FlavourRuleOut"][];
+            /**
+             * Notice
+             * @default Changes affect new transitions; existing transitions keep their items.
+             */
+            notice: string;
+        };
+        /** GateApprovalOut */
+        GateApprovalOut: {
+            /** Request Id */
+            request_id: string;
+            /** Status */
+            status: string;
+            /** Steps */
+            steps: components["schemas"]["app__schemas__gates__ApprovalStepOut"][];
+        };
+        /** GateApprovalRequestIn */
+        GateApprovalRequestIn: {
+            /** Note */
+            note?: string | null;
+            /** Draft Id */
+            draft_id?: number | null;
+        };
+        /** GateApprovalRequestOut */
+        GateApprovalRequestOut: {
+            /** Request Id */
+            request_id: string;
+            /** Status */
+            status: string;
+            /** Steps */
+            steps: components["schemas"]["app__schemas__gates__ApprovalStepOut"][];
+        };
+        /** GateDecisionIn */
+        GateDecisionIn: {
+            /** Decision */
+            decision: string;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /**
+             * Conditions
+             * @default []
+             */
+            conditions: components["schemas"]["ConditionIn"][];
+        };
+        /**
+         * GateItemRef
+         * @description An item shown in the readiness check. ``item_id`` is the PLAYBOOK item id (e.g. S45-014).
+         */
+        GateItemRef: {
+            /** Item Id */
+            item_id: string;
+            /** Title */
+            title: string;
+            /**
+             * Lens
+             * @default
+             */
+            lens: string;
+            /** Status */
+            status: string;
+            /** Gap Severity */
+            gap_severity?: string | null;
+            owner?: components["schemas"]["PersonRef"] | null;
+            /** Reason */
+            reason: string;
+        };
+        /**
+         * GateLensSummaryOut
+         * @description Gate summary bar row for the selected gate (spec §8.7 b), one per lens, live (BR-020).
+         */
+        GateLensSummaryOut: {
+            /**
+             * Lens
+             * @enum {string}
+             */
+            lens: "Business" | "Technical" | "Compliance";
+            /** Scope */
+            scope: number;
+            /** Done */
+            done: number;
+            /** In Progress */
+            in_progress: number;
+            /** Not Started */
+            not_started: number;
+            /** Open Gaps */
+            open_gaps: number;
+            /** Critical Gaps */
+            critical_gaps: number;
+            /** Readiness Pct */
+            readiness_pct: number;
+        };
+        /** GateOut */
+        GateOut: {
+            /** Code */
+            code: string;
+            /** Order */
+            order: number;
+            /** Label */
+            label: string;
+            /** Short */
+            short: string;
+            /** Type */
+            type: string;
+        };
+        /** GateOverview */
+        GateOverview: {
+            /** Code */
+            code: string;
+            /** Short */
+            short: string;
+            /** Label */
+            label: string;
+            /** Type */
+            type: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "done" | "current" | "upcoming";
+            /** Reviews */
+            reviews: components["schemas"]["GateReviewRecord"][];
+            /** Carried Items */
+            carried_items: number;
+            approval?: components["schemas"]["GateApprovalOut"] | null;
+        };
+        /** GateRefOut */
+        GateRefOut: {
+            /** Code */
+            code: string;
+            /** Short */
+            short: string;
+            /** Label */
+            label: string;
+            /** Type */
+            type: string;
+        };
+        /** GateReviewIn */
+        GateReviewIn: {
+            /** Outcome */
+            outcome: string;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /**
+             * Conditions
+             * @default []
+             */
+            conditions: components["schemas"]["ConditionIn"][];
+        };
+        /** GateReviewOut */
+        GateReviewOut: {
+            review: components["schemas"]["GateReviewRecord"];
+            /** New Current Gate */
+            new_current_gate: string;
+            /** Conditions Created */
+            conditions_created: string[];
+            /**
+             * Transition Closed
+             * @default false
+             */
+            transition_closed: boolean;
+        };
+        /** GateReviewRecord */
+        GateReviewRecord: {
+            /** Id */
+            id: number;
+            /**
+             * Gate
+             * @default
+             */
+            gate: string;
+            /**
+             * Gate Type
+             * @default
+             */
+            gate_type: string;
+            /** Outcome */
+            outcome: string;
+            decided_by: components["schemas"]["PersonRef"] | null;
+            /**
+             * Decided At
+             * Format: date-time
+             */
+            decided_at: string;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /**
+             * Conditions Created
+             * @default []
+             */
+            conditions_created: string[];
+        };
+        /** GateStepOut */
+        GateStepOut: {
+            /** Code */
+            code: string;
+            /** Short */
+            short: string;
+            /** Label */
+            label: string;
+            /** Type */
+            type: string;
+            /** State */
+            state: string;
+        };
+        /** GatesOverviewOut */
+        GatesOverviewOut: {
+            /** Current Gate */
+            current_gate: string;
+            /** Gates */
+            gates: components["schemas"]["GateOverview"][];
+        };
+        /** GenerateOut */
+        GenerateOut: {
+            support_model: components["schemas"]["SupportModelOut"];
+            /** Steps */
+            steps: components["schemas"]["GenerateStepOut"][];
+        };
+        /** GenerateStepOut */
+        GenerateStepOut: {
+            /** Label */
+            label: string;
+            /** Duration Ms */
+            duration_ms: number;
+        };
+        /** GoldenSetIn */
+        GoldenSetIn: {
+            /** Focus Areas */
+            focus_areas?: string[] | null;
+            /** Items */
+            items: components["schemas"]["GoldenSetItemIn"][];
+        };
+        /**
+         * GoldenSetItemIn
+         * @description ``id`` null/empty = new item (server assigns the next "<CODE>-NN"); existing id = edit.
+         */
+        GoldenSetItemIn: {
+            /** Id */
+            id?: string | null;
+            /** Title */
+            title: string;
+            /** Gate */
+            gate: string;
+            /**
+             * Owner Role Hint
+             * @default
+             */
+            owner_role_hint: string;
+            /**
+             * Lens
+             * @enum {string}
+             */
+            lens: "Business" | "Technical" | "Compliance";
+            /**
+             * Mandatory
+             * @default true
+             */
+            mandatory: boolean;
+        };
+        /** GoldenSetItemOut */
+        GoldenSetItemOut: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Gate */
+            gate: string;
+            /**
+             * Owner Role Hint
+             * @default
+             */
+            owner_role_hint: string;
+            /** Lens */
+            lens: string;
+            /**
+             * Mandatory
+             * @default true
+             */
+            mandatory: boolean;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+        };
+        /** GoldenSetOut */
+        GoldenSetOut: {
+            /** Portfolio */
+            portfolio: string;
+            /** Focus Areas */
+            focus_areas: string[];
+            /** Items */
+            items: components["schemas"]["GoldenSetItemOut"][];
+            /**
+             * Notice
+             * @default Changes affect new transitions; existing transitions keep their items.
+             */
+            notice: string;
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HeatmapCellOut */
+        HeatmapCellOut: {
+            /** Portfolio */
+            portfolio: string;
+            /** Gate */
+            gate: string;
+            /** Count */
+            count: number;
+            /** Worst Rag */
+            worst_rag: string | null;
+        };
+        /**
+         * HeatmapOut
+         * @description Portfolio (rows) x gate (columns). All 6 portfolios and all 7 gates are always present.
+         */
+        HeatmapOut: {
+            /** Portfolios */
+            portfolios: string[];
+            /** Gates */
+            gates: components["schemas"]["GateRefOut"][];
+            /** Cells */
+            cells: components["schemas"]["HeatmapCellOut"][];
+        };
+        /** HypercareOut */
+        HypercareOut: {
+            /** Defects */
+            defects: components["schemas"]["DefectOut"][];
+            /** No Defects Confirmed */
+            no_defects_confirmed: boolean;
+            /** Tracker In Place */
+            tracker_in_place: boolean;
+            /** Open P1 P2 */
+            open_p1_p2: number;
+        };
+        /** InputFileOut */
+        InputFileOut: {
+            /** Filename */
+            filename: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "recording" | "transcript" | "design" | "diagram" | "other";
+            /** Url */
+            url: string;
+            /** Size */
+            size: number;
+            /**
+             * Uploaded At
+             * Format: date-time
+             */
+            uploaded_at: string;
+        };
+        /**
+         * InsightActionOut
+         * @description A button on an insight. M2: ``kind="link"`` navigates to ``href``. M8 adds proposal kinds that a
+         *     permitted human accepts (BR-050).
+         */
+        InsightActionOut: {
+            /** Label */
+            label: string;
+            /**
+             * Kind
+             * @default link
+             */
+            kind: string;
+            /** Href */
+            href?: string | null;
+            /** Proposal Id */
+            proposal_id?: number | null;
+        };
+        /** InsightOut */
+        InsightOut: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /** Severity */
+            severity: string;
+            /** Transition Id */
+            transition_id?: string | null;
+            /**
+             * Actions
+             * @default []
+             */
+            actions: components["schemas"]["InsightActionOut"][];
+        };
+        /** InsightsOut */
+        InsightsOut: {
+            /** Scope */
+            scope: string;
+            /** Scope Id */
+            scope_id?: string | null;
+            /**
+             * Generated By
+             * @default Orion agent
+             */
+            generated_by: string;
+            /** Insights */
+            insights: components["schemas"]["InsightOut"][];
+        };
+        /** IntakeExtraFieldOut */
+        IntakeExtraFieldOut: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Type */
+            type: string;
+            /** Required */
+            required: boolean;
+            /**
+             * Fields
+             * @default []
+             */
+            fields: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** IntakeOptionsOut */
+        IntakeOptionsOut: {
+            /** Audience */
+            audience: string[];
+            /** Write Actions */
+            write_actions: string[];
+            /** Sensitive Data */
+            sensitive_data: string[];
+            /** Target Gate */
+            target_gate: string[];
+            /** Investment Type */
+            investment_type: string[];
+            /** Delivery Method */
+            delivery_method: string[];
+        };
+        /** ItemConditionIn */
+        ItemConditionIn: {
+            /** Owner User Id */
+            owner_user_id: string;
+            /** Due Gate */
+            due_gate: string;
+            /** Text */
+            text: string;
+        };
+        /** ItemCountsOut */
+        ItemCountsOut: {
+            /** Framework */
+            framework: number;
+            /** Ai Applicable */
+            ai_applicable: number;
+            /** Ai Excluded */
+            ai_excluded: number;
+            /** Golden Set Applies */
+            golden_set_applies: number;
+            /** Golden Set To Confirm */
+            golden_set_to_confirm: number;
+            /** Common */
+            common: number;
+            /** Total */
+            total: number;
+        };
+        /** ItemListOut */
+        ItemListOut: {
+            /** Gate */
+            gate: string;
+            /** Items */
+            items: components["schemas"]["ItemOut"][];
+            /** Summary */
+            summary: components["schemas"]["GateLensSummaryOut"][];
+            /** Excluded Count */
+            excluded_count: number;
+            /** Excluded By Tier Count */
+            excluded_by_tier_count: number;
+        };
+        /**
+         * ItemOut
+         * @description One checklist row (spec §8.7 b). ``id`` is the TransitionItem integer key used by PATCH /items/{id};
+         *     ``item_id`` is the playbook id (S45-014) shown to humans and used by evidence/actions/risks.
+         */
+        ItemOut: {
+            /** Id */
+            id: number;
+            /** Item Id */
+            item_id: string;
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+            /** Detail */
+            detail: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "FRAMEWORK" | "AI_PLAYBOOK" | "PORTFOLIO" | "COMMON";
+            /** Source Label */
+            source_label: string;
+            /** Source Sheet */
+            source_sheet: string;
+            /** Source Cell */
+            source_cell: string;
+            /** Category */
+            category: string;
+            /** Kind */
+            kind: string;
+            /** Gate */
+            gate: string;
+            /** Gate Short */
+            gate_short: string;
+            /**
+             * Lens
+             * @enum {string}
+             */
+            lens: "Business" | "Technical" | "Compliance";
+            /** Lens Is Suggested */
+            lens_is_suggested: boolean;
+            /** Tier Label */
+            tier_label: string;
+            /** Tier To Confirm */
+            tier_to_confirm: boolean;
+            /**
+             * Applicability
+             * @enum {string}
+             */
+            applicability: "Applies" | "Not applicable" | "To confirm";
+            /** Excluded By */
+            excluded_by: string | null;
+            /** Na Reason */
+            na_reason: string | null;
+            /** Status */
+            status: string;
+            /** Allowed Statuses */
+            allowed_statuses: string[];
+            /** Gap Severity */
+            gap_severity: ("Critical" | "Major" | "Minor") | null;
+            /** Design Effectiveness */
+            design_effectiveness: ("–" | "Yes" | "No" | "N/A") | null;
+            /** Note */
+            note: string;
+            owner: components["schemas"]["PersonRef"] | null;
+            /** Linked Module */
+            linked_module: string | null;
+            /** Evidence Count */
+            evidence_count: number;
+            /** Open Condition Id */
+            open_condition_id: string | null;
+            /** Exception Ref */
+            exception_ref: string | null;
+            /** Exception Status */
+            exception_status: string | null;
+            /** Covered */
+            covered: boolean;
+            last_updated_by: components["schemas"]["PersonRef"] | null;
+            /** Last Updated Source */
+            last_updated_source: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Can Edit */
+            can_edit: boolean;
+            /** Edit Denied Reason */
+            edit_denied_reason: string | null;
+        };
+        /**
+         * ItemPatchIn
+         * @description Partial update; only fields present in the body are applied (``model_fields_set``).
+         */
+        ItemPatchIn: {
+            /** Status */
+            status?: string | null;
+            /** Gap Severity */
+            gap_severity?: ("Critical" | "Major" | "Minor") | null;
+            /** Note */
+            note?: string | null;
+            /** Owner User Id */
+            owner_user_id?: string | null;
+            /** Design Effectiveness */
+            design_effectiveness?: ("–" | "Yes" | "No" | "N/A") | null;
+            /** Applicability */
+            applicability?: ("Applies" | "Not applicable" | "To confirm") | null;
+            /** Na Reason */
+            na_reason?: string | null;
+            /** @description Required when status is 'Compliant with conditions' */
+            condition?: components["schemas"]["ItemConditionIn"] | null;
+        };
+        /**
+         * KpiTileOut
+         * @description A KPI tile (spec §8.1, §8.2). Control-tower tiles carry ``filter`` (query params that reproduce
+         *     the tile's set – clicking a tile filters the register); dashboard tiles carry ``link`` (a route).
+         */
+        KpiTileOut: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Value */
+            value: number;
+            /**
+             * Tone
+             * @default neutral
+             */
+            tone: string;
+            /**
+             * Hint
+             * @default
+             */
+            hint: string;
+            /**
+             * Filter
+             * @default {}
+             */
+            filter: {
+                [key: string]: string;
+            };
+            /** Link */
+            link?: string | null;
+        };
+        /**
+         * LandscapeIn
+         * @description Editable landscape (request body of PUT, and shape of the generated JSON).
+         */
+        LandscapeIn: {
+            /** Central App */
+            central_app: string;
+            /**
+             * Hosting
+             * @default
+             */
+            hosting: string;
+            /**
+             * Vendor
+             * @default
+             */
+            vendor: string;
+            /**
+             * Supplier
+             * @default
+             */
+            supplier: string;
+            /**
+             * Vendor Responsibilities
+             * @default []
+             */
+            vendor_responsibilities: string[];
+            /**
+             * Components
+             * @default []
+             */
+            components: components["schemas"]["ComponentIO"][];
+            /**
+             * @default {
+             *       "L1": "",
+             *       "L2": "",
+             *       "L3": ""
+             *     }
+             */
+            support_tiers: components["schemas"]["SupportTiersIO"];
+            /**
+             * Contacts
+             * @default []
+             */
+            contacts: components["schemas"]["ContactIO"][];
+            /**
+             * Open Questions
+             * @default []
+             */
+            open_questions: string[];
+            /**
+             * Sources
+             * @default []
+             */
+            sources: components["schemas"]["SourceIO"][];
+        };
+        /**
+         * LandscapeOut
+         * @description Same fields as the input; returned by the API.
+         */
+        LandscapeOut: {
+            /** Central App */
+            central_app: string;
+            /**
+             * Hosting
+             * @default
+             */
+            hosting: string;
+            /**
+             * Vendor
+             * @default
+             */
+            vendor: string;
+            /**
+             * Supplier
+             * @default
+             */
+            supplier: string;
+            /**
+             * Vendor Responsibilities
+             * @default []
+             */
+            vendor_responsibilities: string[];
+            /**
+             * Components
+             * @default []
+             */
+            components: components["schemas"]["ComponentIO"][];
+            /**
+             * @default {
+             *       "L1": "",
+             *       "L2": "",
+             *       "L3": ""
+             *     }
+             */
+            support_tiers: components["schemas"]["SupportTiersIO"];
+            /**
+             * Contacts
+             * @default []
+             */
+            contacts: components["schemas"]["ContactIO"][];
+            /**
+             * Open Questions
+             * @default []
+             */
+            open_questions: string[];
+            /**
+             * Sources
+             * @default []
+             */
+            sources: components["schemas"]["SourceIO"][];
+        };
+        /** LaunchOut */
+        LaunchOut: {
+            /** Transition Id */
+            transition_id: string;
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /**
+             * Redirect
+             * @description "/transitions/<id>/assessment"
+             */
+            redirect: string;
+        };
+        /**
+         * LensCardOut
+         * @description Overview lens card at the current gate (spec §8.7).
+         */
+        LensCardOut: {
+            /** Lens */
+            lens: string;
+            /** Question */
+            question: string;
+            /** Owner Label */
+            owner_label: string;
+            /** Scope */
+            scope: number;
+            /** Done */
+            done: number;
+            /** In Progress */
+            in_progress: number;
+            /** Not Started */
+            not_started: number;
+            /** Open Gaps */
+            open_gaps: number;
+            /** Critical Gaps */
+            critical_gaps: number;
+            /** Readiness Pct */
+            readiness_pct: number;
+        };
+        /** LensOut */
+        LensOut: {
+            /** Code */
+            code: string;
+            /** Question */
+            question: string;
+            /** Owner Roles */
+            owner_roles: string[];
+            /** Signoff Role */
+            signoff_role: string;
+            /** Color Hint */
+            color_hint: string;
+        };
+        /**
+         * LensValues
+         * @description One integer per lens (readiness %, counts …). Lens colours: Business amber, Technical blue,
+         *     Compliance teal (spec §4, §12).
+         */
+        LensValues: {
+            /** Business */
+            Business: number;
+            /** Technical */
+            Technical: number;
+            /** Compliance */
+            Compliance: number;
+        };
+        /** LinkedItemOut */
+        LinkedItemOut: {
+            /** Item Id */
+            item_id: string;
+            /** Title */
+            title: string;
+            /** Status */
+            status: string;
+        };
+        /** MeOut */
+        MeOut: {
+            user: components["schemas"]["UserOut"];
+            /** Permissions */
+            permissions: string[];
+            /** Denied Reasons */
+            denied_reasons: {
+                [key: string]: string;
+            };
+        };
+        /** NotificationOut */
+        NotificationOut: {
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
+            /** Link */
+            link: string;
+            /** Read */
+            read: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** NotificationsOut */
+        NotificationsOut: {
+            /** Unread */
+            unread: number;
+            /** Items */
+            items: components["schemas"]["NotificationOut"][];
+        };
+        /** OcetApprovalOut */
+        OcetApprovalOut: {
+            /** Request Id */
+            request_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "Pending" | "Approved" | "Rejected" | "Cancelled";
+            /** Steps */
+            steps: components["schemas"]["OcetApprovalStepOut"][];
+        };
+        /** OcetApprovalStepOut */
+        OcetApprovalStepOut: {
+            /** Step */
+            step: number;
+            /** Role */
+            role: string;
+            /** Label */
+            label: string;
+            approver: components["schemas"]["PersonRef"] | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "Waiting" | "Pending" | "Approved" | "Rejected" | "Cancelled";
+        };
+        /** OcetCompareOut */
+        OcetCompareOut: {
+            /** Transition Id */
+            transition_id: string;
+            /** Currency */
+            currency: string;
+            from_version: components["schemas"]["CompareVersionRef"];
+            to_version: components["schemas"]["CompareVersionRef"];
+            /** Years */
+            years: number[];
+            /** Rows */
+            rows: components["schemas"]["CompareRowOut"][];
+            /** Category Rows */
+            category_rows: components["schemas"]["CompareRowOut"][];
+            /** From Total */
+            from_total: number;
+            /** To Total */
+            to_total: number;
+            /** Total Abs */
+            total_abs: number;
+            /** Total Pct */
+            total_pct: number | null;
+        };
+        /** OcetCurrentVersionOut */
+        OcetCurrentVersionOut: {
+            /** Id */
+            id: number;
+            /** Version */
+            version: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "Draft" | "Inputs pending" | "Submitted" | "Planner approved" | "Approved" | "Rejected" | "Superseded";
+            /** Note */
+            note: string;
+            created_by: components["schemas"]["PersonRef"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Submitted At */
+            submitted_at: string | null;
+            /** Approval Request Id */
+            approval_request_id: string | null;
+            /** Total */
+            total: number;
+            /** Can Edit */
+            can_edit: boolean;
+            /** Edit Denied Reason */
+            edit_denied_reason: string | null;
+            /** Can Submit */
+            can_submit: boolean;
+            /** Submit Denied Reasons */
+            submit_denied_reasons: string[];
+            /** Inputs Pending */
+            inputs_pending: boolean;
+            /** Missing Line Ids */
+            missing_line_ids: number[];
+        };
+        /** OcetEstimateOut */
+        OcetEstimateOut: {
+            /** Id */
+            id: number;
+            /** Currency */
+            currency: string;
+            /** Start Year */
+            start_year: number;
+            /** Horizon Years */
+            horizon_years: number;
+            /** Current Version */
+            current_version: number;
+        };
+        /** OcetLineIn */
+        OcetLineIn: {
+            /** Id */
+            id?: number | null;
+            /** Line Key */
+            line_key?: string | null;
+            /** Category */
+            category: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Vendor
+             * @default
+             */
+            vendor: string;
+            /**
+             * Pricing Basis
+             * @default Fixed (contract)
+             */
+            pricing_basis: string;
+            /** Base Amount */
+            base_amount?: number | null;
+            /**
+             * Growth Pct
+             * @default 0
+             */
+            growth_pct: number;
+            /** Year Overrides */
+            year_overrides?: {
+                [key: string]: number;
+            };
+            /** Override Reason */
+            override_reason?: string | null;
+            /**
+             * Input Owner Role
+             * @default PM
+             */
+            input_owner_role: string;
+            /** Input Owner User Id */
+            input_owner_user_id?: string | null;
+            /**
+             * Input Status
+             * @default Provided
+             * @enum {string}
+             */
+            input_status: "Provided" | "Requested" | "Missing";
+        };
+        /** OcetLineOut */
+        OcetLineOut: {
+            /** Id */
+            id: number;
+            /** Line Key */
+            line_key: string;
+            /** Category */
+            category: string;
+            /** Description */
+            description: string;
+            /** Vendor */
+            vendor: string;
+            /** Pricing Basis */
+            pricing_basis: string;
+            /** Base Amount */
+            base_amount: number | null;
+            /** Growth Pct */
+            growth_pct: number;
+            /** Year Overrides */
+            year_overrides: {
+                [key: string]: number;
+            };
+            /** Override Reason */
+            override_reason: string | null;
+            /** Input Owner Role */
+            input_owner_role: string;
+            input_owner: components["schemas"]["PersonRef"] | null;
+            /**
+             * Input Status
+             * @enum {string}
+             */
+            input_status: "Provided" | "Requested" | "Missing";
+            /** Input Requested At */
+            input_requested_at: string | null;
+            /**
+             * Requested Days
+             * @default 0
+             */
+            requested_days: number;
+            /** Yearly */
+            yearly: components["schemas"]["YearAmount"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * OcetOut
+         * @description Everything the OCET screen (spec 8.10) needs, for the CURRENT version.
+         */
+        OcetOut: {
+            /** Transition Id */
+            transition_id: string;
+            estimate: components["schemas"]["OcetEstimateOut"];
+            /** Years */
+            years: number[];
+            /** Versions */
+            versions: components["schemas"]["OcetVersionOut"][];
+            version: components["schemas"]["OcetCurrentVersionOut"];
+            /** Lines */
+            lines: components["schemas"]["OcetLineOut"][];
+            /** Category Totals */
+            category_totals: components["schemas"]["CategoryTotalOut"][];
+            /** Grand Total By Year */
+            grand_total_by_year: components["schemas"]["YearAmount"][];
+            /** Total */
+            total: number;
+            /** Total Label */
+            total_label: string;
+            variance: components["schemas"]["VarianceOut"];
+            approval: components["schemas"]["OcetApprovalOut"] | null;
+            /** Explanation */
+            explanation: string | null;
+            /**
+             * Worked Example
+             * @default 100k at +10% compounding -> 110k, 121k, 133.1k, 146.4k
+             */
+            worked_example: string;
+            /**
+             * Info Note
+             * @default R&M costs are picked up by SOM per the ATO+12 principle
+             */
+            info_note: string;
+            /** Categories */
+            categories: string[];
+            /** Pricing Bases */
+            pricing_bases: string[];
+            /** Currencies */
+            currencies: string[];
+            /**
+             * Default Growth Pct
+             * @default {}
+             */
+            default_growth_pct: {
+                [key: string]: number;
+            };
+        };
+        /** OcetSaveIn */
+        OcetSaveIn: {
+            /** Lines */
+            lines: components["schemas"]["OcetLineIn"][];
+            /** Deleted Line Ids */
+            deleted_line_ids?: number[];
+        };
+        /** OcetVersionOut */
+        OcetVersionOut: {
+            /** Id */
+            id: number;
+            /** Version */
+            version: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "Draft" | "Inputs pending" | "Submitted" | "Planner approved" | "Approved" | "Rejected" | "Superseded";
+            /** Note */
+            note: string;
+            created_by: components["schemas"]["PersonRef"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Submitted At */
+            submitted_at: string | null;
+            /** Approval Request Id */
+            approval_request_id: string | null;
+            /** Total */
+            total: number;
+        };
+        /** OkOut */
+        OkOut: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+        };
+        /** OpenConditionOut */
+        OpenConditionOut: {
+            /** Id */
+            id: string;
+            /** Item Id */
+            item_id: string | null;
+            /** Text */
+            text: string;
+            /** Due Gate */
+            due_gate: string;
+            owner?: components["schemas"]["PersonRef"] | null;
+        };
+        /**
+         * OperatingRhythmRowOut
+         * @description Static operating-rhythm card (from the client prototype, spec §8.2).
+         */
+        OperatingRhythmRowOut: {
+            /** Forum */
+            forum: string;
+            /** Frequency */
+            frequency: string;
+            /** Input */
+            input: string;
+            /** Output */
+            output: string;
+        };
+        /** OutboxMessageOut */
+        OutboxMessageOut: {
+            /** Id */
+            id: number;
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "Email" | "Teams";
+            /** From Address */
+            from_address: string;
+            /** To */
+            to: string[];
+            /** Cc */
+            cc: string[];
+            /** Subject */
+            subject: string;
+            /** Body Html */
+            body_html: string;
+            /** Adaptive Card Json */
+            adaptive_card_json: {
+                [key: string]: unknown;
+            } | null;
+            /** Related Ids */
+            related_ids: string[];
+            /**
+             * Sent At
+             * Format: date-time
+             */
+            sent_at: string;
+            /** Mode */
+            mode: string;
+            /** Draft Id */
+            draft_id: number | null;
+        };
+        /** PendingExceptionOut */
+        PendingExceptionOut: {
+            /** Ref */
+            ref: string;
+            /** Item Id */
+            item_id: string | null;
+            /** Status */
+            status: string;
+        };
+        /**
+         * PersonRef
+         * @description Compact user reference for tables and cards.
+         */
+        PersonRef: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /**
+         * PlaybookItemAdminOut
+         * @description Every PlaybookItem field plus the "lens suggested - confirm" badge flag (spec 8.16).
+         */
+        PlaybookItemAdminOut: {
+            /** Id */
+            id: string;
+            /** Source */
+            source: string;
+            /**
+             * Source Label
+             * @default
+             */
+            source_label: string;
+            /** Portfolio */
+            portfolio?: string | null;
+            /** Title */
+            title: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Gate */
+            gate: string;
+            /** Lens */
+            lens: string;
+            /**
+             * Secondary Lens
+             * @default
+             */
+            secondary_lens: string;
+            /**
+             * Lens Is Suggested
+             * @default false
+             */
+            lens_is_suggested: boolean;
+            /**
+             * Lens Suggested
+             * @default false
+             */
+            lens_suggested: boolean;
+            /**
+             * Category
+             * @default
+             */
+            category: string;
+            /**
+             * Kind
+             * @default
+             */
+            kind: string;
+            /**
+             * Applicable Tiers
+             * @default []
+             */
+            applicable_tiers: number[];
+            /**
+             * Tier Label
+             * @default
+             */
+            tier_label: string;
+            /**
+             * Tier Unspecified
+             * @default false
+             */
+            tier_unspecified: boolean;
+            /**
+             * Mandatory
+             * @default true
+             */
+            mandatory: boolean;
+            /** Mandatory Rule */
+            mandatory_rule?: string | null;
+            /**
+             * Applies To Project Types
+             * @default []
+             */
+            applies_to_project_types: string[];
+            /**
+             * Owner Role Hint
+             * @default
+             */
+            owner_role_hint: string;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /** Linked Module */
+            linked_module?: string | null;
+            /**
+             * Notice
+             * @default Changes affect new transitions; existing transitions keep their items.
+             */
+            notice: string;
+        };
+        /**
+         * PlaybookItemUpdateIn
+         * @description PUT body; full replacement of the editable fields.
+         */
+        PlaybookItemUpdateIn: {
+            /** Title */
+            title: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Gate */
+            gate: string;
+            /**
+             * Lens
+             * @enum {string}
+             */
+            lens: "Business" | "Technical" | "Compliance";
+            /**
+             * Applicable Tiers
+             * @default []
+             */
+            applicable_tiers: number[];
+            /**
+             * Mandatory
+             * @default true
+             */
+            mandatory: boolean;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+        };
+        /** PortfolioDetailOut */
+        PortfolioDetailOut: {
+            /** Name */
+            name: string;
+            /** Code */
+            code: string;
+            /** Focus Areas */
+            focus_areas: string[];
+            /** Intake Extra Fields */
+            intake_extra_fields: components["schemas"]["IntakeExtraFieldOut"][];
+            /** Golden Set Count */
+            golden_set_count: number;
+            /** Golden Set Mandatory Count */
+            golden_set_mandatory_count: number;
+        };
+        /**
+         * PortfolioTileOut
+         * @description LEADERSHIP sees portfolio summary tiles instead of "My work" (spec §8.1).
+         */
+        PortfolioTileOut: {
+            /** Portfolio */
+            portfolio: string;
+            /** Transitions */
+            transitions: number;
+            /** Red */
+            red: number;
+            /** Amber */
+            amber: number;
+            /** Green */
+            green: number;
+            /** Grey */
+            grey: number;
+            /** Average Readiness */
+            average_readiness: number | null;
+            /** Decisions 14D */
+            decisions_14d: number;
+            /** Critical Gaps */
+            critical_gaps: number;
+        };
+        /** PptxInfoOut */
+        PptxInfoOut: {
+            /** Version */
+            version: number;
+            /** Evidence Id */
+            evidence_id: string;
+            /** Filename */
+            filename: string;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+        };
+        /** PptxOut */
+        PptxOut: {
+            /** Evidence Id */
+            evidence_id: string;
+            /** Filename */
+            filename: string;
+            /** Version */
+            version: number;
+            /** Download Path */
+            download_path: string;
+        };
+        /** ProjectTypeOut */
+        ProjectTypeOut: {
+            /** Code */
+            code: string;
+            /** Checklists */
+            checklists: string[];
+            /** Requires Tiering */
+            requires_tiering: boolean;
+            /** Note */
+            note?: string | null;
+        };
+        /** PutLandscapeIn */
+        PutLandscapeIn: {
+            landscape: components["schemas"]["LandscapeIn"];
+        };
+        /**
+         * QuestionDraftOut
+         * @description Result of "Draft question to architect": an Orion draft in the drafts queue.
+         */
+        QuestionDraftOut: {
+            /** Draft Id */
+            draft_id: number;
+            /**
+             * Message
+             * @default Orion drafted a question to the architect. Review and send it from the drafts.
+             */
+            message: string;
+        };
+        /** ReadinessCheckOut */
+        ReadinessCheckOut: {
+            /** Gate */
+            gate: string;
+            /** Gate Short */
+            gate_short: string;
+            /** Gate Type */
+            gate_type: string;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "Ready" | "Ready with conditions" | "Not ready";
+            /** Verdict Label */
+            verdict_label: string;
+            lenses: components["schemas"]["LensValues"];
+            /** Blocking */
+            blocking: components["schemas"]["BlockingGroup"][];
+            /** Critical Gaps */
+            critical_gaps: components["schemas"]["GateItemRef"][];
+            /** Open Conditions */
+            open_conditions: components["schemas"]["OpenConditionOut"][];
+            /** Carried Items */
+            carried_items: components["schemas"]["CarriedItemOut"][];
+            /** Pending Exceptions */
+            pending_exceptions: components["schemas"]["PendingExceptionOut"][];
+            /** Failed Evals */
+            failed_evals: components["schemas"]["FailedEvalOut"][];
+            /**
+             * Unevaluated Evals
+             * @default 0
+             */
+            unevaluated_evals: number;
+            /** Ocet Status */
+            ocet_status?: string | null;
+            /** Support Model Status */
+            support_model_status?: string | null;
+            approval?: components["schemas"]["GateApprovalOut"] | null;
+            /** Can Request Approval */
+            can_request_approval: boolean;
+            /** Request Denied Reason */
+            request_denied_reason?: string | null;
+            /** Decision Options */
+            decision_options: components["schemas"]["DecisionOption"][];
+            /** Narrative */
+            narrative: string;
+            /**
+             * Narrative By
+             * @default Orion agent
+             */
+            narrative_by: string;
+            /** Recommended Actions */
+            recommended_actions: components["schemas"]["RecommendedAction"][];
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+        };
+        /**
+         * RecommendationOut
+         * @description Orion agent recommendation for a To-confirm row (never applied automatically).
+         */
+        RecommendationOut: {
+            /** Item Id */
+            item_id: string;
+            /**
+             * Recommendation
+             * @enum {string}
+             */
+            recommendation: "Yes" | "No";
+            /** Reason */
+            reason: string;
+        };
+        /**
+         * RecommendedAction
+         * @description Orion agent proposal (BR-050: the human clicks, nothing executes automatically).
+         */
+        RecommendedAction: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "draft_chaser" | "create_action" | "request_inputs" | "open_ocet" | "create_support_model" | "request_exception" | "request_approval";
+            /**
+             * Item Ids
+             * @default []
+             */
+            item_ids: string[];
+            /** Href */
+            href?: string | null;
+        };
+        /** ReferenceOut */
+        ReferenceOut: {
+            /** Gates */
+            gates: components["schemas"]["GateOut"][];
+            /** Gate Outcomes */
+            gate_outcomes: {
+                [key: string]: string[];
+            };
+            /** Lenses */
+            lenses: components["schemas"]["LensOut"][];
+            /** Item Statuses */
+            item_statuses: {
+                [key: string]: string[];
+            };
+            /** Done Statuses */
+            done_statuses: string[];
+            /** Na Statuses */
+            na_statuses: string[];
+            /** Gap Statuses */
+            gap_statuses: string[];
+            /** Design Effectiveness Options */
+            design_effectiveness_options: string[];
+            /** Project Types */
+            project_types: components["schemas"]["ProjectTypeOut"][];
+            /** Flavour Rule Note */
+            flavour_rule_note: string;
+            /** Portfolios */
+            portfolios: string[];
+            /** Portfolio Details */
+            portfolio_details: components["schemas"]["PortfolioDetailOut"][];
+            /** Regions */
+            regions: string[];
+            intake_options: components["schemas"]["IntakeOptionsOut"];
+            /** Tiers */
+            tiers: components["schemas"]["TierOut"][];
+            /** Tier Dimensions */
+            tier_dimensions: string[];
+            /** Tier Questions */
+            tier_questions: components["schemas"]["TierQuestionOut"][];
+            /** Rag Rule */
+            rag_rule: {
+                [key: string]: string;
+            };
+            /** Approval Chains */
+            approval_chains: {
+                [key: string]: components["schemas"]["ApprovalChainStepOut"][];
+            };
+            /** Risk Acceptance Routes */
+            risk_acceptance_routes: {
+                [key: string]: string;
+            }[];
+            /** Risk Acceptance Then */
+            risk_acceptance_then: string[];
+            /** Ocet */
+            ocet: {
+                [key: string]: unknown;
+            };
+            /** Roles */
+            roles: components["schemas"]["RoleOut"][];
+            checklist_counts: components["schemas"]["ChecklistCountsOut"];
+            enums: components["schemas"]["EnumsOut"];
+            app: components["schemas"]["AppInfoOut"];
+        };
+        /** RegionReadinessOut */
+        RegionReadinessOut: {
+            /** Region */
+            region: string;
+            /** Average Readiness */
+            average_readiness: number | null;
+            /** Transitions */
+            transitions: number;
+        };
+        /** ReminderRuleIn */
+        ReminderRuleIn: {
+            /** Id */
+            id: string;
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Params
+             * @default {}
+             */
+            params: {
+                [key: string]: unknown;
+            };
+        };
+        /** ReminderRuleOut */
+        ReminderRuleOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Autonomous Eligible
+             * @default false
+             */
+            autonomous_eligible: boolean;
+            /**
+             * Params
+             * @default {}
+             */
+            params: {
+                [key: string]: unknown;
+            };
+        };
+        /** ReminderRulesIn */
+        ReminderRulesIn: {
+            /** Rules */
+            rules: components["schemas"]["ReminderRuleIn"][];
+        };
+        /** RequestInputsIn */
+        RequestInputsIn: {
+            /** Line Ids */
+            line_ids: number[];
+        };
+        /** RequestInputsOut */
+        RequestInputsOut: {
+            /** Draft Ids */
+            draft_ids: number[];
+            /** Lines Requested */
+            lines_requested: number[];
+        };
+        /** RiskCreateIn */
+        RiskCreateIn: {
+            /** Title */
+            title: string;
+            /**
+             * Rating
+             * @enum {string}
+             */
+            rating: "High" | "Medium" | "Low";
+            /**
+             * Decision
+             * @default
+             */
+            decision: string;
+            /**
+             * Item Ids
+             * @default []
+             */
+            item_ids: string[];
+        };
+        /** RiskOut */
+        RiskOut: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /**
+             * Rating
+             * @enum {string}
+             */
+            rating: "High" | "Medium" | "Low";
+            /** Decision */
+            decision: string;
+            /** Item Ids */
+            item_ids: string[];
+        };
+        /** RoleOut */
+        RoleOut: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+        };
+        /** RolesOut */
+        RolesOut: {
+            or_focal: components["schemas"]["PersonRef"] | null;
+            pm: components["schemas"]["PersonRef"] | null;
+            architect: components["schemas"]["PersonRef"] | null;
+            olm: components["schemas"]["PersonRef"] | null;
+            irm: components["schemas"]["PersonRef"] | null;
+        };
+        /** ScopeCountsOut */
+        ScopeCountsOut: {
+            /** Framework */
+            framework: number;
+            /** Ai Applicable */
+            ai_applicable: number;
+            /** Ai Excluded */
+            ai_excluded: number;
+            /** Golden Set Applies */
+            golden_set_applies: number;
+            /** Golden Set To Confirm */
+            golden_set_to_confirm: number;
+            /** Common */
+            common: number;
+            /** Total */
+            total: number;
+        };
+        /** ScopeDecisionIn */
+        ScopeDecisionIn: {
+            /** Item Id */
+            item_id: string;
+            /**
+             * Applies
+             * @enum {string}
+             */
+            applies: "Yes" | "No" | "To confirm";
+            /** Reason */
+            reason?: string | null;
+        };
+        /** ScopeOut */
+        ScopeOut: {
+            /** Transition Id */
+            transition_id: string;
+            /** Portfolio */
+            portfolio: string;
+            /** Focus Areas */
+            focus_areas: string[];
+            /** Golden Set */
+            golden_set: components["schemas"]["ScopeRowOut"][];
+            /** Common */
+            common: components["schemas"]["ScopeRowOut"][];
+            counts: components["schemas"]["ScopeCountsOut"];
+            tier_banner: components["schemas"]["TierBannerOut"] | null;
+            /** Recommendations */
+            recommendations: components["schemas"]["RecommendationOut"][];
+            /** Launched */
+            launched: boolean;
+        };
+        /** ScopeRowOut */
+        ScopeRowOut: {
+            /** Id */
+            id: string;
+            /** Requirement */
+            requirement: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "Mandatory" | "Portfolio" | "Common";
+            /** Gate */
+            gate: string;
+            /** Gate Short */
+            gate_short: string;
+            /** Owner Hint */
+            owner_hint: string;
+            /** Lens */
+            lens: string;
+            /** Lens Is Suggested */
+            lens_is_suggested: boolean;
+            /**
+             * Applies
+             * @enum {string}
+             */
+            applies: "Yes" | "No" | "To confirm";
+            /** Locked */
+            locked: boolean;
+            /** Reason */
+            reason?: string | null;
+        };
+        /** ScopeUpdateIn */
+        ScopeUpdateIn: {
+            /** Decisions */
+            decisions: components["schemas"]["ScopeDecisionIn"][];
+            /**
+             * Source
+             * @default human
+             * @enum {string}
+             */
+            source: "human" | "orion_recommendation";
+        };
+        /**
+         * ServiceNowProjectOut
+         * @description Prefill for the intake form (mock lookup).
+         */
+        ServiceNowProjectOut: {
+            /** Project Id */
+            project_id: string;
+            /** Name */
+            name: string;
+            /** Project Type */
+            project_type?: string | null;
+            /** Investment Type */
+            investment_type?: string | null;
+            /** Delivery Method */
+            delivery_method?: string | null;
+            /** Portfolio */
+            portfolio?: string | null;
+            /** Region */
+            region?: string | null;
+            /** Market */
+            market?: string | null;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Pm Name */
+            pm_name?: string | null;
+            /** Pm User Id */
+            pm_user_id?: string | null;
+        };
+        /** SiteIn */
+        SiteIn: {
+            /**
+             * Site Id
+             * @default
+             */
+            site_id: string;
+            /**
+             * Site Key
+             * @default
+             */
+            site_key: string;
+        };
+        /** SiteOut */
+        SiteOut: {
+            /** Site Id */
+            site_id: string;
+            /** Site Key */
+            site_key: string;
+        };
+        /** SourceIO */
+        SourceIO: {
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "diagram" | "recording" | "document";
+            /** Ref */
+            ref: string;
+        };
+        /** SupportApprovalOut */
+        SupportApprovalOut: {
+            /** Request Id */
+            request_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "Pending" | "Approved" | "Rejected" | "Cancelled";
+            /** Steps */
+            steps: components["schemas"]["app__schemas__approvals__ApprovalStepOut"][];
+        };
+        /** SupportInputsOut */
+        SupportInputsOut: {
+            /** Confluence Url */
+            confluence_url?: string | null;
+            confluence?: components["schemas"]["ConfluenceSummaryOut"] | null;
+            /**
+             * Files
+             * @default []
+             */
+            files: components["schemas"]["InputFileOut"][];
+        };
+        /** SupportModelListItemOut */
+        SupportModelListItemOut: {
+            /** Id */
+            id: number;
+            /** Transition Id */
+            transition_id: string;
+            /** Transition Name */
+            transition_name: string;
+            /** Portfolio */
+            portfolio: string;
+            /** Central App */
+            central_app: string;
+            /** Version */
+            version: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "Not started" | "Draft" | "In review" | "Agreed";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Pptx Available */
+            pptx_available: boolean;
+        };
+        /** SupportModelOut */
+        SupportModelOut: {
+            /** Id */
+            id: number | null;
+            /** Transition Id */
+            transition_id: string;
+            /** Transition Name */
+            transition_name: string;
+            /** Version */
+            version: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "Not started" | "Draft" | "In review" | "Agreed";
+            inputs: components["schemas"]["SupportInputsOut"];
+            landscape: components["schemas"]["LandscapeOut"] | null;
+            pptx: components["schemas"]["PptxInfoOut"] | null;
+            approval: components["schemas"]["SupportApprovalOut"] | null;
+            /** Can Edit */
+            can_edit: boolean;
+            /** Edit Denied Reason */
+            edit_denied_reason: string | null;
+            /**
+             * Info Note
+             * @default Orion doesn't join meetings. Upload the recording or transcript after the walkthrough.
+             */
+            info_note: string;
+            /**
+             * Linked Items
+             * @default []
+             */
+            linked_items: components["schemas"]["LinkedItemOut"][];
+        };
+        /** SupportTiersIO */
+        SupportTiersIO: {
+            /**
+             * L1
+             * @default
+             */
+            L1: string;
+            /**
+             * L2
+             * @default
+             */
+            L2: string;
+            /**
+             * L3
+             * @default
+             */
+            L3: string;
+        };
+        /** TierAssessmentOut */
+        TierAssessmentOut: {
+            /** Transition Id */
+            transition_id: string;
+            /** Answers */
+            answers: {
+                [key: string]: boolean;
+            };
+            /** Proposed Tier */
+            proposed_tier: number | null;
+            /** Confirmed Tier */
+            confirmed_tier: number | null;
+            /** Status */
+            status: string | null;
+            /** Rationale */
+            rationale: string[];
+            proposed_by: components["schemas"]["PersonRef"] | null;
+            confirmed_by_or_focal: components["schemas"]["PersonRef"] | null;
+            confirmed_by_irm: components["schemas"]["PersonRef"] | null;
+            /** Confirmed At */
+            confirmed_at: string | null;
+            /** Change Reason */
+            change_reason: string | null;
+            tier: components["schemas"]["TierCardOut"] | null;
+            /** Dimensions */
+            dimensions: string[];
+            /** Reassembly */
+            reassembly?: {
+                [key: string]: number;
+            } | null;
+        };
+        /** TierBannerOut */
+        TierBannerOut: {
+            /** Tier */
+            tier: number | null;
+            /** Status */
+            status: string | null;
+            /** Text */
+            text: string;
+        };
+        /**
+         * TierCardOut
+         * @description Tier definition card (from reference.json tiers).
+         */
+        TierCardOut: {
+            /** Tier */
+            tier: number;
+            /** Name */
+            name: string;
+            /** Definition */
+            definition: string;
+            /** Examples */
+            examples: string;
+            /** Builder Persona */
+            builder_persona: string;
+        };
+        /** TierConfirmIn */
+        TierConfirmIn: {
+            /** Tier */
+            tier: number;
+            /** Reason */
+            reason?: string | null;
+        };
+        /** TierInfoOut */
+        TierInfoOut: {
+            /** Proposed Tier */
+            proposed_tier: number | null;
+            /** Confirmed Tier */
+            confirmed_tier: number | null;
+            /** Status */
+            status: string | null;
+            /** Rationale */
+            rationale: string[];
+            proposed_by: components["schemas"]["PersonRef"] | null;
+            confirmed_by_or_focal: components["schemas"]["PersonRef"] | null;
+            confirmed_by_irm: components["schemas"]["PersonRef"] | null;
+            /** Confirmed At */
+            confirmed_at: string | null;
+            /** Change Reason */
+            change_reason: string | null;
+            /**
+             * Answers
+             * @default {}
+             */
+            answers: {
+                [key: string]: boolean;
+            };
+        };
+        /** TierOut */
+        TierOut: {
+            /** Tier */
+            tier: number;
+            /** Name */
+            name: string;
+            /** Definition */
+            definition: string;
+            /** Examples */
+            examples: string;
+            /** Builder Persona */
+            builder_persona: string;
+        };
+        /** TierProposalOut */
+        TierProposalOut: {
+            /** Proposed Tier */
+            proposed_tier: number;
+            /** Rationale */
+            rationale: string[];
+            tier: components["schemas"]["TierCardOut"];
+            /** Dimensions */
+            dimensions: string[];
+        };
+        /**
+         * TierProposeIn
+         * @description Inputs of the pure BR-011 rule. ``answers`` keys TQ1..TQ5 (missing key = false).
+         */
+        TierProposeIn: {
+            /** Audience */
+            audience?: string | null;
+            /** Write Actions */
+            write_actions?: string | null;
+            /** Sensitive Data */
+            sensitive_data?: string | null;
+            /** Answers */
+            answers?: {
+                [key: string]: boolean;
+            };
+        };
+        /** TierQuestionOut */
+        TierQuestionOut: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /** If Yes */
+            if_yes: string;
+        };
+        /**
+         * TierSetIn
+         * @description PUT /transitions/{id}/tier body. The server computes the proposal from the transition's
+         *     intake fields + ``answers``.
+         */
+        TierSetIn: {
+            /** Answers */
+            answers?: {
+                [key: string]: boolean;
+            };
+        };
+        /** TodayIn */
+        TodayIn: {
+            /** Date */
+            date?: string | null;
+        };
+        /** TodayOut */
+        TodayOut: {
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+            /** Override */
+            override?: string | null;
+            /** Seed Date */
+            seed_date?: string | null;
+        };
+        /** TransitionCreateIn */
+        TransitionCreateIn: {
+            /** Name */
+            name: string;
+            /** Servicenow Project Id */
+            servicenow_project_id?: string | null;
+            /** Project Type */
+            project_type: string;
+            /** Portfolio */
+            portfolio: string;
+            /** Region */
+            region: string;
+            /**
+             * Market
+             * @default
+             */
+            market: string;
+            /** Sites */
+            sites?: components["schemas"]["SiteIn"][];
+            /** Audience */
+            audience?: string | null;
+            /** Write Actions */
+            write_actions?: string | null;
+            /** Sensitive Data */
+            sensitive_data?: string | null;
+            /** Target Gate */
+            target_gate?: string | null;
+            /** Investment Type */
+            investment_type?: string | null;
+            /** Delivery Method */
+            delivery_method?: string | null;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Or Focal User Id */
+            or_focal_user_id: string;
+            /** Pm User Id */
+            pm_user_id?: string | null;
+            /** Architect User Id */
+            architect_user_id?: string | null;
+            /** Olm User Id */
+            olm_user_id?: string | null;
+            /** Irm User Id */
+            irm_user_id?: string | null;
+            /** Next Decision Date */
+            next_decision_date?: string | null;
+        };
+        /** TransitionDetailOut */
+        TransitionDetailOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Portfolio */
+            portfolio: string;
+            /** Region */
+            region: string;
+            /** Market */
+            market: string;
+            /** Project Type */
+            project_type: string;
+            /** Current Gate */
+            current_gate: string;
+            /** Current Gate Short */
+            current_gate_short: string;
+            /** Current Gate Type */
+            current_gate_type: string;
+            /** Risk Tier */
+            risk_tier: number | null;
+            /** Tier Status */
+            tier_status: string | null;
+            /** Status */
+            status: string;
+            /** Is Flagship */
+            is_flagship: boolean;
+            /** Autonomous Mode */
+            autonomous_mode: boolean;
+            /** Assessment Launched */
+            assessment_launched: boolean;
+            or_focal: components["schemas"]["PersonRef"];
+            /** Next Decision Date */
+            next_decision_date: string | null;
+            /** Days To Next Decision */
+            days_to_next_decision: number | null;
+            lens_readiness: components["schemas"]["LensValues"];
+            /** Overall Readiness */
+            overall_readiness: number;
+            /** Open Gaps */
+            open_gaps: number;
+            /** Critical Gaps */
+            critical_gaps: number;
+            /** Rag */
+            rag: string;
+            /** Blocker Note */
+            blocker_note: string | null;
+            /** Servicenow Project Id */
+            servicenow_project_id: string | null;
+            /** Description */
+            description: string;
+            /** Investment Type */
+            investment_type: string | null;
+            /** Delivery Method */
+            delivery_method: string | null;
+            /** Audience */
+            audience: string | null;
+            /** Write Actions */
+            write_actions: string | null;
+            /** Sensitive Data */
+            sensitive_data: string | null;
+            /** Target Gate */
+            target_gate: string | null;
+            /** Sites */
+            sites: components["schemas"]["SiteOut"][];
+            roles: components["schemas"]["RolesOut"];
+            /** Flavour Label */
+            flavour_label: string;
+            /** Requires Tiering */
+            requires_tiering: boolean;
+            tier: components["schemas"]["TierInfoOut"] | null;
+            /** Checklist Banner */
+            checklist_banner: string | null;
+            item_counts: components["schemas"]["ItemCountsOut"] | null;
+            /** Lenses */
+            lenses: components["schemas"]["LensCardOut"][];
+            /** Gates */
+            gates: components["schemas"]["GateStepOut"][];
+            /** Hypercare No Defects Confirmed */
+            hypercare_no_defects_confirmed: boolean;
+            /** Created At */
+            created_at: string | null;
+            created_by: components["schemas"]["PersonRef"] | null;
+        };
+        /**
+         * TransitionFilters
+         * @description Query filters shared by GET /transitions and GET /control-tower (spec §8.2: filters reflected in
+         *     the URL). Every filter is optional; all given filters must match (AND).
+         */
+        TransitionFilters: {
+            /** Portfolio */
+            portfolio?: string | null;
+            /** Region */
+            region?: string | null;
+            /**
+             * Gate
+             * @description Current gate code, e.g. SG4_ATD
+             */
+            gate?: string | null;
+            /**
+             * Rag
+             * @description Red | Amber | Green | Grey
+             */
+            rag?: string | null;
+            /**
+             * Type
+             * @description Project type, e.g. Agentic AI
+             */
+            type?: string | null;
+            /**
+             * Q
+             * @description Case-insensitive search in transition id, name, market and OR focal name
+             */
+            q?: string | null;
+            /**
+             * Decision Within Days
+             * @description Next decision date between today and today + N days
+             */
+            decision_within_days?: number | null;
+            /**
+             * Has Critical
+             * @description At least one open critical gap
+             */
+            has_critical?: boolean | null;
+            /**
+             * Compliance Below
+             * @description Compliance readiness strictly below N %
+             */
+            compliance_below?: number | null;
+            /**
+             * Mine
+             * @description Only transitions where the current user is OR focal, PM, Architect, OLM or IRM (Planner, Leadership and Admin: all transitions)
+             */
+            mine?: boolean | null;
+            /**
+             * Status
+             * @description Active | Closed
+             */
+            status?: string | null;
+        };
+        /**
+         * TransitionSummaryOut
+         * @description One register row. Readiness, gaps and RAG are computed live (BR-020, BR-021) – never stored.
+         */
+        TransitionSummaryOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Portfolio */
+            portfolio: string;
+            /** Region */
+            region: string;
+            /** Market */
+            market: string;
+            /** Project Type */
+            project_type: string;
+            /** Current Gate */
+            current_gate: string;
+            /** Current Gate Short */
+            current_gate_short: string;
+            /** Current Gate Type */
+            current_gate_type: string;
+            /** Risk Tier */
+            risk_tier: number | null;
+            /** Tier Status */
+            tier_status: string | null;
+            /** Status */
+            status: string;
+            /** Is Flagship */
+            is_flagship: boolean;
+            /** Autonomous Mode */
+            autonomous_mode: boolean;
+            /** Assessment Launched */
+            assessment_launched: boolean;
+            or_focal: components["schemas"]["PersonRef"];
+            /** Next Decision Date */
+            next_decision_date: string | null;
+            /** Days To Next Decision */
+            days_to_next_decision: number | null;
+            lens_readiness: components["schemas"]["LensValues"];
+            /** Overall Readiness */
+            overall_readiness: number;
+            /** Open Gaps */
+            open_gaps: number;
+            /** Critical Gaps */
+            critical_gaps: number;
+            /** Rag */
+            rag: string;
+            /** Blocker Note */
+            blocker_note: string | null;
+        };
+        /**
+         * TransitionUpdateIn
+         * @description PATCH: every field optional; only fields sent are changed (``model_fields_set``).
+         */
+        TransitionUpdateIn: {
+            /** Name */
+            name?: string | null;
+            /** Servicenow Project Id */
+            servicenow_project_id?: string | null;
+            /** Project Type */
+            project_type?: string | null;
+            /** Portfolio */
+            portfolio?: string | null;
+            /** Region */
+            region?: string | null;
+            /** Market */
+            market?: string | null;
+            /** Sites */
+            sites?: components["schemas"]["SiteIn"][] | null;
+            /** Audience */
+            audience?: string | null;
+            /** Write Actions */
+            write_actions?: string | null;
+            /** Sensitive Data */
+            sensitive_data?: string | null;
+            /** Target Gate */
+            target_gate?: string | null;
+            /** Investment Type */
+            investment_type?: string | null;
+            /** Delivery Method */
+            delivery_method?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Or Focal User Id */
+            or_focal_user_id?: string | null;
+            /** Pm User Id */
+            pm_user_id?: string | null;
+            /** Architect User Id */
+            architect_user_id?: string | null;
+            /** Olm User Id */
+            olm_user_id?: string | null;
+            /** Irm User Id */
+            irm_user_id?: string | null;
+            /** Next Decision Date */
+            next_decision_date?: string | null;
+            /** Blocker Note */
+            blocker_note?: string | null;
+        };
+        /** UserOut */
+        UserOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /** Role */
+            role: string;
+            /**
+             * Role Label
+             * @default
+             */
+            role_label: string;
+            /** Focal Label */
+            focal_label?: string | null;
+        };
+        /** ValidationError */
+        ValidationError: {
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
+        };
+        /** VarianceOut */
+        VarianceOut: {
+            /** Previous Version */
+            previous_version: number | null;
+            /** Total Abs */
+            total_abs: number;
+            /** Total Pct */
+            total_pct: number | null;
+            /** By Category */
+            by_category: components["schemas"]["VarianceRowOut"][];
+            /** By Line */
+            by_line: components["schemas"]["VarianceRowOut"][];
+        };
+        /** VarianceRowOut */
+        VarianceRowOut: {
+            /** Key */
+            key: string;
+            /** Category */
+            category: string;
+            /** Description */
+            description: string;
+            /** Previous Total */
+            previous_total: number;
+            /** Current Total */
+            current_total: number;
+            /** Abs Change */
+            abs_change: number;
+            /** Pct Change */
+            pct_change: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "added" | "removed" | "changed" | "same";
+        };
+        /**
+         * WorkItemOut
+         * @description One row of "My work": an item I own, an action I own, or an approval step waiting for me.
+         */
+        WorkItemOut: {
+            /** Kind */
+            kind: string;
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Transition Id */
+            transition_id: string;
+            /** Transition Name */
+            transition_name: string;
+            /** Status */
+            status: string;
+            /** Lens */
+            lens: string | null;
+            /** Gap Severity */
+            gap_severity: string | null;
+            /** Due Label */
+            due_label: string;
+            /** Due Date */
+            due_date: string | null;
+            /** Link */
+            link: string;
+        };
+        /** YearAmount */
+        YearAmount: {
+            /** Year */
+            year: number;
+            /** Amount */
+            amount: number;
+        };
+        /** ApprovalStepOut */
+        app__schemas__approvals__ApprovalStepOut: {
+            /** Step */
+            step: number;
+            /** Role */
+            role: string;
+            /** Label */
+            label: string;
+            approver: components["schemas"]["PersonRef"] | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "Waiting" | "Pending" | "Approved" | "Rejected" | "Cancelled";
+            /** Activated At */
+            activated_at: string | null;
+            /** Decided At */
+            decided_at: string | null;
+            decided_by: components["schemas"]["PersonRef"] | null;
+            /** Comment */
+            comment: string | null;
+            /**
+             * Waiting Days
+             * @default 0
+             */
+            waiting_days: number;
+        };
+        /** ApprovalStepOut */
+        app__schemas__gates__ApprovalStepOut: {
+            /** Step */
+            step: number;
+            /** Role */
+            role: string;
+            /** Label */
+            label: string;
+            approver?: components["schemas"]["PersonRef"] | null;
+            /** Status */
+            status: string;
+        };
     };
-    /** ApprovalChainStepOut */
-    ApprovalChainStepOut: {
-      /** Step */
-      step: number;
-      /** Role */
-      role: string;
-      /** Label */
-      label: string;
-    };
-    /**
-     * ChecklistCountsOut
-     * @description Active library sizes for the intake "Auto-scope" preview (spec §8.4).
-     */
-    ChecklistCountsOut: {
-      /** Framework */
-      framework: number;
-      /** Ai Playbook Total */
-      ai_playbook_total: number;
-      /** Ai Playbook By Tier */
-      ai_playbook_by_tier: {
-        [key: string]: number;
-      };
-      /** Common */
-      common: number;
-    };
-    /**
-     * EnumsOut
-     * @description Small vocabularies used by forms and filters.
-     */
-    EnumsOut: {
-      /** Severities */
-      severities: string[];
-      /** Evidence Types */
-      evidence_types: string[];
-      /** Evidence Statuses */
-      evidence_statuses: string[];
-      /** Action Statuses */
-      action_statuses: string[];
-      /** Action Priorities */
-      action_priorities: string[];
-      /** Condition Statuses */
-      condition_statuses: string[];
-      /** Exception Statuses */
-      exception_statuses: string[];
-      /** Risk Ratings */
-      risk_ratings: string[];
-      /** Defect Priorities */
-      defect_priorities: string[];
-      /** Defect Statuses */
-      defect_statuses: string[];
-      /** Actor Types */
-      actor_types: string[];
-      /** Draft Kinds */
-      draft_kinds: string[];
-      /** Approval Types */
-      approval_types: string[];
-      /** Applicability */
-      applicability: string[];
-      /** Item Sources */
-      item_sources: string[];
-    };
-    /** GateOut */
-    GateOut: {
-      /** Code */
-      code: string;
-      /** Order */
-      order: number;
-      /** Label */
-      label: string;
-      /** Short */
-      short: string;
-      /** Type */
-      type: string;
-    };
-    /** HTTPValidationError */
-    HTTPValidationError: {
-      /** Detail */
-      detail?: components['schemas']['ValidationError'][];
-    };
-    /** IntakeExtraFieldOut */
-    IntakeExtraFieldOut: {
-      /** Key */
-      key: string;
-      /** Label */
-      label: string;
-      /** Type */
-      type: string;
-      /** Required */
-      required: boolean;
-      /**
-       * Fields
-       * @default []
-       */
-      fields: {
-        [key: string]: unknown;
-      }[];
-    };
-    /** IntakeOptionsOut */
-    IntakeOptionsOut: {
-      /** Audience */
-      audience: string[];
-      /** Write Actions */
-      write_actions: string[];
-      /** Sensitive Data */
-      sensitive_data: string[];
-      /** Target Gate */
-      target_gate: string[];
-      /** Investment Type */
-      investment_type: string[];
-      /** Delivery Method */
-      delivery_method: string[];
-    };
-    /** LensOut */
-    LensOut: {
-      /** Code */
-      code: string;
-      /** Question */
-      question: string;
-      /** Owner Roles */
-      owner_roles: string[];
-      /** Signoff Role */
-      signoff_role: string;
-      /** Color Hint */
-      color_hint: string;
-    };
-    /** MeOut */
-    MeOut: {
-      user: components['schemas']['UserOut'];
-      /** Permissions */
-      permissions: string[];
-      /** Denied Reasons */
-      denied_reasons: {
-        [key: string]: string;
-      };
-    };
-    /** PortfolioDetailOut */
-    PortfolioDetailOut: {
-      /** Name */
-      name: string;
-      /** Code */
-      code: string;
-      /** Focus Areas */
-      focus_areas: string[];
-      /** Intake Extra Fields */
-      intake_extra_fields: components['schemas']['IntakeExtraFieldOut'][];
-      /** Golden Set Count */
-      golden_set_count: number;
-      /** Golden Set Mandatory Count */
-      golden_set_mandatory_count: number;
-    };
-    /** ProjectTypeOut */
-    ProjectTypeOut: {
-      /** Code */
-      code: string;
-      /** Checklists */
-      checklists: string[];
-      /** Requires Tiering */
-      requires_tiering: boolean;
-      /** Note */
-      note?: string | null;
-    };
-    /** ReferenceOut */
-    ReferenceOut: {
-      /** Gates */
-      gates: components['schemas']['GateOut'][];
-      /** Gate Outcomes */
-      gate_outcomes: {
-        [key: string]: string[];
-      };
-      /** Lenses */
-      lenses: components['schemas']['LensOut'][];
-      /** Item Statuses */
-      item_statuses: {
-        [key: string]: string[];
-      };
-      /** Done Statuses */
-      done_statuses: string[];
-      /** Na Statuses */
-      na_statuses: string[];
-      /** Gap Statuses */
-      gap_statuses: string[];
-      /** Design Effectiveness Options */
-      design_effectiveness_options: string[];
-      /** Project Types */
-      project_types: components['schemas']['ProjectTypeOut'][];
-      /** Flavour Rule Note */
-      flavour_rule_note: string;
-      /** Portfolios */
-      portfolios: string[];
-      /** Portfolio Details */
-      portfolio_details: components['schemas']['PortfolioDetailOut'][];
-      /** Regions */
-      regions: string[];
-      intake_options: components['schemas']['IntakeOptionsOut'];
-      /** Tiers */
-      tiers: components['schemas']['TierOut'][];
-      /** Tier Dimensions */
-      tier_dimensions: string[];
-      /** Tier Questions */
-      tier_questions: components['schemas']['TierQuestionOut'][];
-      /** Rag Rule */
-      rag_rule: {
-        [key: string]: string;
-      };
-      /** Approval Chains */
-      approval_chains: {
-        [key: string]: components['schemas']['ApprovalChainStepOut'][];
-      };
-      /** Risk Acceptance Routes */
-      risk_acceptance_routes: {
-        [key: string]: string;
-      }[];
-      /** Risk Acceptance Then */
-      risk_acceptance_then: string[];
-      /** Ocet */
-      ocet: {
-        [key: string]: unknown;
-      };
-      /** Roles */
-      roles: components['schemas']['RoleOut'][];
-      checklist_counts: components['schemas']['ChecklistCountsOut'];
-      enums: components['schemas']['EnumsOut'];
-      app: components['schemas']['AppInfoOut'];
-    };
-    /** RoleOut */
-    RoleOut: {
-      /** Code */
-      code: string;
-      /** Label */
-      label: string;
-    };
-    /** TierOut */
-    TierOut: {
-      /** Tier */
-      tier: number;
-      /** Name */
-      name: string;
-      /** Definition */
-      definition: string;
-      /** Examples */
-      examples: string;
-      /** Builder Persona */
-      builder_persona: string;
-    };
-    /** TierQuestionOut */
-    TierQuestionOut: {
-      /** Id */
-      id: string;
-      /** Text */
-      text: string;
-      /** If Yes */
-      if_yes: string;
-    };
-    /** UserOut */
-    UserOut: {
-      /** Id */
-      id: string;
-      /** Name */
-      name: string;
-      /** Email */
-      email: string;
-      /** Role */
-      role: string;
-      /**
-       * Role Label
-       * @default
-       */
-      role_label: string;
-      /** Focal Label */
-      focal_label?: string | null;
-    };
-    /** ValidationError */
-    ValidationError: {
-      /** Location */
-      loc: (string | number)[];
-      /** Message */
-      msg: string;
-      /** Error Type */
-      type: string;
-      /** Input */
-      input?: unknown;
-      /** Context */
-      ctx?: Record<string, never>;
-    };
-  };
-  responses: never;
-  parameters: never;
-  requestBodies: never;
-  headers: never;
-  pathItems: never;
+    responses: never;
+    parameters: never;
+    requestBodies: never;
+    headers: never;
+    pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-  get_reference_api_v1_reference_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    get_reference_api_v1_reference_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferenceOut"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    list_users_api_v1_users_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          'application/json': components['schemas']['ReferenceOut'];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"][];
+                };
+            };
         };
-      };
     };
-  };
-  list_users_api_v1_users_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    get_me_api_v1_me_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    list_transitions_api_v1_transitions_get: {
+        parameters: {
+            query?: {
+                portfolio?: string | null;
+                region?: string | null;
+                /** @description Current gate code, e.g. SG4_ATD */
+                gate?: string | null;
+                /** @description Red | Amber | Green | Grey */
+                rag?: string | null;
+                /** @description Project type, e.g. Agentic AI */
+                type?: string | null;
+                /** @description Case-insensitive search in transition id, name, market and OR focal name */
+                q?: string | null;
+                /** @description Next decision date between today and today + N days */
+                decision_within_days?: number | null;
+                /** @description At least one open critical gap */
+                has_critical?: boolean | null;
+                /** @description Compliance readiness strictly below N % */
+                compliance_below?: number | null;
+                /** @description Only transitions where the current user is OR focal, PM, Architect, OLM or IRM (Planner, Leadership and Admin: all transitions) */
+                mine?: boolean | null;
+                /** @description Active | Closed */
+                status?: string | null;
+            };
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          'application/json': components['schemas']['UserOut'][];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransitionSummaryOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-      };
     };
-  };
-  get_me_api_v1_me_get: {
-    parameters: {
-      query?: never;
-      header?: {
-        'X-Demo-User'?: string | null;
-      };
-      path?: never;
-      cookie?: never;
+    create_transition_api_v1_transitions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransitionCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransitionDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    get_transition_api_v1_transitions__transition_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
         };
-        content: {
-          'application/json': components['schemas']['MeOut'];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransitionDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['HTTPValidationError'];
-        };
-      };
     };
-  };
-  health_health_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    update_transition_api_v1_transitions__transition_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
         };
-        content: {
-          'application/json': {
-            [key: string]: string;
-          };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransitionUpdateIn"];
+            };
         };
-      };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransitionDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
     };
-  };
+    set_autonomous_mode_api_v1_transitions__transition_id__autonomous_mode_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutonomousModeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransitionDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_control_tower_api_v1_control_tower_get: {
+        parameters: {
+            query?: {
+                portfolio?: string | null;
+                region?: string | null;
+                /** @description Current gate code, e.g. SG4_ATD */
+                gate?: string | null;
+                /** @description Red | Amber | Green | Grey */
+                rag?: string | null;
+                /** @description Project type, e.g. Agentic AI */
+                type?: string | null;
+                /** @description Case-insensitive search in transition id, name, market and OR focal name */
+                q?: string | null;
+                /** @description Next decision date between today and today + N days */
+                decision_within_days?: number | null;
+                /** @description At least one open critical gap */
+                has_critical?: boolean | null;
+                /** @description Compliance readiness strictly below N % */
+                compliance_below?: number | null;
+                /** @description Only transitions where the current user is OR focal, PM, Architect, OLM or IRM (Planner, Leadership and Admin: all transitions) */
+                mine?: boolean | null;
+                /** @description Active | Closed */
+                status?: string | null;
+            };
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ControlTowerOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_dashboard_api_v1_dashboard_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    propose_tier_api_v1_tiering_propose_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TierProposeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TierProposalOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    propose_transition_tier_api_v1_transitions__transition_id__tier_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TierSetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TierAssessmentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_transition_tier_api_v1_transitions__transition_id__tier_confirm_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TierConfirmIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TierAssessmentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_ai_profile_api_v1_transitions__transition_id__ai_profile_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AIProfileOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_ai_profile_api_v1_transitions__transition_id__ai_profile_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AIProfileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AIProfileOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_scope_api_v1_transitions__transition_id__scope_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScopeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_scope_api_v1_transitions__transition_id__scope_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScopeUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScopeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    launch_assessment_api_v1_transitions__transition_id__launch_assessment_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LaunchOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_items_api_v1_transitions__transition_id__items_get: {
+        parameters: {
+            query?: {
+                /** @description Gate code. Default: the transition's current gate. Returns items due AT OR BEFORE this gate (GATE_ORDER) unless all_gates is true */
+                gate?: string | null;
+                /** @description Ignore the gate cut-off (every gate) */
+                all_gates?: boolean;
+                lens?: ("Business" | "Technical" | "Compliance") | null;
+                source?: ("FRAMEWORK" | "AI_PLAYBOOK" | "PORTFOLIO" | "COMMON") | null;
+                /** @description Exact item status, e.g. 'Gap' */
+                status?: string | null;
+                /** @description Owner user id */
+                owner?: string | null;
+                /** @description Only items owned by the current user */
+                mine?: boolean;
+                /** @description applies = Applies; excluded = Not applicable (tier / project type / portfolio / manual N/A); to_confirm = To confirm; all = everything */
+                applicability?: "applies" | "excluded" | "to_confirm" | "all";
+                /** @description Case-insensitive search in playbook id, title, description and owner name */
+                q?: string | null;
+            };
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemListOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_item_api_v1_items__item_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemPatchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_items_api_v1_items_bulk_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkItemsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkResultOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_evidence_api_v1_transitions__transition_id__evidence_get: {
+        parameters: {
+            query?: {
+                /** @description Playbook item id, e.g. S45-014 */
+                item?: string | null;
+                type?: ("Document" | "Link" | "Email sign-off" | "Recording" | "Generated") | null;
+                status?: ("Submitted" | "Accepted" | "Rejected") | null;
+            };
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_evidence_api_v1_transitions__transition_id__evidence_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_add_evidence_api_v1_transitions__transition_id__evidence_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_evidence_api_v1_evidence__evidence_id__review_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                evidence_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvidenceReviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_evidence_api_v1_evidence__evidence_id__download_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                evidence_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_actions_api_v1_transitions__transition_id__actions_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_action_api_v1_transitions__transition_id__actions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_action_api_v1_actions__action_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                action_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionPatchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_conditions_api_v1_transitions__transition_id__conditions_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConditionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_condition_endpoint_api_v1_transitions__transition_id__conditions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConditionCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConditionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_condition_api_v1_conditions__condition_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                condition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConditionPatchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConditionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_exceptions_api_v1_transitions__transition_id__exceptions_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExceptionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_exception_api_v1_transitions__transition_id__exceptions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExceptionCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExceptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_risks_api_v1_transitions__transition_id__risks_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RiskOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_risk_api_v1_transitions__transition_id__risks_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RiskCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RiskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_hypercare_api_v1_transitions__transition_id__defects_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HypercareOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_defect_api_v1_transitions__transition_id__defects_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefectCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_defect_api_v1_defects__defect_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                defect_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefectPatchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_no_defects_api_v1_transitions__transition_id__defects_confirm_none_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmNoDefectsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HypercareOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_eval_metrics_api_v1_transitions__transition_id__eval_metrics_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvalTableOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_eval_results_api_v1_transitions__transition_id__eval_results_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvalResultIn"][];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvalTableOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_eval_results_api_v1_transitions__transition_id__eval_results_import_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvalTableOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_readiness_api_v1_transitions__transition_id__readiness_get: {
+        parameters: {
+            query?: {
+                /** @description Gate code; default = current gate */
+                gate?: string | null;
+            };
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessCheckOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_gates_overview_api_v1_transitions__transition_id__gates_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GatesOverviewOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_stage_review_api_v1_transitions__transition_id__gates__gate__review_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+                gate: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GateReviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GateReviewOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_approval_api_v1_transitions__transition_id__gates__gate__request_approval_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+                gate: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GateApprovalRequestIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GateApprovalRequestOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_decision_api_v1_transitions__transition_id__gates__gate__decision_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+                gate: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GateDecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GateReviewOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_approvals_api_v1_approvals_get: {
+        parameters: {
+            query?: {
+                scope?: "mine" | "requested" | "all";
+                /** @description Pending|Approved|Rejected|Cancelled */
+                status?: string | null;
+            };
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalRequestOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_approval_api_v1_approvals__request_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalRequestOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_approval_step_api_v1_approvals__request_id__steps__step__approve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                request_id: string;
+                step: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApprovalDecisionIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalRequestOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_approval_step_api_v1_approvals__request_id__steps__step__reject_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                request_id: string;
+                step: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalRejectIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalRequestOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_ocet_api_v1_transitions__transition_id__ocet_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OcetOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    create_ocet_api_v1_transitions__transition_id__ocet_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OcetOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    save_lines_api_v1_ocet_versions__version_id__lines_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                version_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OcetSaveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OcetOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    submit_version_api_v1_ocet_versions__version_id__submit_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                version_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OcetOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    new_version_api_v1_transitions__transition_id__ocet_new_version_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OcetOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    request_inputs_api_v1_ocet_versions__version_id__request_inputs_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                version_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestInputsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequestInputsOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    compare_api_v1_ocet_compare_get: {
+        parameters: {
+            query: {
+                /** @description OcetVersion id (older) */
+                from: number;
+                /** @description OcetVersion id (newer) */
+                to: number;
+            };
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OcetCompareOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_support_model_api_v1_transitions__transition_id__support_model_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportModelOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_inputs_api_v1_transitions__transition_id__support_model_inputs_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_save_inputs_api_v1_transitions__transition_id__support_model_inputs_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportModelOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    confluence_fetch_api_v1_integrations_confluence_fetch_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfluenceFetchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfluencePageOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    generate_support_model_api_v1_transitions__transition_id__support_model_generate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                transition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    update_support_model_api_v1_support_models__support_model_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                support_model_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutLandscapeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportModelOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    send_support_model_for_review_api_v1_support_models__support_model_id__send_for_review_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                support_model_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportModelOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_pptx_api_v1_support_models__support_model_id__pptx_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                support_model_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PptxOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    draft_question_api_v1_support_models__support_model_id__questions__question_index__draft_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                support_model_id: number;
+                question_index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionDraftOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_support_models_api_v1_support_models_get: {
+        parameters: {
+            query?: {
+                /** @description Case-insensitive name filter */
+                q?: string | null;
+            };
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportModelListItemOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_insights_api_v1_orion_insights_get: {
+        parameters: {
+            query: {
+                portfolio?: string | null;
+                region?: string | null;
+                /** @description Current gate code, e.g. SG4_ATD */
+                gate?: string | null;
+                /** @description Red | Amber | Green | Grey */
+                rag?: string | null;
+                /** @description Project type, e.g. Agentic AI */
+                type?: string | null;
+                /** @description Case-insensitive search in transition id, name, market and OR focal name */
+                q?: string | null;
+                /** @description Next decision date between today and today + N days */
+                decision_within_days?: number | null;
+                /** @description At least one open critical gap */
+                has_critical?: boolean | null;
+                /** @description Compliance readiness strictly below N % */
+                compliance_below?: number | null;
+                /** @description Only transitions where the current user is OR focal, PM, Architect, OLM or IRM (Planner, Leadership and Admin: all transitions) */
+                mine?: boolean | null;
+                /** @description Active | Closed */
+                status?: string | null;
+                scope: "dashboard" | "control-tower" | "transition";
+                /** @description Transition id when scope=transition */
+                id?: string | null;
+            };
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_drafts_api_v1_orion_drafts_get: {
+        parameters: {
+            query?: {
+                status?: ("Draft" | "Sent" | "Discarded") | null;
+                /** @description Reminder|Chaser|Input request|... */
+                kind?: string | null;
+                transition_id?: string | null;
+            };
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    draft_approval_request_api_v1_orion_drafts_approval_request_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalRequestDraftIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    draft_chaser_api_v1_orion_drafts_chaser_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChaserDraftIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_draft_api_v1_orion_drafts__draft_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                draft_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_draft_api_v1_orion_drafts__draft_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                draft_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftPatchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_draft_endpoint_api_v1_orion_drafts__draft_id__send_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                draft_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftSendOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discard_draft_api_v1_orion_drafts__draft_id__discard_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                draft_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_outbox_api_v1_outbox_get: {
+        parameters: {
+            query?: {
+                channel?: ("Email" | "Teams") | null;
+                /** @description Messages whose related_ids contain this transition id */
+                transition_id?: string | null;
+            };
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutboxMessageOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_notifications_api_v1_notifications_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_all_notifications_api_v1_notifications_read_all_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_notification_api_v1_notifications__notification_id__read_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                notification_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_servicenow_project_api_v1_integrations_servicenow_projects__project_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceNowProjectOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_playbook_items_api_v1_admin_playbook_items_get: {
+        parameters: {
+            query?: {
+                /** @description FRAMEWORK|AI_PLAYBOOK|PORTFOLIO|COMMON */
+                source?: string | null;
+                /** @description Search id/title/description */
+                q?: string | null;
+                gate?: string | null;
+                lens?: string | null;
+                active?: boolean | null;
+            };
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybookItemAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_playbook_item_api_v1_admin_playbook_items__item_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybookItemAdminOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    update_playbook_item_api_v1_admin_playbook_items__item_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaybookItemUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybookItemAdminOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_flavour_rules_api_v1_admin_flavour_rules_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlavourRulesOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    put_flavour_rules_api_v1_admin_flavour_rules_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FlavourRulesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlavourRulesOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_golden_set_api_v1_admin_portfolios__name__golden_set_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoldenSetOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    put_golden_set_api_v1_admin_portfolios__name__golden_set_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoldenSetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoldenSetOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_eval_targets_api_v1_admin_eval_targets_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvalTargetsOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    put_eval_targets_api_v1_admin_eval_targets_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvalTargetsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvalTargetsOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_approval_chains_api_v1_admin_approval_chains_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalChainsOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    put_approval_chains_api_v1_admin_approval_chains_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalChainsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalChainsOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    list_reminder_rules_api_v1_admin_reminder_rules_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderRuleOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    put_reminder_rules_api_v1_admin_reminder_rules_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReminderRulesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderRuleOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    list_admin_users_api_v1_admin_users_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    demo_reset_api_v1_admin_demo_reset_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoResetOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_fast_forward_api_v1_admin_demo_fast_forward_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FastForwardIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FastForwardOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_get_today_api_v1_admin_demo_today_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodayOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_set_today_api_v1_admin_demo_today_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TodayIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodayOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    list_audit_api_v1_audit_get: {
+        parameters: {
+            query?: {
+                transition_id?: string | null;
+                /** @description Actor user id */
+                actor?: string | null;
+                actor_type?: ("Human" | "Workflow rule" | "Orion agent" | "System") | null;
+                /** @description Entity name, e.g. TransitionItem, Condition */
+                entity?: string | null;
+                /** @description Inclusive, by event date */
+                from?: string | null;
+                /** @description Inclusive, by event date */
+                to?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditPageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    health_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
 }

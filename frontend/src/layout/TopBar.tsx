@@ -14,12 +14,12 @@ import {
   MenuPopover,
   MenuTrigger,
   SearchBox,
-  Tooltip,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import { Alert20Regular, Sparkle20Regular } from '@fluentui/react-icons';
+import { Sparkle20Regular } from '@fluentui/react-icons';
 import { useAuth } from '../auth/useAuth';
+import { NotificationsBell } from '../features/notifications/NotificationsBell';
 import { useMe, useUsers } from '../features/users/api';
 import { chipStyle, roleBadgeColors } from '../theme/tokens';
 
@@ -80,9 +80,7 @@ export function TopBar(props: { orionOpen: boolean; onToggleOrion: () => void })
 
       <div className={s.spacer} />
 
-      <Tooltip content="Notifications" relationship="label">
-        <Button appearance="subtle" icon={<Alert20Regular />} aria-label="Notifications" />
-      </Tooltip>
+      <NotificationsBell />
 
       <Button
         appearance={props.orionOpen ? 'primary' : 'secondary'}
