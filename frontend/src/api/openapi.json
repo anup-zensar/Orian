@@ -1,0 +1,926 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Orion – Operate Readiness Agent API",
+    "description": "Demo API. Every external system and AI capability is a mock behind an interface.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/reference": {
+      "get": {
+        "tags": ["reference"],
+        "summary": "Get Reference",
+        "operationId": "get_reference_api_v1_reference_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenceOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "tags": ["users"],
+        "summary": "List Users",
+        "operationId": "list_users_api_v1_users_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UserOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Users Api V1 Users Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "tags": ["users"],
+        "summary": "Get Me",
+        "operationId": "get_me_api_v1_me_get",
+        "parameters": [
+          {
+            "name": "X-Demo-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AppInfoOut": {
+        "properties": {
+          "demo_mode": {
+            "type": "boolean",
+            "title": "Demo Mode"
+          },
+          "ai_mode": {
+            "type": "string",
+            "title": "Ai Mode"
+          },
+          "mail_mode": {
+            "type": "string",
+            "title": "Mail Mode"
+          },
+          "orion_mailbox": {
+            "type": "string",
+            "title": "Orion Mailbox"
+          }
+        },
+        "type": "object",
+        "required": ["demo_mode", "ai_mode", "mail_mode", "orion_mailbox"],
+        "title": "AppInfoOut"
+      },
+      "ApprovalChainStepOut": {
+        "properties": {
+          "step": {
+            "type": "integer",
+            "title": "Step"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": ["step", "role", "label"],
+        "title": "ApprovalChainStepOut"
+      },
+      "ChecklistCountsOut": {
+        "properties": {
+          "framework": {
+            "type": "integer",
+            "title": "Framework"
+          },
+          "ai_playbook_total": {
+            "type": "integer",
+            "title": "Ai Playbook Total"
+          },
+          "ai_playbook_by_tier": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Ai Playbook By Tier"
+          },
+          "common": {
+            "type": "integer",
+            "title": "Common"
+          }
+        },
+        "type": "object",
+        "required": ["framework", "ai_playbook_total", "ai_playbook_by_tier", "common"],
+        "title": "ChecklistCountsOut",
+        "description": "Active library sizes for the intake \"Auto-scope\" preview (spec §8.4)."
+      },
+      "EnumsOut": {
+        "properties": {
+          "severities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Severities"
+          },
+          "evidence_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Types"
+          },
+          "evidence_statuses": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Statuses"
+          },
+          "action_statuses": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Action Statuses"
+          },
+          "action_priorities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Action Priorities"
+          },
+          "condition_statuses": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Condition Statuses"
+          },
+          "exception_statuses": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Exception Statuses"
+          },
+          "risk_ratings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Risk Ratings"
+          },
+          "defect_priorities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Defect Priorities"
+          },
+          "defect_statuses": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Defect Statuses"
+          },
+          "actor_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Actor Types"
+          },
+          "draft_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Draft Kinds"
+          },
+          "approval_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Approval Types"
+          },
+          "applicability": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Applicability"
+          },
+          "item_sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Item Sources"
+          }
+        },
+        "type": "object",
+        "required": [
+          "severities",
+          "evidence_types",
+          "evidence_statuses",
+          "action_statuses",
+          "action_priorities",
+          "condition_statuses",
+          "exception_statuses",
+          "risk_ratings",
+          "defect_priorities",
+          "defect_statuses",
+          "actor_types",
+          "draft_kinds",
+          "approval_types",
+          "applicability",
+          "item_sources"
+        ],
+        "title": "EnumsOut",
+        "description": "Small vocabularies used by forms and filters."
+      },
+      "GateOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "order": {
+            "type": "integer",
+            "title": "Order"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "short": {
+            "type": "string",
+            "title": "Short"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": ["code", "order", "label", "short", "type"],
+        "title": "GateOut"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "IntakeExtraFieldOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "required": {
+            "type": "boolean",
+            "title": "Required"
+          },
+          "fields": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Fields",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": ["key", "label", "type", "required"],
+        "title": "IntakeExtraFieldOut"
+      },
+      "IntakeOptionsOut": {
+        "properties": {
+          "audience": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Audience"
+          },
+          "write_actions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Write Actions"
+          },
+          "sensitive_data": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sensitive Data"
+          },
+          "target_gate": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Target Gate"
+          },
+          "investment_type": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Investment Type"
+          },
+          "delivery_method": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Delivery Method"
+          }
+        },
+        "type": "object",
+        "required": [
+          "audience",
+          "write_actions",
+          "sensitive_data",
+          "target_gate",
+          "investment_type",
+          "delivery_method"
+        ],
+        "title": "IntakeOptionsOut"
+      },
+      "LensOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question"
+          },
+          "owner_roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Owner Roles"
+          },
+          "signoff_role": {
+            "type": "string",
+            "title": "Signoff Role"
+          },
+          "color_hint": {
+            "type": "string",
+            "title": "Color Hint"
+          }
+        },
+        "type": "object",
+        "required": ["code", "question", "owner_roles", "signoff_role", "color_hint"],
+        "title": "LensOut"
+      },
+      "MeOut": {
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserOut"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permissions"
+          },
+          "denied_reasons": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Denied Reasons"
+          }
+        },
+        "type": "object",
+        "required": ["user", "permissions", "denied_reasons"],
+        "title": "MeOut"
+      },
+      "PortfolioDetailOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "focus_areas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Focus Areas"
+          },
+          "intake_extra_fields": {
+            "items": {
+              "$ref": "#/components/schemas/IntakeExtraFieldOut"
+            },
+            "type": "array",
+            "title": "Intake Extra Fields"
+          },
+          "golden_set_count": {
+            "type": "integer",
+            "title": "Golden Set Count"
+          },
+          "golden_set_mandatory_count": {
+            "type": "integer",
+            "title": "Golden Set Mandatory Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "code",
+          "focus_areas",
+          "intake_extra_fields",
+          "golden_set_count",
+          "golden_set_mandatory_count"
+        ],
+        "title": "PortfolioDetailOut"
+      },
+      "ProjectTypeOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "checklists": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Checklists"
+          },
+          "requires_tiering": {
+            "type": "boolean",
+            "title": "Requires Tiering"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": ["code", "checklists", "requires_tiering"],
+        "title": "ProjectTypeOut"
+      },
+      "ReferenceOut": {
+        "properties": {
+          "gates": {
+            "items": {
+              "$ref": "#/components/schemas/GateOut"
+            },
+            "type": "array",
+            "title": "Gates"
+          },
+          "gate_outcomes": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Gate Outcomes"
+          },
+          "lenses": {
+            "items": {
+              "$ref": "#/components/schemas/LensOut"
+            },
+            "type": "array",
+            "title": "Lenses"
+          },
+          "item_statuses": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Item Statuses"
+          },
+          "done_statuses": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Done Statuses"
+          },
+          "na_statuses": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Na Statuses"
+          },
+          "gap_statuses": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Gap Statuses"
+          },
+          "design_effectiveness_options": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Design Effectiveness Options"
+          },
+          "project_types": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectTypeOut"
+            },
+            "type": "array",
+            "title": "Project Types"
+          },
+          "flavour_rule_note": {
+            "type": "string",
+            "title": "Flavour Rule Note"
+          },
+          "portfolios": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Portfolios"
+          },
+          "portfolio_details": {
+            "items": {
+              "$ref": "#/components/schemas/PortfolioDetailOut"
+            },
+            "type": "array",
+            "title": "Portfolio Details"
+          },
+          "regions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Regions"
+          },
+          "intake_options": {
+            "$ref": "#/components/schemas/IntakeOptionsOut"
+          },
+          "tiers": {
+            "items": {
+              "$ref": "#/components/schemas/TierOut"
+            },
+            "type": "array",
+            "title": "Tiers"
+          },
+          "tier_dimensions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tier Dimensions"
+          },
+          "tier_questions": {
+            "items": {
+              "$ref": "#/components/schemas/TierQuestionOut"
+            },
+            "type": "array",
+            "title": "Tier Questions"
+          },
+          "rag_rule": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Rag Rule"
+          },
+          "approval_chains": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/ApprovalChainStepOut"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Approval Chains"
+          },
+          "risk_acceptance_routes": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Risk Acceptance Routes"
+          },
+          "risk_acceptance_then": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Risk Acceptance Then"
+          },
+          "ocet": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Ocet"
+          },
+          "roles": {
+            "items": {
+              "$ref": "#/components/schemas/RoleOut"
+            },
+            "type": "array",
+            "title": "Roles"
+          },
+          "checklist_counts": {
+            "$ref": "#/components/schemas/ChecklistCountsOut"
+          },
+          "enums": {
+            "$ref": "#/components/schemas/EnumsOut"
+          },
+          "app": {
+            "$ref": "#/components/schemas/AppInfoOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "gates",
+          "gate_outcomes",
+          "lenses",
+          "item_statuses",
+          "done_statuses",
+          "na_statuses",
+          "gap_statuses",
+          "design_effectiveness_options",
+          "project_types",
+          "flavour_rule_note",
+          "portfolios",
+          "portfolio_details",
+          "regions",
+          "intake_options",
+          "tiers",
+          "tier_dimensions",
+          "tier_questions",
+          "rag_rule",
+          "approval_chains",
+          "risk_acceptance_routes",
+          "risk_acceptance_then",
+          "ocet",
+          "roles",
+          "checklist_counts",
+          "enums",
+          "app"
+        ],
+        "title": "ReferenceOut"
+      },
+      "RoleOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": ["code", "label"],
+        "title": "RoleOut"
+      },
+      "TierOut": {
+        "properties": {
+          "tier": {
+            "type": "integer",
+            "title": "Tier"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "definition": {
+            "type": "string",
+            "title": "Definition"
+          },
+          "examples": {
+            "type": "string",
+            "title": "Examples"
+          },
+          "builder_persona": {
+            "type": "string",
+            "title": "Builder Persona"
+          }
+        },
+        "type": "object",
+        "required": ["tier", "name", "definition", "examples", "builder_persona"],
+        "title": "TierOut"
+      },
+      "TierQuestionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "if_yes": {
+            "type": "string",
+            "title": "If Yes"
+          }
+        },
+        "type": "object",
+        "required": ["id", "text", "if_yes"],
+        "title": "TierQuestionOut"
+      },
+      "UserOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "role_label": {
+            "type": "string",
+            "title": "Role Label",
+            "default": ""
+          },
+          "focal_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Focal Label"
+          }
+        },
+        "type": "object",
+        "required": ["id", "name", "email", "role"],
+        "title": "UserOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": ["loc", "msg", "type"],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

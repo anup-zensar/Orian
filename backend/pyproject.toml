@@ -1,0 +1,30 @@
+[project]
+name = "orion-backend"
+version = "0.1.0"
+description = "Orion – Operate Readiness Agent (demo backend)"
+requires-python = ">=3.14"
+
+[tool.black]
+line-length = 100
+# Conservative syntax target: keeps code familiar (e.g. parenthesised except); runtime is 3.14+.
+target-version = ["py313"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = [".venv", "app/storage"]
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, I isort, B bugbear, UP pyupgrade, S bandit (security), SIM simplify
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM"]
+# E501: black owns line length; B008: FastAPI Depends() defaults
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S105", "S106", "S108"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning:apscheduler.*"]

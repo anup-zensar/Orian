@@ -1,0 +1,32 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    { "type": "TextBlock", "text": "${title}", "weight": "Bolder", "size": "Medium", "wrap": true },
+    { "type": "TextBlock", "text": "${transition_name} · ${subject}", "isSubtle": true, "spacing": "None", "wrap": true },
+    {
+      "type": "FactSet",
+      "facts": [{ "$data": "${facts}", "title": "${title}", "value": "${value}" }]
+    },
+    { "type": "TextBlock", "text": "Step ${step} of ${step_count}: ${step_label}", "size": "Small", "wrap": true },
+    { "type": "TextBlock", "text": "Orion recommends and drafts. People decide.", "isSubtle": true, "size": "Small", "wrap": true }
+  ],
+  "actions": [
+    {
+      "type": "Action.Execute",
+      "title": "Approve",
+      "verb": "approve",
+      "style": "positive",
+      "data": { "request_id": "${request_id}", "step": "${step}" }
+    },
+    {
+      "type": "Action.Execute",
+      "title": "Reject",
+      "verb": "reject",
+      "style": "destructive",
+      "data": { "request_id": "${request_id}", "step": "${step}" }
+    },
+    { "type": "Action.OpenUrl", "title": "Open in Orion", "url": "${deep_link}" }
+  ]
+}

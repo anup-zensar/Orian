@@ -1,0 +1,15 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    { "type": "TextBlock", "text": "Reminder: ${count} item(s) need your attention", "weight": "Bolder", "size": "Medium", "wrap": true },
+    { "type": "TextBlock", "text": "Hi ${owner_name}, these items for ${transition_name} are due by ${gate_short} (decision in ${days} days).", "wrap": true },
+    {
+      "type": "Container",
+      "items": [{ "$data": "${items}", "type": "TextBlock", "text": "• ${title} (due ${due_gate})", "wrap": true, "spacing": "Small" }]
+    },
+    { "type": "TextBlock", "text": "Sent by Orion on behalf of ${or_focal_name}.", "isSubtle": true, "size": "Small", "wrap": true }
+  ],
+  "actions": [{ "type": "Action.OpenUrl", "title": "Open my items", "url": "${deep_link}" }]
+}

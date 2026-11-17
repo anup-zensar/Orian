@@ -1,0 +1,16 @@
+# Normalise line endings; keep shell scripts/Makefile LF and PowerShell CRLF on every platform.
+* text=auto
+*.sh text eol=lf
+Makefile text eol=lf
+*.ps1 text eol=crlf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.pptx binary
+*.xlsx binary
+*.docx binary
+*.zip binary
+*.mp4 binary
+*.m4a binary

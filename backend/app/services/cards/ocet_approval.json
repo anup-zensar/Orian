@@ -1,0 +1,31 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    { "type": "TextBlock", "text": "OCET approval request – ${transition_name}", "weight": "Bolder", "size": "Medium", "wrap": true },
+    { "type": "TextBlock", "text": "Version ${version} · 5-year total ${total_5y} ${currency} · ${variance_text}", "isSubtle": true, "spacing": "None", "wrap": true },
+    {
+      "type": "FactSet",
+      "facts": [{ "$data": "${top_categories}", "title": "${category}", "value": "${amount}" }]
+    },
+    { "type": "TextBlock", "text": "Step ${step} of ${step_count}: ${step_label}", "size": "Small", "wrap": true }
+  ],
+  "actions": [
+    {
+      "type": "Action.Execute",
+      "title": "Approve",
+      "verb": "approve",
+      "style": "positive",
+      "data": { "request_id": "${request_id}", "step": "${step}" }
+    },
+    {
+      "type": "Action.Execute",
+      "title": "Reject",
+      "verb": "reject",
+      "style": "destructive",
+      "data": { "request_id": "${request_id}", "step": "${step}" }
+    },
+    { "type": "Action.OpenUrl", "title": "Open in Orion", "url": "${deep_link}" }
+  ]
+}
