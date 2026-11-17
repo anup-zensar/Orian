@@ -207,12 +207,9 @@ def test_ai_service_methods_implemented_and_later_milestones_pending():
         lambda: ai.recommend_actions([]),
         lambda: ai.recommend_applicability([], {}),
         lambda: ai.draft_message("Chaser", {}),
+        lambda: ai.explain_ocet_change({}),
     ):
         assert call() is not None
-    for call in (
-        lambda: ai.leadership_update({}),
-        lambda: ai.explain_ocet_change({}),
-        lambda: MockSupportModelGenerator().generate({}, {}),
-    ):
+    for call in (lambda: ai.leadership_update({}),):
         with pytest.raises(NotImplementedError, match=r"is implemented in M\d"):
             call()

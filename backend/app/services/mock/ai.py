@@ -297,7 +297,9 @@ class MockAIService:
         raise NotImplementedError("leadership_update is implemented in M8")
 
     def explain_ocet_change(self, diff: Mapping[str, Any]) -> str:
-        raise NotImplementedError("explain_ocet_change is implemented in M6")
+        from app.services.mock import ai_ocet  # M6 OCET module
+
+        return ai_ocet.explain_ocet_change(diff)
 
     def chat(self, message: str, context: Mapping[str, Any]) -> dict[str, Any]:
         raise NotImplementedError("chat is implemented in M8")
