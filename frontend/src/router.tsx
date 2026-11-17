@@ -12,19 +12,28 @@ const named = <T extends Record<string, ComponentType>>(load: () => Promise<T>, 
 
 const placeholders = () => import('./pages/placeholders');
 const AdminPage = named(placeholders, 'AdminPage');
-const ApprovalsPage = named(placeholders, 'ApprovalsPage');
-const AuditPage = named(placeholders, 'AuditPage');
-const ControlTowerPage = named(placeholders, 'ControlTowerPage');
-const DashboardPage = named(placeholders, 'DashboardPage');
-const DraftsPage = named(placeholders, 'DraftsPage');
+const ApprovalsPage = named(() => import('./features/approvals/ApprovalsPage'), 'ApprovalsPage');
+const AuditPage = named(() => import('./features/audit/AuditPage'), 'AuditPage');
+const DraftsPage = named(() => import('./features/drafts/DraftsPage'), 'DraftsPage');
 const LeadershipUpdatesPage = named(placeholders, 'LeadershipUpdatesPage');
-const NewTransitionPage = named(placeholders, 'NewTransitionPage');
+const NewTransitionPage = named(
+  () => import('./features/intake/NewTransitionPage'),
+  'NewTransitionPage',
+);
 const OrionFullPage = named(placeholders, 'OrionFullPage');
-const OutboxPage = named(placeholders, 'OutboxPage');
-const ScopePage = named(placeholders, 'ScopePage');
+const OutboxPage = named(() => import('./features/outbox/OutboxPage'), 'OutboxPage');
+const ScopePage = named(() => import('./features/intake/ScopePage'), 'ScopePage');
 const SupportModelsPage = named(placeholders, 'SupportModelsPage');
-const TieringPage = named(placeholders, 'TieringPage');
-const TransitionsPage = named(placeholders, 'TransitionsPage');
+const TieringPage = named(() => import('./features/intake/TieringPage'), 'TieringPage');
+const DashboardPage = named(() => import('./features/dashboard/DashboardPage'), 'DashboardPage');
+const ControlTowerPage = named(
+  () => import('./features/controlTower/ControlTowerPage'),
+  'ControlTowerPage',
+);
+const TransitionsPage = named(
+  () => import('./features/transitions/TransitionsPage'),
+  'TransitionsPage',
+);
 const NotFoundPage = named(() => import('./pages/NotFoundPage'), 'NotFoundPage');
 const RedirectToOverview = named(
   () => import('./features/transitions/RedirectToOverview'),
