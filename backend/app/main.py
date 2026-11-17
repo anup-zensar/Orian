@@ -39,6 +39,7 @@ from app.routers import (
     intake,
     integrations,
     items,
+    leadership,
     notifications,
     ocet,
     orion,
@@ -84,6 +85,7 @@ ROUTERS = (
     integrations,
     admin,
     audit,
+    leadership,
 )
 
 # Windows consoles may not encode "→" etc.; never let a log line crash a request.
@@ -129,7 +131,10 @@ async def api_error_handler(_request: Request, exc: ApiError) -> JSONResponse:
 
 @app.exception_handler(RequestValidationError)
 async def validation_error_handler(_request: Request, exc: RequestValidationError) -> JSONResponse:
-    errors = jsonable_encoder(exc.errors())
+    # "input"/"ctx" can hold NaN (not JSON-serialisable) or huge echoes of the request.
+    errors = jsonable_encoder(
+        [{k: v for k, v in e.items() if k not in ("input", "ctx")} for e in exc.errors()]
+    )
     reasons = []
     for err in errors:
         loc = [str(part) for part in err.get("loc", []) if part not in ("body", "query", "path")]
@@ -137,6 +142,15 @@ async def validation_error_handler(_request: Request, exc: RequestValidationErro
     return JSONResponse(
         status_code=422,
         content={"detail": "Validation failed", "reasons": reasons, "errors": errors},
+    )
+
+
+@app.exception_handler(NotImplementedError)
+async def not_implemented_handler(_request: Request, exc: NotImplementedError) -> JSONResponse:
+    """Milestone stubs answer 501 instead of an unhandled 500."""
+    return JSONResponse(
+        status_code=501,
+        content={"detail": f"Not implemented yet ({exc})", "reasons": []},
     )
 
 

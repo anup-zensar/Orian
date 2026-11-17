@@ -3982,7 +3982,7 @@
           "ocet"
         ],
         "summary": "Get Ocet",
-        "description": "Full OCET view of the CURRENT version (any authenticated role).\n\nReturns estimate, years, all versions, current version with can_edit / can_submit flags and\nreasons, lines with computed yearly amounts, category totals, grand total by year, horizon\ntotal + label (\"1.92M\"), variance vs the previous version, approval chain (None until\nsubmitted), Orion explanation (AIService.explain_ocet_change), worked example, info note and\nreference lists. 404 when the transition does not exist OR has no OCET yet (the UI then offers\n``POST /transitions/{transition_id}/ocet``).",
+        "description": "Full OCET view of the CURRENT version (any authenticated role). 404 when the transition\ndoes not exist or has no OCET yet (the UI then offers ``POST /transitions/{id}/ocet``).",
         "operationId": "get_ocet_api_v1_transitions__transition_id__ocet_get",
         "parameters": [
           {
@@ -4069,7 +4069,7 @@
           "ocet"
         ],
         "summary": "Create Ocet",
-        "description": "Create an empty estimate: start_year = today.year + 1, horizon 5, currency USD, v1 Draft, no\nlines. 403 without EDIT_OCET, 404 unknown transition, 409 when an estimate already exists.",
+        "description": "Create an empty estimate (v1 Draft). 403 without EDIT_OCET, 404 unknown transition, 409\nwhen an estimate already exists.",
         "operationId": "create_ocet_api_v1_transitions__transition_id__ocet_post",
         "parameters": [
           {
@@ -4158,7 +4158,7 @@
           "ocet"
         ],
         "summary": "Save Lines",
-        "description": "Bulk save lines of a version (spec 9). 403 without EDIT_OCET; 404 unknown version; 409 when\nthe version is not Draft / Inputs pending (reason: create a new version); 422 for unknown\ncategory / pricing basis, growth outside [-100, 1000], negative base, override year outside the\nhorizon, missing ``override_reason`` while ``year_overrides`` is non-empty, or line / deleted ids\nthat do not belong to the version. Status becomes \"Inputs pending\" when any base amount is\nmissing, \"Draft\" otherwise. Returns the refreshed OcetOut (current version of the transition).",
+        "description": "Bulk save lines of a version (spec 9). 409 when not Draft / Inputs pending; 422 for\nvalidation failures. Returns the refreshed OcetOut.",
         "operationId": "save_lines_api_v1_ocet_versions__version_id__lines_put",
         "parameters": [
           {
@@ -4167,6 +4167,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 4611686018427387904,
+              "minimum": 1,
               "title": "Version Id"
             }
           },
@@ -4257,7 +4259,7 @@
           "ocet"
         ],
         "summary": "Submit Version",
-        "description": "Submit for approval: creates the OCET chain Planner -> OLM (approvals.create_approval_request,\ntype \"OCET\", subject_id = version id). 403 without EDIT_OCET; 404 unknown version; 409 with\n``reasons`` when status is not Draft, there are no lines, or any base amount is missing (one\nreason per missing line). Version -> Submitted, previous version -> Superseded.",
+        "description": "Submit for approval: chain Planner -> OLM. 409 with ``reasons`` when blocked.",
         "operationId": "submit_version_api_v1_ocet_versions__version_id__submit_post",
         "parameters": [
           {
@@ -4266,6 +4268,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 4611686018427387904,
+              "minimum": 1,
               "title": "Version Id"
             }
           },
@@ -4346,7 +4350,7 @@
           "ocet"
         ],
         "summary": "New Version",
-        "description": "Create vN+1 (Draft) by copying the current version's lines. 403 without EDIT_OCET; 404 no\nestimate; 409 when the current version is still editable or its approval chain is running.\nThe previous version becomes Superseded only when vN+1 is submitted.",
+        "description": "Create vN+1 (Draft) by copying the current version's lines.",
         "operationId": "new_version_api_v1_transitions__transition_id__ocet_new_version_post",
         "parameters": [
           {
@@ -4435,7 +4439,7 @@
           "ocet"
         ],
         "summary": "Request Inputs",
-        "description": "Request missing inputs: lines -> input_status Requested (input_requested_at = now) and one\nOrion draft per input owner with a deep link to /transitions/<id>/ocet (never sent\nautomatically). 403 without EDIT_OCET; 404 unknown version; 409 when the version is not\neditable; 422 for empty / foreign line ids or lines that already have a base amount.",
+        "description": "Request missing inputs: lines -> Requested and one Orion draft per input owner (never sent\nautomatically).",
         "operationId": "request_inputs_api_v1_ocet_versions__version_id__request_inputs_post",
         "parameters": [
           {
@@ -4444,6 +4448,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 4611686018427387904,
+              "minimum": 1,
               "title": "Version Id"
             }
           },
@@ -4534,7 +4540,7 @@
           "ocet"
         ],
         "summary": "Compare",
-        "description": "Diff of two versions of the same estimate: rows by line (matched by line_key, status\nadded / removed / changed / same) and by category, plus totals. 404 unknown version id; 422\nwhen the versions belong to different estimates.",
+        "description": "Diff of two versions of the same estimate. 404 unknown id; 422 different estimates.",
         "operationId": "compare_api_v1_ocet_compare_get",
         "parameters": [
           {
@@ -4543,6 +4549,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 4611686018427387904,
+              "minimum": 1,
               "description": "OcetVersion id (older)",
               "title": "From"
             },
@@ -4554,6 +4562,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 4611686018427387904,
+              "minimum": 1,
               "description": "OcetVersion id (newer)",
               "title": "To"
             },
@@ -4961,6 +4971,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 4611686018427387904,
+              "minimum": 1,
               "title": "Support Model Id"
             }
           },
@@ -5060,6 +5072,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 4611686018427387904,
+              "minimum": 1,
               "title": "Support Model Id"
             }
           },
@@ -5149,6 +5163,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 4611686018427387904,
+              "minimum": 1,
               "title": "Support Model Id"
             }
           },
@@ -5238,6 +5254,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 4611686018427387904,
+              "minimum": 1,
               "title": "Support Model Id"
             }
           },
@@ -5247,6 +5265,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 100000,
+              "minimum": 0,
               "title": "Question Index"
             }
           },
@@ -5655,6 +5675,503 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InsightsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orion/chat": {
+      "post": {
+        "tags": [
+          "orion"
+        ],
+        "summary": "Chat",
+        "description": "Orion assistant (FR-090). Exactly one of ``message`` / ``quick_action`` (400 otherwise).\nQuick action without ``form_data`` -> its form; with ``form_data`` -> the result cards, per\n``domain/orion_chat.py``. Free text -> keyword intents (status, blocking, owner, glossary, red\ntransitions) or a fallback listing the quick actions. Never writes statuses/decisions (NFR-04);\nrecommendations come back as ``proposal`` messages. 404 unknown transition, 400 invalid gate,\n403 when a form submit needs a permission the user lacks (RUN_REMINDERS for\ndraft_owner_reminders, GENERATE_LEADERSHIP_UPDATE for create_leadership_update). Every message\nhas generated_by \"Orion agent\".\n\nNatural language: free text that is not a read-only intent is routed to the intent catalog\n(``domain/nl_intake.py``): a description of a new transition -> proposal ``create_transition``;\ncommands such as \"ask Tom to ... by Friday\" -> ``create_action`` / ``draft_chaser`` /\n``update_item`` / ... proposal cards; decisions, sending, deleting and configuration changes are\nrefused in text (nothing is created). Up to 5 commands per message. A user without the permission\nof a proposal still sees the card with ``can_accept`` false and the reason.",
+        "operationId": "chat_api_v1_orion_chat_post",
+        "parameters": [
+          {
+            "name": "X-Demo-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orion/extract": {
+      "post": {
+        "tags": [
+          "orion"
+        ],
+        "summary": "Extract",
+        "description": "Turn a pasted email, long text or an uploaded document (.txt .md .vtt .docx) into Orion cards\n(multipart form; nothing is stored except OrionProposal rows). Behaviour per\n``domain.orion_chat.handle_extract``: without ``transition_id`` (or hint create_transition) the\ntext is read as a NEW TRANSITION description -> proposal ``create_transition`` whose payload holds\nthe intake prefill, missing fields, per-field source/confidence and a source excerpt; with a\n``transition_id`` (or hint commands) it is read as commands/evidence for that transition (meeting\nnotes -> several ``create_action`` proposals, a sign-off email -> ``add_evidence``).\nErrors: 400 when neither or both of ``text`` and ``file`` are given, unsupported extension or no\nreadable text; 404 unknown ``transition_id``; 413 file over 5 MB; 422 text over 20000 characters\n(the file text is silently cut at 20000 characters, ``truncated`` true). No permission is needed\nto ask; ``can_accept`` on the cards tells whether this user may accept (create_transition needs\nPerm.CREATE_TRANSITION). Never writes statuses/decisions (BR-050).",
+        "operationId": "extract_api_v1_orion_extract_post",
+        "parameters": [
+          {
+            "name": "X-Demo-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_extract_api_v1_orion_extract_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orion/intents": {
+      "get": {
+        "tags": [
+          "orion"
+        ],
+        "summary": "Get Intents",
+        "description": "The intent catalog for the panel's \"Try saying\" chips and help: label, examples, result type,\nproposal kind and whether THIS user may accept/run it (``allowed`` / ``denied_reason``), plus the\nplain-language list of what Orion refuses. Read-only, deterministic.",
+        "operationId": "get_intents_api_v1_orion_intents_get",
+        "parameters": [
+          {
+            "name": "X-Demo-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntentCatalogOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orion/proposals/{proposal_id}": {
+      "get": {
+        "tags": [
+          "orion"
+        ],
+        "summary": "Get Proposal",
+        "description": "One proposal in any status (404 unknown). Used by the intake page to load a\n``create_transition`` prefill (``/transitions/new?proposal=<id>``) and for deep links to a\nproposal card. Any signed-in user may read.",
+        "operationId": "get_proposal_api_v1_orion_proposals__proposal_id__get",
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Proposal Id"
+            }
+          },
+          {
+            "name": "X-Demo-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orion/proposals": {
+      "get": {
+        "tags": [
+          "orion"
+        ],
+        "summary": "List Proposals",
+        "description": "Stored proposals, newest first, optionally filtered; ``can_accept`` evaluated for the\ncurrent user (BR-050).",
+        "operationId": "list_proposals_api_v1_orion_proposals_get",
+        "parameters": [
+          {
+            "name": "transition_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Transition Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "Open",
+                    "Accepted",
+                    "Dismissed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "X-Demo-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProposalOut"
+                  },
+                  "title": "Response List Proposals Api V1 Orion Proposals Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orion/proposals/{proposal_id}/accept": {
+      "post": {
+        "tags": [
+          "orion"
+        ],
+        "summary": "Accept Proposal",
+        "description": "Execute the proposal's normal domain operation as the current user (that operation's\npermission checks apply -> 403 with the reason, proposal stays Open). Audit actor_type \"Human\",\nnote \"Accepted Orion proposal <id>\". 404 unknown, 409 if not Open. Commits.\n``create_transition`` is a hand-off: nothing is created, ``navigate_to`` is\n``/transitions/new?proposal=<id>`` and the human clicks Create in the form. 403 when the current\nuser lacks the permission of the kind (CREATE_TRANSITION for create_transition).",
+        "operationId": "accept_proposal_api_v1_orion_proposals__proposal_id__accept_post",
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Proposal Id"
+            }
+          },
+          {
+            "name": "X-Demo-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orion/proposals/{proposal_id}/dismiss": {
+      "post": {
+        "tags": [
+          "orion"
+        ],
+        "summary": "Dismiss Proposal",
+        "description": "Open -> Dismissed. 404 unknown, 409 if not Open. Commits.",
+        "operationId": "dismiss_proposal_api_v1_orion_proposals__proposal_id__dismiss_post",
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Proposal Id"
+            }
+          },
+          {
+            "name": "X-Demo-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orion/leadership-update": {
+      "post": {
+        "tags": [
+          "orion"
+        ],
+        "summary": "Create Leadership Update",
+        "description": "Generate and store a leadership update (FR-080) via AIService.leadership_update from live\ndata (scope transition|portfolio|all; scope_id required unless all). 403 without\nPerm.GENERATE_LEADERSHIP_UPDATE; 404 unknown transition/portfolio; 400 scope/scope_id mismatch.\nCommits. Storyline step 10: GCC portfolio update shows the AtD approval and remaining risks.",
+        "operationId": "create_leadership_update_api_v1_orion_leadership_update_post",
+        "parameters": [
+          {
+            "name": "X-Demo-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadershipUpdateCreateIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadershipUpdateOut"
                 }
               }
             }
@@ -6141,6 +6658,163 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/reminders/run": {
+      "post": {
+        "tags": [
+          "reminders"
+        ],
+        "summary": "Run Reminder Engine",
+        "description": "Run the reminder engine now (OR focal / Admin; 403 otherwise).\n\nBody optional: {rules: [ids]|None, transition_id: str|None}. 422 on an unknown rule id\n(not R1..R7); 404 on an unknown transition_id. Calls\n``app.domain.reminders.run_reminders(db, user=user, rules=..., transition_id=...,\ntriggered_by=user.id)`` then commits. Returns {run_id, at, created: {R1..R7: n},\nsent_autonomously, skipped_duplicates, drafts}. Disabled rules are skipped even if listed.\nRunning twice in a row creates no duplicates (second run: created all 0, skipped_duplicates\n> 0).",
+        "operationId": "run_reminder_engine_api_v1_reminders_run_post",
+        "parameters": [
+          {
+            "name": "X-Demo-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ReminderRunIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderRunOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/reminders/status": {
+      "get": {
+        "tags": [
+          "reminders"
+        ],
+        "summary": "Reminder Status",
+        "description": "Last run (latest ReminderRun by id, None if never) with counts per rule, the rules R1-R7\n(id, name, enabled, autonomous_eligible, params from ReminderRule, ordered by sort_order) and\nthe ids of transitions with autonomous_mode true (drives the assistive/autonomous banner of\nscreen 8.12). Any signed-in user. Read-only. Delegates to\n``app.domain.reminders.reminder_status``.",
+        "operationId": "reminder_status_api_v1_reminders_status_get",
+        "parameters": [
+          {
+            "name": "X-Demo-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderStatusOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         }
       }
@@ -7423,7 +8097,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ReminderRuleOut"
+                    "$ref": "#/components/schemas/app__schemas__admin__ReminderRuleOut"
                   },
                   "title": "Response List Reminder Rules Api V1 Admin Reminder Rules Get"
                 }
@@ -7505,7 +8179,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ReminderRuleOut"
+                    "$ref": "#/components/schemas/app__schemas__admin__ReminderRuleOut"
                   },
                   "title": "Response Put Reminder Rules Api V1 Admin Reminder Rules Put"
                 }
@@ -8102,6 +8776,188 @@
         }
       }
     },
+    "/api/v1/leadership-updates": {
+      "get": {
+        "tags": [
+          "leadership"
+        ],
+        "summary": "List Leadership Updates",
+        "description": "All stored updates, newest first (created_at desc, id desc). Any signed-in user.",
+        "operationId": "list_leadership_updates_api_v1_leadership_updates_get",
+        "parameters": [
+          {
+            "name": "X-Demo-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LeadershipUpdateOut"
+                  },
+                  "title": "Response List Leadership Updates Api V1 Leadership Updates Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leadership-updates/{update_id}": {
+      "get": {
+        "tags": [
+          "leadership"
+        ],
+        "summary": "Get Leadership Update",
+        "description": "One update. 404 when unknown.",
+        "operationId": "get_leadership_update_api_v1_leadership_updates__update_id__get",
+        "parameters": [
+          {
+            "name": "update_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Update Id"
+            }
+          },
+          {
+            "name": "X-Demo-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadershipUpdateOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leadership-updates/{update_id}/send": {
+      "post": {
+        "tags": [
+          "leadership"
+        ],
+        "summary": "Send Leadership Update",
+        "description": "Send via the mock MailService from ORION_MAILBOX to ``body.to``; sets sent_at/sent_to; audited\nas Human; commits. 403 without Perm.GENERATE_LEADERSHIP_UPDATE; 404 unknown update; 400 on an\ninvalid address; 422 on an empty list.",
+        "operationId": "send_leadership_update_api_v1_leadership_updates__update_id__send_post",
+        "parameters": [
+          {
+            "name": "update_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Update Id"
+            }
+          },
+          {
+            "name": "X-Demo-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadershipSendIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadershipUpdateOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -8251,6 +9107,35 @@
           "transition_id"
         ],
         "title": "AIProfileOut"
+      },
+      "AcceptOut": {
+        "properties": {
+          "proposal": {
+            "$ref": "#/components/schemas/ProposalOut"
+          },
+          "result": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Result"
+          },
+          "navigate_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Navigate To"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proposal",
+          "result"
+        ],
+        "title": "AcceptOut"
       },
       "ActionCreateIn": {
         "properties": {
@@ -9070,6 +9955,62 @@
         ],
         "title": "Body_add_evidence_api_v1_transitions__transition_id__evidence_post"
       },
+      "Body_extract_api_v1_orion_extract_post": {
+        "properties": {
+          "text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          },
+          "transition_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transition Id"
+          },
+          "intent_hint": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "create_transition",
+                  "commands"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intent Hint"
+          }
+        },
+        "type": "object",
+        "title": "Body_extract_api_v1_orion_extract_post"
+      },
       "Body_save_inputs_api_v1_transitions__transition_id__support_model_inputs_post": {
         "properties": {
           "confluence_url": {
@@ -9374,6 +10315,154 @@
           "item_ids"
         ],
         "title": "ChaserDraftIn"
+      },
+      "ChatContext": {
+        "properties": {
+          "transition_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transition Id"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "item_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Id"
+          }
+        },
+        "type": "object",
+        "title": "ChatContext"
+      },
+      "ChatIn": {
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "quick_action": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "start_gate_review",
+                  "assess_gate_readiness",
+                  "track_owner_actions",
+                  "draft_owner_reminders",
+                  "create_leadership_update",
+                  "create_support_model",
+                  "create_update_ocet"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quick Action"
+          },
+          "form_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Form Data"
+          },
+          "context": {
+            "$ref": "#/components/schemas/ChatContext",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "title": "ChatIn",
+        "description": "Exactly one of ``message`` (free text) or ``quick_action`` must be given (422 otherwise).\n``form_data`` is the submitted form of a previous ``form`` message (keys = field names); without\nit a quick action answers with its form (form-first, FR-090)."
+      },
+      "ChatOut": {
+        "properties": {
+          "messages": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/TextMessage"
+                },
+                {
+                  "$ref": "#/components/schemas/FormMessage"
+                },
+                {
+                  "$ref": "#/components/schemas/ReadinessMessage"
+                },
+                {
+                  "$ref": "#/components/schemas/TableMessage"
+                },
+                {
+                  "$ref": "#/components/schemas/DraftsMessage"
+                },
+                {
+                  "$ref": "#/components/schemas/LinkMessage"
+                },
+                {
+                  "$ref": "#/components/schemas/ProposalMessage"
+                },
+                {
+                  "$ref": "#/components/schemas/LeadershipMessage"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "type",
+                "mapping": {
+                  "drafts": "#/components/schemas/DraftsMessage",
+                  "form": "#/components/schemas/FormMessage",
+                  "leadership": "#/components/schemas/LeadershipMessage",
+                  "link": "#/components/schemas/LinkMessage",
+                  "proposal": "#/components/schemas/ProposalMessage",
+                  "readiness": "#/components/schemas/ReadinessMessage",
+                  "table": "#/components/schemas/TableMessage",
+                  "text": "#/components/schemas/TextMessage"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Messages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "messages"
+        ],
+        "title": "ChatOut"
       },
       "ChecklistCountsOut": {
         "properties": {
@@ -9921,21 +11010,25 @@
         "properties": {
           "party": {
             "type": "string",
+            "maxLength": 200,
             "title": "Party",
             "default": ""
           },
           "role": {
             "type": "string",
+            "maxLength": 200,
             "title": "Role",
             "default": ""
           },
           "email": {
             "type": "string",
+            "maxLength": 200,
             "title": "Email",
             "default": ""
           },
           "sla": {
             "type": "string",
+            "maxLength": 200,
             "title": "Sla",
             "default": ""
           }
@@ -10494,6 +11587,85 @@
         },
         "type": "object",
         "title": "DraftSendResult"
+      },
+      "DraftSummary": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "to": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "To"
+          },
+          "transition_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transition Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "subject",
+          "to"
+        ],
+        "title": "DraftSummary"
+      },
+      "DraftsMessage": {
+        "properties": {
+          "generated_by": {
+            "type": "string",
+            "title": "Generated By",
+            "default": "Orion agent"
+          },
+          "type": {
+            "type": "string",
+            "const": "drafts",
+            "title": "Type",
+            "default": "drafts"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "drafts": {
+            "items": {
+              "$ref": "#/components/schemas/DraftSummary"
+            },
+            "type": "array",
+            "title": "Drafts"
+          },
+          "link": {
+            "type": "string",
+            "title": "Link",
+            "default": "/drafts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "drafts"
+        ],
+        "title": "DraftsMessage"
       },
       "EnumsOut": {
         "properties": {
@@ -11451,6 +12623,101 @@
         ],
         "title": "ExceptionOut"
       },
+      "ExtractOut": {
+        "properties": {
+          "messages": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/TextMessage"
+                },
+                {
+                  "$ref": "#/components/schemas/FormMessage"
+                },
+                {
+                  "$ref": "#/components/schemas/ReadinessMessage"
+                },
+                {
+                  "$ref": "#/components/schemas/TableMessage"
+                },
+                {
+                  "$ref": "#/components/schemas/DraftsMessage"
+                },
+                {
+                  "$ref": "#/components/schemas/LinkMessage"
+                },
+                {
+                  "$ref": "#/components/schemas/ProposalMessage"
+                },
+                {
+                  "$ref": "#/components/schemas/LeadershipMessage"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "type",
+                "mapping": {
+                  "drafts": "#/components/schemas/DraftsMessage",
+                  "form": "#/components/schemas/FormMessage",
+                  "leadership": "#/components/schemas/LeadershipMessage",
+                  "link": "#/components/schemas/LinkMessage",
+                  "proposal": "#/components/schemas/ProposalMessage",
+                  "readiness": "#/components/schemas/ReadinessMessage",
+                  "table": "#/components/schemas/TableMessage",
+                  "text": "#/components/schemas/TextMessage"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Messages"
+          },
+          "intents": {
+            "items": {
+              "$ref": "#/components/schemas/IntentMatch"
+            },
+            "type": "array",
+            "title": "Intents"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "chat",
+              "text",
+              "email",
+              "document"
+            ],
+            "title": "Source"
+          },
+          "source_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Name"
+          },
+          "characters_read": {
+            "type": "integer",
+            "title": "Characters Read"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "messages",
+          "intents",
+          "source",
+          "characters_read"
+        ],
+        "title": "ExtractOut",
+        "description": "Response of POST /orion/extract: the same cards as chat, plus what was understood."
+      },
       "FailedEvalOut": {
         "properties": {
           "metric_id": {
@@ -11651,6 +12918,141 @@
           "rules"
         ],
         "title": "FlavourRulesOut"
+      },
+      "FormField": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "transition",
+              "gate",
+              "scope",
+              "portfolio",
+              "select",
+              "text"
+            ],
+            "title": "Kind"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FormFieldOption"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Options"
+          },
+          "required": {
+            "type": "boolean",
+            "title": "Required",
+            "default": true
+          },
+          "default": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "label",
+          "kind"
+        ],
+        "title": "FormField"
+      },
+      "FormFieldOption": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "label"
+        ],
+        "title": "FormFieldOption"
+      },
+      "FormMessage": {
+        "properties": {
+          "generated_by": {
+            "type": "string",
+            "title": "Generated By",
+            "default": "Orion agent"
+          },
+          "type": {
+            "type": "string",
+            "const": "form",
+            "title": "Type",
+            "default": "form"
+          },
+          "form_id": {
+            "type": "string",
+            "title": "Form Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/FormField"
+            },
+            "type": "array",
+            "title": "Fields"
+          },
+          "submit_label": {
+            "type": "string",
+            "title": "Submit Label"
+          },
+          "quick_action": {
+            "type": "string",
+            "enum": [
+              "start_gate_review",
+              "assess_gate_readiness",
+              "track_owner_actions",
+              "draft_owner_reminders",
+              "create_leadership_update",
+              "create_support_model",
+              "create_update_ocet"
+            ],
+            "title": "Quick Action"
+          }
+        },
+        "type": "object",
+        "required": [
+          "form_id",
+          "title",
+          "fields",
+          "submit_label",
+          "quick_action"
+        ],
+        "title": "FormMessage"
       },
       "GateApprovalOut": {
         "properties": {
@@ -12720,6 +14122,144 @@
         ],
         "title": "IntakeOptionsOut"
       },
+      "IntentCatalogOut": {
+        "properties": {
+          "intents": {
+            "items": {
+              "$ref": "#/components/schemas/IntentSpecOut"
+            },
+            "type": "array",
+            "title": "Intents"
+          },
+          "refusals": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Refusals"
+          }
+        },
+        "type": "object",
+        "required": [
+          "intents",
+          "refusals"
+        ],
+        "title": "IntentCatalogOut"
+      },
+      "IntentMatch": {
+        "properties": {
+          "intent": {
+            "type": "string",
+            "title": "Intent"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "intent",
+          "confidence",
+          "summary"
+        ],
+        "title": "IntentMatch"
+      },
+      "IntentSpecOut": {
+        "properties": {
+          "intent": {
+            "type": "string",
+            "title": "Intent"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "examples": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Examples"
+          },
+          "result": {
+            "type": "string",
+            "enum": [
+              "message",
+              "link",
+              "form",
+              "proposal",
+              "refusal"
+            ],
+            "title": "Result"
+          },
+          "proposal_kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "create_action",
+                  "draft_chaser",
+                  "request_inputs",
+                  "request_exception",
+                  "request_approval",
+                  "accept_applicability",
+                  "create_transition",
+                  "update_transition",
+                  "update_item",
+                  "add_evidence"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Kind"
+          },
+          "permission": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Permission"
+          },
+          "allowed": {
+            "type": "boolean",
+            "title": "Allowed"
+          },
+          "denied_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denied Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "intent",
+          "label",
+          "examples",
+          "result",
+          "allowed"
+        ],
+        "title": "IntentSpecOut",
+        "description": "One row of the intent catalog (GET /orion/intents) used for the panel's example chips."
+      },
       "ItemConditionIn": {
         "properties": {
           "owner_user_id": {
@@ -13299,24 +14839,29 @@
           },
           "hosting": {
             "type": "string",
+            "maxLength": 500,
             "title": "Hosting",
             "default": ""
           },
           "vendor": {
             "type": "string",
+            "maxLength": 500,
             "title": "Vendor",
             "default": ""
           },
           "supplier": {
             "type": "string",
+            "maxLength": 500,
             "title": "Supplier",
             "default": ""
           },
           "vendor_responsibilities": {
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 1000
             },
             "type": "array",
+            "maxItems": 30,
             "title": "Vendor Responsibilities",
             "default": []
           },
@@ -13325,6 +14870,7 @@
               "$ref": "#/components/schemas/ComponentIO"
             },
             "type": "array",
+            "maxItems": 24,
             "title": "Components",
             "default": []
           },
@@ -13341,14 +14887,17 @@
               "$ref": "#/components/schemas/ContactIO"
             },
             "type": "array",
+            "maxItems": 50,
             "title": "Contacts",
             "default": []
           },
           "open_questions": {
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 1000
             },
             "type": "array",
+            "maxItems": 50,
             "title": "Open Questions",
             "default": []
           },
@@ -13357,6 +14906,7 @@
               "$ref": "#/components/schemas/SourceIO"
             },
             "type": "array",
+            "maxItems": 30,
             "title": "Sources",
             "default": []
           }
@@ -13378,24 +14928,29 @@
           },
           "hosting": {
             "type": "string",
+            "maxLength": 500,
             "title": "Hosting",
             "default": ""
           },
           "vendor": {
             "type": "string",
+            "maxLength": 500,
             "title": "Vendor",
             "default": ""
           },
           "supplier": {
             "type": "string",
+            "maxLength": 500,
             "title": "Supplier",
             "default": ""
           },
           "vendor_responsibilities": {
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 1000
             },
             "type": "array",
+            "maxItems": 30,
             "title": "Vendor Responsibilities",
             "default": []
           },
@@ -13404,6 +14959,7 @@
               "$ref": "#/components/schemas/ComponentIO"
             },
             "type": "array",
+            "maxItems": 24,
             "title": "Components",
             "default": []
           },
@@ -13420,14 +14976,17 @@
               "$ref": "#/components/schemas/ContactIO"
             },
             "type": "array",
+            "maxItems": 50,
             "title": "Contacts",
             "default": []
           },
           "open_questions": {
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 1000
             },
             "type": "array",
+            "maxItems": 50,
             "title": "Open Questions",
             "default": []
           },
@@ -13436,6 +14995,7 @@
               "$ref": "#/components/schemas/SourceIO"
             },
             "type": "array",
+            "maxItems": 30,
             "title": "Sources",
             "default": []
           }
@@ -13473,6 +15033,164 @@
           "redirect"
         ],
         "title": "LaunchOut"
+      },
+      "LeadershipMessage": {
+        "properties": {
+          "generated_by": {
+            "type": "string",
+            "title": "Generated By",
+            "default": "Orion agent"
+          },
+          "type": {
+            "type": "string",
+            "const": "leadership",
+            "title": "Type",
+            "default": "leadership"
+          },
+          "update": {
+            "$ref": "#/components/schemas/LeadershipUpdateOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "update"
+        ],
+        "title": "LeadershipMessage"
+      },
+      "LeadershipSendIn": {
+        "properties": {
+          "to": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "To",
+            "description": "Recipient email addresses"
+          }
+        },
+        "type": "object",
+        "required": [
+          "to"
+        ],
+        "title": "LeadershipSendIn"
+      },
+      "LeadershipUpdateCreateIn": {
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "transition",
+              "portfolio",
+              "all"
+            ],
+            "title": "Scope"
+          },
+          "scope_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Id",
+            "description": "Transition id (scope=transition) or portfolio name (scope=portfolio); must be omitted/None for scope=all"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scope"
+        ],
+        "title": "LeadershipUpdateCreateIn",
+        "description": "Body of POST /orion/leadership-update."
+      },
+      "LeadershipUpdateOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "transition",
+              "portfolio",
+              "all"
+            ],
+            "title": "Scope"
+          },
+          "scope_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "content_md": {
+            "type": "string",
+            "title": "Content Md"
+          },
+          "generated_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "generated_source": {
+            "type": "string",
+            "title": "Generated Source",
+            "default": "Orion agent"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent At"
+          },
+          "sent_to": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sent To",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "scope",
+          "title",
+          "content_md",
+          "created_at"
+        ],
+        "title": "LeadershipUpdateOut",
+        "description": "A stored leadership update (``LeadershipUpdate`` row). ``content_md`` sections, in order:\nheadline, status by portfolio/gate, top risks/blockers, decisions due next 30 days, asks for\nleadership, wins."
       },
       "LensCardOut": {
         "properties": {
@@ -13592,6 +15310,46 @@
         ],
         "title": "LensValues",
         "description": "One integer per lens (readiness %, counts …). Lens colours: Business amber, Technical blue,\nCompliance teal (spec §4, §12)."
+      },
+      "LinkMessage": {
+        "properties": {
+          "generated_by": {
+            "type": "string",
+            "title": "Generated By",
+            "default": "Orion agent"
+          },
+          "type": {
+            "type": "string",
+            "const": "link",
+            "title": "Type",
+            "default": "link"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "href": {
+            "type": "string",
+            "title": "Href"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "href"
+        ],
+        "title": "LinkMessage"
       },
       "LinkedItemOut": {
         "properties": {
@@ -14064,6 +15822,7 @@
             "anyOf": [
               {
                 "type": "number",
+                "maximum": 1000000000000.0,
                 "minimum": 0.0
               },
               {
@@ -15153,6 +16912,140 @@
         ],
         "title": "ProjectTypeOut"
       },
+      "ProposalMessage": {
+        "properties": {
+          "generated_by": {
+            "type": "string",
+            "title": "Generated By",
+            "default": "Orion agent"
+          },
+          "type": {
+            "type": "string",
+            "const": "proposal",
+            "title": "Type",
+            "default": "proposal"
+          },
+          "proposal": {
+            "$ref": "#/components/schemas/ProposalOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proposal"
+        ],
+        "title": "ProposalMessage"
+      },
+      "ProposalOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "transition_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transition Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "create_action",
+              "draft_chaser",
+              "request_inputs",
+              "request_exception",
+              "request_approval",
+              "accept_applicability",
+              "create_transition",
+              "update_transition",
+              "update_item",
+              "add_evidence"
+            ],
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Open",
+              "Accepted",
+              "Dismissed"
+            ],
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "accepted_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "accepted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted At"
+          },
+          "can_accept": {
+            "type": "boolean",
+            "title": "Can Accept"
+          },
+          "accept_denied_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accept Denied Reason"
+          },
+          "generated_by": {
+            "type": "string",
+            "title": "Generated By",
+            "default": "Orion agent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "payload",
+          "status",
+          "created_at",
+          "can_accept"
+        ],
+        "title": "ProposalOut"
+      },
       "PutLandscapeIn": {
         "properties": {
           "landscape": {
@@ -15366,6 +17259,29 @@
           "generated_at"
         ],
         "title": "ReadinessCheckOut"
+      },
+      "ReadinessMessage": {
+        "properties": {
+          "generated_by": {
+            "type": "string",
+            "title": "Generated By",
+            "default": "Orion agent"
+          },
+          "type": {
+            "type": "string",
+            "const": "readiness",
+            "title": "Type",
+            "default": "readiness"
+          },
+          "check": {
+            "$ref": "#/components/schemas/ReadinessCheckOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "check"
+        ],
+        "title": "ReadinessMessage"
       },
       "RecommendationOut": {
         "properties": {
@@ -15708,45 +17624,6 @@
         ],
         "title": "ReminderRuleIn"
       },
-      "ReminderRuleOut": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "description": {
-            "type": "string",
-            "title": "Description",
-            "default": ""
-          },
-          "enabled": {
-            "type": "boolean",
-            "title": "Enabled",
-            "default": true
-          },
-          "autonomous_eligible": {
-            "type": "boolean",
-            "title": "Autonomous Eligible",
-            "default": false
-          },
-          "params": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Params",
-            "default": {}
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "name"
-        ],
-        "title": "ReminderRuleOut"
-      },
       "ReminderRulesIn": {
         "properties": {
           "rules": {
@@ -15762,6 +17639,120 @@
           "rules"
         ],
         "title": "ReminderRulesIn"
+      },
+      "ReminderRunIn": {
+        "properties": {
+          "rules": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rules",
+            "description": "Only evaluate these rule ids (R1..R7); None = all enabled"
+          },
+          "transition_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transition Id",
+            "description": "Only this transition; None = all active transitions"
+          }
+        },
+        "type": "object",
+        "title": "ReminderRunIn",
+        "description": "Optional body of POST /reminders/run."
+      },
+      "ReminderRunOut": {
+        "properties": {
+          "run_id": {
+            "type": "integer",
+            "title": "Run Id"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "created": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Created"
+          },
+          "sent_autonomously": {
+            "type": "integer",
+            "title": "Sent Autonomously"
+          },
+          "skipped_duplicates": {
+            "type": "integer",
+            "title": "Skipped Duplicates",
+            "default": 0
+          },
+          "drafts": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Drafts",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "at",
+          "created",
+          "sent_autonomously"
+        ],
+        "title": "ReminderRunOut"
+      },
+      "ReminderStatusOut": {
+        "properties": {
+          "last_run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReminderRunOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/app__schemas__reminders__ReminderRuleOut"
+            },
+            "type": "array",
+            "title": "Rules"
+          },
+          "autonomous_transitions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Autonomous Transitions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "last_run",
+          "rules",
+          "autonomous_transitions"
+        ],
+        "title": "ReminderStatusOut"
       },
       "RequestInputsIn": {
         "properties": {
@@ -16373,6 +18364,7 @@
           },
           "ref": {
             "type": "string",
+            "maxLength": 500,
             "title": "Ref"
           }
         },
@@ -16627,22 +18619,119 @@
         "properties": {
           "L1": {
             "type": "string",
+            "maxLength": 1000,
             "title": "L1",
             "default": ""
           },
           "L2": {
             "type": "string",
+            "maxLength": 1000,
             "title": "L2",
             "default": ""
           },
           "L3": {
             "type": "string",
+            "maxLength": 1000,
             "title": "L3",
             "default": ""
           }
         },
         "type": "object",
         "title": "SupportTiersIO"
+      },
+      "TableColumn": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "TableColumn"
+      },
+      "TableMessage": {
+        "properties": {
+          "generated_by": {
+            "type": "string",
+            "title": "Generated By",
+            "default": "Orion agent"
+          },
+          "type": {
+            "type": "string",
+            "const": "table",
+            "title": "Type",
+            "default": "table"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/TableColumn"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "rows": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "footnote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Footnote"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "columns",
+          "rows"
+        ],
+        "title": "TableMessage"
+      },
+      "TextMessage": {
+        "properties": {
+          "generated_by": {
+            "type": "string",
+            "title": "Generated By",
+            "default": "Orion agent"
+          },
+          "type": {
+            "type": "string",
+            "const": "text",
+            "title": "Type",
+            "default": "text"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "TextMessage"
       },
       "TierAssessmentOut": {
         "properties": {
@@ -18607,6 +20696,45 @@
         ],
         "title": "YearAmount"
       },
+      "app__schemas__admin__ReminderRuleOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "autonomous_eligible": {
+            "type": "boolean",
+            "title": "Autonomous Eligible",
+            "default": false
+          },
+          "params": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Params",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ReminderRuleOut"
+      },
       "app__schemas__approvals__ApprovalStepOut": {
         "properties": {
           "step": {
@@ -18744,6 +20872,40 @@
           "status"
         ],
         "title": "ApprovalStepOut"
+      },
+      "app__schemas__reminders__ReminderRuleOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "autonomous_eligible": {
+            "type": "boolean",
+            "title": "Autonomous Eligible"
+          },
+          "params": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Params"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "enabled",
+          "autonomous_eligible",
+          "params"
+        ],
+        "title": "ReminderRuleOut"
       }
     }
   }

@@ -1188,21 +1188,15 @@ export interface paths {
         };
         /**
          * Get Ocet
-         * @description Full OCET view of the CURRENT version (any authenticated role).
-         *
-         *     Returns estimate, years, all versions, current version with can_edit / can_submit flags and
-         *     reasons, lines with computed yearly amounts, category totals, grand total by year, horizon
-         *     total + label ("1.92M"), variance vs the previous version, approval chain (None until
-         *     submitted), Orion explanation (AIService.explain_ocet_change), worked example, info note and
-         *     reference lists. 404 when the transition does not exist OR has no OCET yet (the UI then offers
-         *     ``POST /transitions/{transition_id}/ocet``).
+         * @description Full OCET view of the CURRENT version (any authenticated role). 404 when the transition
+         *     does not exist or has no OCET yet (the UI then offers ``POST /transitions/{id}/ocet``).
          */
         get: operations["get_ocet_api_v1_transitions__transition_id__ocet_get"];
         put?: never;
         /**
          * Create Ocet
-         * @description Create an empty estimate: start_year = today.year + 1, horizon 5, currency USD, v1 Draft, no
-         *     lines. 403 without EDIT_OCET, 404 unknown transition, 409 when an estimate already exists.
+         * @description Create an empty estimate (v1 Draft). 403 without EDIT_OCET, 404 unknown transition, 409
+         *     when an estimate already exists.
          */
         post: operations["create_ocet_api_v1_transitions__transition_id__ocet_post"];
         delete?: never;
@@ -1221,12 +1215,8 @@ export interface paths {
         get?: never;
         /**
          * Save Lines
-         * @description Bulk save lines of a version (spec 9). 403 without EDIT_OCET; 404 unknown version; 409 when
-         *     the version is not Draft / Inputs pending (reason: create a new version); 422 for unknown
-         *     category / pricing basis, growth outside [-100, 1000], negative base, override year outside the
-         *     horizon, missing ``override_reason`` while ``year_overrides`` is non-empty, or line / deleted ids
-         *     that do not belong to the version. Status becomes "Inputs pending" when any base amount is
-         *     missing, "Draft" otherwise. Returns the refreshed OcetOut (current version of the transition).
+         * @description Bulk save lines of a version (spec 9). 409 when not Draft / Inputs pending; 422 for
+         *     validation failures. Returns the refreshed OcetOut.
          */
         put: operations["save_lines_api_v1_ocet_versions__version_id__lines_put"];
         post?: never;
@@ -1247,10 +1237,7 @@ export interface paths {
         put?: never;
         /**
          * Submit Version
-         * @description Submit for approval: creates the OCET chain Planner -> OLM (approvals.create_approval_request,
-         *     type "OCET", subject_id = version id). 403 without EDIT_OCET; 404 unknown version; 409 with
-         *     ``reasons`` when status is not Draft, there are no lines, or any base amount is missing (one
-         *     reason per missing line). Version -> Submitted, previous version -> Superseded.
+         * @description Submit for approval: chain Planner -> OLM. 409 with ``reasons`` when blocked.
          */
         post: operations["submit_version_api_v1_ocet_versions__version_id__submit_post"];
         delete?: never;
@@ -1270,9 +1257,7 @@ export interface paths {
         put?: never;
         /**
          * New Version
-         * @description Create vN+1 (Draft) by copying the current version's lines. 403 without EDIT_OCET; 404 no
-         *     estimate; 409 when the current version is still editable or its approval chain is running.
-         *     The previous version becomes Superseded only when vN+1 is submitted.
+         * @description Create vN+1 (Draft) by copying the current version's lines.
          */
         post: operations["new_version_api_v1_transitions__transition_id__ocet_new_version_post"];
         delete?: never;
@@ -1292,10 +1277,8 @@ export interface paths {
         put?: never;
         /**
          * Request Inputs
-         * @description Request missing inputs: lines -> input_status Requested (input_requested_at = now) and one
-         *     Orion draft per input owner with a deep link to /transitions/<id>/ocet (never sent
-         *     automatically). 403 without EDIT_OCET; 404 unknown version; 409 when the version is not
-         *     editable; 422 for empty / foreign line ids or lines that already have a base amount.
+         * @description Request missing inputs: lines -> Requested and one Orion draft per input owner (never sent
+         *     automatically).
          */
         post: operations["request_inputs_api_v1_ocet_versions__version_id__request_inputs_post"];
         delete?: never;
@@ -1313,9 +1296,7 @@ export interface paths {
         };
         /**
          * Compare
-         * @description Diff of two versions of the same estimate: rows by line (matched by line_key, status
-         *     added / removed / changed / same) and by category, plus totals. 404 unknown version id; 422
-         *     when the versions belong to different estimates.
+         * @description Diff of two versions of the same estimate. 404 unknown id; 422 different estimates.
          */
         get: operations["compare_api_v1_ocet_compare_get"];
         put?: never;
@@ -1565,6 +1546,204 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orion/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Chat
+         * @description Orion assistant (FR-090). Exactly one of ``message`` / ``quick_action`` (400 otherwise).
+         *     Quick action without ``form_data`` -> its form; with ``form_data`` -> the result cards, per
+         *     ``domain/orion_chat.py``. Free text -> keyword intents (status, blocking, owner, glossary, red
+         *     transitions) or a fallback listing the quick actions. Never writes statuses/decisions (NFR-04);
+         *     recommendations come back as ``proposal`` messages. 404 unknown transition, 400 invalid gate,
+         *     403 when a form submit needs a permission the user lacks (RUN_REMINDERS for
+         *     draft_owner_reminders, GENERATE_LEADERSHIP_UPDATE for create_leadership_update). Every message
+         *     has generated_by "Orion agent".
+         *
+         *     Natural language: free text that is not a read-only intent is routed to the intent catalog
+         *     (``domain/nl_intake.py``): a description of a new transition -> proposal ``create_transition``;
+         *     commands such as "ask Tom to ... by Friday" -> ``create_action`` / ``draft_chaser`` /
+         *     ``update_item`` / ... proposal cards; decisions, sending, deleting and configuration changes are
+         *     refused in text (nothing is created). Up to 5 commands per message. A user without the permission
+         *     of a proposal still sees the card with ``can_accept`` false and the reason.
+         */
+        post: operations["chat_api_v1_orion_chat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orion/extract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Extract
+         * @description Turn a pasted email, long text or an uploaded document (.txt .md .vtt .docx) into Orion cards
+         *     (multipart form; nothing is stored except OrionProposal rows). Behaviour per
+         *     ``domain.orion_chat.handle_extract``: without ``transition_id`` (or hint create_transition) the
+         *     text is read as a NEW TRANSITION description -> proposal ``create_transition`` whose payload holds
+         *     the intake prefill, missing fields, per-field source/confidence and a source excerpt; with a
+         *     ``transition_id`` (or hint commands) it is read as commands/evidence for that transition (meeting
+         *     notes -> several ``create_action`` proposals, a sign-off email -> ``add_evidence``).
+         *     Errors: 400 when neither or both of ``text`` and ``file`` are given, unsupported extension or no
+         *     readable text; 404 unknown ``transition_id``; 413 file over 5 MB; 422 text over 20000 characters
+         *     (the file text is silently cut at 20000 characters, ``truncated`` true). No permission is needed
+         *     to ask; ``can_accept`` on the cards tells whether this user may accept (create_transition needs
+         *     Perm.CREATE_TRANSITION). Never writes statuses/decisions (BR-050).
+         */
+        post: operations["extract_api_v1_orion_extract_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orion/intents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Intents
+         * @description The intent catalog for the panel's "Try saying" chips and help: label, examples, result type,
+         *     proposal kind and whether THIS user may accept/run it (``allowed`` / ``denied_reason``), plus the
+         *     plain-language list of what Orion refuses. Read-only, deterministic.
+         */
+        get: operations["get_intents_api_v1_orion_intents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orion/proposals/{proposal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Proposal
+         * @description One proposal in any status (404 unknown). Used by the intake page to load a
+         *     ``create_transition`` prefill (``/transitions/new?proposal=<id>``) and for deep links to a
+         *     proposal card. Any signed-in user may read.
+         */
+        get: operations["get_proposal_api_v1_orion_proposals__proposal_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orion/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Proposals
+         * @description Stored proposals, newest first, optionally filtered; ``can_accept`` evaluated for the
+         *     current user (BR-050).
+         */
+        get: operations["list_proposals_api_v1_orion_proposals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orion/proposals/{proposal_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept Proposal
+         * @description Execute the proposal's normal domain operation as the current user (that operation's
+         *     permission checks apply -> 403 with the reason, proposal stays Open). Audit actor_type "Human",
+         *     note "Accepted Orion proposal <id>". 404 unknown, 409 if not Open. Commits.
+         *     ``create_transition`` is a hand-off: nothing is created, ``navigate_to`` is
+         *     ``/transitions/new?proposal=<id>`` and the human clicks Create in the form. 403 when the current
+         *     user lacks the permission of the kind (CREATE_TRANSITION for create_transition).
+         */
+        post: operations["accept_proposal_api_v1_orion_proposals__proposal_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orion/proposals/{proposal_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss Proposal
+         * @description Open -> Dismissed. 404 unknown, 409 if not Open. Commits.
+         */
+        post: operations["dismiss_proposal_api_v1_orion_proposals__proposal_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orion/leadership-update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Leadership Update
+         * @description Generate and store a leadership update (FR-080) via AIService.leadership_update from live
+         *     data (scope transition|portfolio|all; scope_id required unless all). 403 without
+         *     Perm.GENERATE_LEADERSHIP_UPDATE; 404 unknown transition/portfolio; 400 scope/scope_id mismatch.
+         *     Commits. Storyline step 10: GCC portfolio update shows the AtD approval and remaining risks.
+         */
+        post: operations["create_leadership_update_api_v1_orion_leadership_update_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orion/drafts": {
         parameters: {
             query?: never;
@@ -1698,6 +1877,58 @@ export interface paths {
          * @description Discard a draft (status Discarded, audited, never sent). 404 unknown; 409 unless Draft.
          */
         post: operations["discard_draft_api_v1_orion_drafts__draft_id__discard_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reminders/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Reminder Engine
+         * @description Run the reminder engine now (OR focal / Admin; 403 otherwise).
+         *
+         *     Body optional: {rules: [ids]|None, transition_id: str|None}. 422 on an unknown rule id
+         *     (not R1..R7); 404 on an unknown transition_id. Calls
+         *     ``app.domain.reminders.run_reminders(db, user=user, rules=..., transition_id=...,
+         *     triggered_by=user.id)`` then commits. Returns {run_id, at, created: {R1..R7: n},
+         *     sent_autonomously, skipped_duplicates, drafts}. Disabled rules are skipped even if listed.
+         *     Running twice in a row creates no duplicates (second run: created all 0, skipped_duplicates
+         *     > 0).
+         */
+        post: operations["run_reminder_engine_api_v1_reminders_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reminders/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Reminder Status
+         * @description Last run (latest ReminderRun by id, None if never) with counts per rule, the rules R1-R7
+         *     (id, name, enabled, autonomous_eligible, params from ReminderRule, ordered by sort_order) and
+         *     the ids of transitions with autonomous_mode true (drives the assistive/autonomous banner of
+         *     screen 8.12). Any signed-in user. Read-only. Delegates to
+         *     ``app.domain.reminders.reminder_status``.
+         */
+        get: operations["reminder_status_api_v1_reminders_status_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2109,6 +2340,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/leadership-updates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Leadership Updates
+         * @description All stored updates, newest first (created_at desc, id desc). Any signed-in user.
+         */
+        get: operations["list_leadership_updates_api_v1_leadership_updates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leadership-updates/{update_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Leadership Update
+         * @description One update. 404 when unknown.
+         */
+        get: operations["get_leadership_update_api_v1_leadership_updates__update_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leadership-updates/{update_id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Leadership Update
+         * @description Send via the mock MailService from ORION_MAILBOX to ``body.to``; sets sent_at/sent_to; audited
+         *     as Human; commits. 403 without Perm.GENERATE_LEADERSHIP_UPDATE; 404 unknown update; 400 on an
+         *     invalid address; 422 on an empty list.
+         */
+        post: operations["send_leadership_update_api_v1_leadership_updates__update_id__send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -2232,6 +2525,16 @@ export interface components {
             transition_id: string;
             /** Updated At */
             updated_at?: string | null;
+        };
+        /** AcceptOut */
+        AcceptOut: {
+            proposal: components["schemas"]["ProposalOut"];
+            /** Result */
+            result: {
+                [key: string]: unknown;
+            };
+            /** Navigate To */
+            navigate_to?: string | null;
         };
         /** ActionCreateIn */
         ActionCreateIn: {
@@ -2500,6 +2803,17 @@ export interface components {
             /** File */
             file?: string | null;
         };
+        /** Body_extract_api_v1_orion_extract_post */
+        Body_extract_api_v1_orion_extract_post: {
+            /** Text */
+            text?: string | null;
+            /** File */
+            file?: string | null;
+            /** Transition Id */
+            transition_id?: string | null;
+            /** Intent Hint */
+            intent_hint?: ("create_transition" | "commands") | null;
+        };
         /** Body_save_inputs_api_v1_transitions__transition_id__support_model_inputs_post */
         Body_save_inputs_api_v1_transitions__transition_id__support_model_inputs_post: {
             /** Confluence Url */
@@ -2619,6 +2933,38 @@ export interface components {
              * @description Playbook item ids to chase
              */
             item_ids: string[];
+        };
+        /** ChatContext */
+        ChatContext: {
+            /** Transition Id */
+            transition_id?: string | null;
+            /** Page */
+            page?: string | null;
+            /** Item Id */
+            item_id?: string | null;
+        };
+        /**
+         * ChatIn
+         * @description Exactly one of ``message`` (free text) or ``quick_action`` must be given (422 otherwise).
+         *     ``form_data`` is the submitted form of a previous ``form`` message (keys = field names); without
+         *     it a quick action answers with its form (form-first, FR-090).
+         */
+        ChatIn: {
+            /** Message */
+            message?: string | null;
+            /** Quick Action */
+            quick_action?: ("start_gate_review" | "assess_gate_readiness" | "track_owner_actions" | "draft_owner_reminders" | "create_leadership_update" | "create_support_model" | "create_update_ocet") | null;
+            /** Form Data */
+            form_data?: {
+                [key: string]: unknown;
+            } | null;
+            /** @default {} */
+            context: components["schemas"]["ChatContext"];
+        };
+        /** ChatOut */
+        ChatOut: {
+            /** Messages */
+            messages: (components["schemas"]["TextMessage"] | components["schemas"]["FormMessage"] | components["schemas"]["ReadinessMessage"] | components["schemas"]["TableMessage"] | components["schemas"]["DraftsMessage"] | components["schemas"]["LinkMessage"] | components["schemas"]["ProposalMessage"] | components["schemas"]["LeadershipMessage"])[];
         };
         /**
          * ChecklistCountsOut
@@ -3017,6 +3363,41 @@ export interface components {
             /** Approval Request Id */
             approval_request_id?: string | null;
         };
+        /** DraftSummary */
+        DraftSummary: {
+            /** Id */
+            id: number;
+            /** Kind */
+            kind: string;
+            /** Subject */
+            subject: string;
+            /** To */
+            to: string[];
+            /** Transition Id */
+            transition_id?: string | null;
+        };
+        /** DraftsMessage */
+        DraftsMessage: {
+            /**
+             * Generated By
+             * @default Orion agent
+             */
+            generated_by: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "drafts";
+            /** Title */
+            title: string;
+            /** Drafts */
+            drafts: components["schemas"]["DraftSummary"][];
+            /**
+             * Link
+             * @default /drafts
+             */
+            link: string;
+        };
         /**
          * EnumsOut
          * @description Small vocabularies used by forms and filters.
@@ -3302,6 +3683,30 @@ export interface components {
              */
             created_at: string;
         };
+        /**
+         * ExtractOut
+         * @description Response of POST /orion/extract: the same cards as chat, plus what was understood.
+         */
+        ExtractOut: {
+            /** Messages */
+            messages: (components["schemas"]["TextMessage"] | components["schemas"]["FormMessage"] | components["schemas"]["ReadinessMessage"] | components["schemas"]["TableMessage"] | components["schemas"]["DraftsMessage"] | components["schemas"]["LinkMessage"] | components["schemas"]["ProposalMessage"] | components["schemas"]["LeadershipMessage"])[];
+            /** Intents */
+            intents: components["schemas"]["IntentMatch"][];
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "chat" | "text" | "email" | "document";
+            /** Source Name */
+            source_name?: string | null;
+            /** Characters Read */
+            characters_read: number;
+            /**
+             * Truncated
+             * @default false
+             */
+            truncated: boolean;
+        };
         /** FailedEvalOut */
         FailedEvalOut: {
             /** Metric Id */
@@ -3381,6 +3786,60 @@ export interface components {
              * @default Changes affect new transitions; existing transitions keep their items.
              */
             notice: string;
+        };
+        /** FormField */
+        FormField: {
+            /** Name */
+            name: string;
+            /** Label */
+            label: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "transition" | "gate" | "scope" | "portfolio" | "select" | "text";
+            /** Options */
+            options?: components["schemas"]["FormFieldOption"][] | null;
+            /**
+             * Required
+             * @default true
+             */
+            required: boolean;
+            /** Default */
+            default?: string | null;
+        };
+        /** FormFieldOption */
+        FormFieldOption: {
+            /** Value */
+            value: string;
+            /** Label */
+            label: string;
+        };
+        /** FormMessage */
+        FormMessage: {
+            /**
+             * Generated By
+             * @default Orion agent
+             */
+            generated_by: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "form";
+            /** Form Id */
+            form_id: string;
+            /** Title */
+            title: string;
+            /** Fields */
+            fields: components["schemas"]["FormField"][];
+            /** Submit Label */
+            submit_label: string;
+            /**
+             * Quick Action
+             * @enum {string}
+             */
+            quick_action: "start_gate_review" | "assess_gate_readiness" | "track_owner_actions" | "draft_owner_reminders" | "create_leadership_update" | "create_support_model" | "create_update_ocet";
         };
         /** GateApprovalOut */
         GateApprovalOut: {
@@ -3821,6 +4280,47 @@ export interface components {
             /** Delivery Method */
             delivery_method: string[];
         };
+        /** IntentCatalogOut */
+        IntentCatalogOut: {
+            /** Intents */
+            intents: components["schemas"]["IntentSpecOut"][];
+            /** Refusals */
+            refusals: string[];
+        };
+        /** IntentMatch */
+        IntentMatch: {
+            /** Intent */
+            intent: string;
+            /** Confidence */
+            confidence: number;
+            /** Summary */
+            summary: string;
+        };
+        /**
+         * IntentSpecOut
+         * @description One row of the intent catalog (GET /orion/intents) used for the panel's example chips.
+         */
+        IntentSpecOut: {
+            /** Intent */
+            intent: string;
+            /** Label */
+            label: string;
+            /** Examples */
+            examples: string[];
+            /**
+             * Result
+             * @enum {string}
+             */
+            result: "message" | "link" | "form" | "proposal" | "refusal";
+            /** Proposal Kind */
+            proposal_kind?: ("create_action" | "draft_chaser" | "request_inputs" | "request_exception" | "request_approval" | "accept_applicability" | "create_transition" | "update_transition" | "update_item" | "add_evidence") | null;
+            /** Permission */
+            permission?: string | null;
+            /** Allowed */
+            allowed: boolean;
+            /** Denied Reason */
+            denied_reason?: string | null;
+        };
         /** ItemConditionIn */
         ItemConditionIn: {
             /** Owner User Id */
@@ -4131,6 +4631,83 @@ export interface components {
              */
             redirect: string;
         };
+        /** LeadershipMessage */
+        LeadershipMessage: {
+            /**
+             * Generated By
+             * @default Orion agent
+             */
+            generated_by: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "leadership";
+            update: components["schemas"]["LeadershipUpdateOut"];
+        };
+        /** LeadershipSendIn */
+        LeadershipSendIn: {
+            /**
+             * To
+             * @description Recipient email addresses
+             */
+            to: string[];
+        };
+        /**
+         * LeadershipUpdateCreateIn
+         * @description Body of POST /orion/leadership-update.
+         */
+        LeadershipUpdateCreateIn: {
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "transition" | "portfolio" | "all";
+            /**
+             * Scope Id
+             * @description Transition id (scope=transition) or portfolio name (scope=portfolio); must be omitted/None for scope=all
+             */
+            scope_id?: string | null;
+        };
+        /**
+         * LeadershipUpdateOut
+         * @description A stored leadership update (``LeadershipUpdate`` row). ``content_md`` sections, in order:
+         *     headline, status by portfolio/gate, top risks/blockers, decisions due next 30 days, asks for
+         *     leadership, wins.
+         */
+        LeadershipUpdateOut: {
+            /** Id */
+            id: number;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "transition" | "portfolio" | "all";
+            /** Scope Id */
+            scope_id?: string | null;
+            /** Title */
+            title: string;
+            /** Content Md */
+            content_md: string;
+            generated_by?: components["schemas"]["PersonRef"] | null;
+            /**
+             * Generated Source
+             * @default Orion agent
+             */
+            generated_source: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Sent At */
+            sent_at?: string | null;
+            /**
+             * Sent To
+             * @default []
+             */
+            sent_to: string[];
+        };
         /**
          * LensCardOut
          * @description Overview lens card at the current gate (spec §8.7).
@@ -4182,6 +4759,25 @@ export interface components {
             Technical: number;
             /** Compliance */
             Compliance: number;
+        };
+        /** LinkMessage */
+        LinkMessage: {
+            /**
+             * Generated By
+             * @default Orion agent
+             */
+            generated_by: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "link";
+            /** Label */
+            label: string;
+            /** Href */
+            href: string;
+            /** Description */
+            description?: string | null;
         };
         /** LinkedItemOut */
         LinkedItemOut: {
@@ -4809,6 +5405,60 @@ export interface components {
             /** Note */
             note?: string | null;
         };
+        /** ProposalMessage */
+        ProposalMessage: {
+            /**
+             * Generated By
+             * @default Orion agent
+             */
+            generated_by: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "proposal";
+            proposal: components["schemas"]["ProposalOut"];
+        };
+        /** ProposalOut */
+        ProposalOut: {
+            /** Id */
+            id: number;
+            /** Transition Id */
+            transition_id?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "create_action" | "draft_chaser" | "request_inputs" | "request_exception" | "request_approval" | "accept_applicability" | "create_transition" | "update_transition" | "update_item" | "add_evidence";
+            /** Title */
+            title: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "Open" | "Accepted" | "Dismissed";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            accepted_by?: components["schemas"]["PersonRef"] | null;
+            /** Accepted At */
+            accepted_at?: string | null;
+            /** Can Accept */
+            can_accept: boolean;
+            /** Accept Denied Reason */
+            accept_denied_reason?: string | null;
+            /**
+             * Generated By
+             * @default Orion agent
+             */
+            generated_by: string;
+        };
         /** PutLandscapeIn */
         PutLandscapeIn: {
             landscape: components["schemas"]["LandscapeIn"];
@@ -4889,6 +5539,20 @@ export interface components {
              * Format: date-time
              */
             generated_at: string;
+        };
+        /** ReadinessMessage */
+        ReadinessMessage: {
+            /**
+             * Generated By
+             * @default Orion agent
+             */
+            generated_by: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "readiness";
+            check: components["schemas"]["ReadinessCheckOut"];
         };
         /**
          * RecommendationOut
@@ -5013,39 +5677,60 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /** ReminderRuleOut */
-        ReminderRuleOut: {
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /**
-             * Description
-             * @default
-             */
-            description: string;
-            /**
-             * Enabled
-             * @default true
-             */
-            enabled: boolean;
-            /**
-             * Autonomous Eligible
-             * @default false
-             */
-            autonomous_eligible: boolean;
-            /**
-             * Params
-             * @default {}
-             */
-            params: {
-                [key: string]: unknown;
-            };
-        };
         /** ReminderRulesIn */
         ReminderRulesIn: {
             /** Rules */
             rules: components["schemas"]["ReminderRuleIn"][];
+        };
+        /**
+         * ReminderRunIn
+         * @description Optional body of POST /reminders/run.
+         */
+        ReminderRunIn: {
+            /**
+             * Rules
+             * @description Only evaluate these rule ids (R1..R7); None = all enabled
+             */
+            rules?: string[] | null;
+            /**
+             * Transition Id
+             * @description Only this transition; None = all active transitions
+             */
+            transition_id?: string | null;
+        };
+        /** ReminderRunOut */
+        ReminderRunOut: {
+            /** Run Id */
+            run_id: number;
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Created */
+            created: {
+                [key: string]: number;
+            };
+            /** Sent Autonomously */
+            sent_autonomously: number;
+            /**
+             * Skipped Duplicates
+             * @default 0
+             */
+            skipped_duplicates: number;
+            /**
+             * Drafts
+             * @default []
+             */
+            drafts: number[];
+        };
+        /** ReminderStatusOut */
+        ReminderStatusOut: {
+            last_run: components["schemas"]["ReminderRunOut"] | null;
+            /** Rules */
+            rules: components["schemas"]["app__schemas__reminders__ReminderRuleOut"][];
+            /** Autonomous Transitions */
+            autonomous_transitions: string[];
         };
         /** RequestInputsIn */
         RequestInputsIn: {
@@ -5362,6 +6047,51 @@ export interface components {
              * @default
              */
             L3: string;
+        };
+        /** TableColumn */
+        TableColumn: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+        };
+        /** TableMessage */
+        TableMessage: {
+            /**
+             * Generated By
+             * @default Orion agent
+             */
+            generated_by: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "table";
+            /** Title */
+            title: string;
+            /** Columns */
+            columns: components["schemas"]["TableColumn"][];
+            /** Rows */
+            rows: {
+                [key: string]: unknown;
+            }[];
+            /** Footnote */
+            footnote?: string | null;
+        };
+        /** TextMessage */
+        TextMessage: {
+            /**
+             * Generated By
+             * @default Orion agent
+             */
+            generated_by: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "text";
+            /** Text */
+            text: string;
         };
         /** TierAssessmentOut */
         TierAssessmentOut: {
@@ -5918,6 +6648,35 @@ export interface components {
             /** Amount */
             amount: number;
         };
+        /** ReminderRuleOut */
+        app__schemas__admin__ReminderRuleOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Autonomous Eligible
+             * @default false
+             */
+            autonomous_eligible: boolean;
+            /**
+             * Params
+             * @default {}
+             */
+            params: {
+                [key: string]: unknown;
+            };
+        };
         /** ApprovalStepOut */
         app__schemas__approvals__ApprovalStepOut: {
             /** Step */
@@ -5956,6 +6715,21 @@ export interface components {
             approver?: components["schemas"]["PersonRef"] | null;
             /** Status */
             status: string;
+        };
+        /** ReminderRuleOut */
+        app__schemas__reminders__ReminderRuleOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Enabled */
+            enabled: boolean;
+            /** Autonomous Eligible */
+            autonomous_eligible: boolean;
+            /** Params */
+            params: {
+                [key: string]: unknown;
+            };
         };
     };
     responses: never;
@@ -8856,6 +9630,275 @@ export interface operations {
             };
         };
     };
+    chat_api_v1_orion_chat_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    extract_api_v1_orion_extract_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_extract_api_v1_orion_extract_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtractOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_intents_api_v1_orion_intents_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntentCatalogOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_proposal_api_v1_orion_proposals__proposal_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                proposal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_proposals_api_v1_orion_proposals_get: {
+        parameters: {
+            query?: {
+                transition_id?: string | null;
+                status?: ("Open" | "Accepted" | "Dismissed") | null;
+            };
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_proposal_api_v1_orion_proposals__proposal_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                proposal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismiss_proposal_api_v1_orion_proposals__proposal_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                proposal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_leadership_update_api_v1_orion_leadership_update_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeadershipUpdateCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadershipUpdateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_drafts_api_v1_orion_drafts_get: {
         parameters: {
             query?: {
@@ -9094,6 +10137,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_reminder_engine_api_v1_reminders_run_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReminderRunIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderRunOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    reminder_status_api_v1_reminders_status_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderStatusOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
                 };
             };
         };
@@ -9853,7 +10998,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReminderRuleOut"][];
+                    "application/json": components["schemas"]["app__schemas__admin__ReminderRuleOut"][];
                 };
             };
             /** @description Forbidden */
@@ -9906,7 +11051,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReminderRuleOut"][];
+                    "application/json": components["schemas"]["app__schemas__admin__ReminderRuleOut"][];
                 };
             };
             /** @description Forbidden */
@@ -10222,6 +11367,107 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditPageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_leadership_updates_api_v1_leadership_updates_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadershipUpdateOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_leadership_update_api_v1_leadership_updates__update_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                update_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadershipUpdateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_leadership_update_api_v1_leadership_updates__update_id__send_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                update_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeadershipSendIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadershipUpdateOut"];
                 };
             };
             /** @description Validation Error */

@@ -18,9 +18,9 @@ export const TAB_COMPONENTS: Record<string, LazyExoticComponent<ComponentType<Ta
   ),
   gates: lazy(() => import('./tabs/GatesTab').then((m) => ({ default: m.GatesTab }))),
   hypercare: lazy(() => import('./tabs/HypercareTab').then((m) => ({ default: m.HypercareTab }))),
-  ocet: lazy(() => import('./tabs/OcetTab').then((m) => ({ default: m.OcetTab }))),
+  ocet: lazy(() => import('../ocet/OcetModule').then((m) => ({ default: m.OcetModule }))),
   'support-model': lazy(() =>
-    import('./tabs/SupportModelTab').then((m) => ({ default: m.SupportModelTab })),
+    import('../supportModel/SupportModelModule').then((m) => ({ default: m.SupportModelModule })),
   ),
   'ai-playbook': lazy(() =>
     import('./tabs/AiPlaybookTab').then((m) => ({ default: m.AiPlaybookTab })),

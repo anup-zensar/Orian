@@ -30,7 +30,7 @@ Status legend: `[ ]` to do · `[~]` in progress · `[x]` done (verified by tests
 | Backend packages | FastAPI 0.163.1 · Starlette 1.10.0 · Uvicorn 0.54.0 · Pydantic 2.14.3 · pydantic‑settings 2.16.3 · SQLAlchemy 2.1.9 · python‑multipart 0.0.34 · python‑pptx 1.0.2 · openpyxl 3.1.5 · APScheduler 3.11.3 | Latest stable releases (VAPT: fewer known CVEs); exact pins in `backend/requirements*.txt`. |
 | Backend dev | pytest 9.2.0 · httpx 0.28.1 · ruff 0.17.5 · black 26.10.1 · pip‑audit 2.10.1 | NFR‑02, NFR‑08, VAPT hygiene. |
 | Node | 24.x / npm 11.x | Installed. Vite 8 needs ≥ 22.12. |
-| Frontend | React 18.3.1 · Fluent UI v9 9.75.2 · React Router 6.30.6 · TanStack Query 5.107.1 · react‑hook‑form 7.92 · zod 4.6 · Recharts 3.10 · @xyflow/react 12.12.1 · dayjs 1.11 · Vite 8.3 · TypeScript 5.9.3 | Majors fixed by spec §5.1; latest patch of each. See A‑19 for TS and xyflow. |
+| Frontend | React 18.3.1 · Fluent UI v9 9.75.2 · React Router 7.18.5 (A‑43) · TanStack Query 5.107.1 · react‑hook‑form 7.92 · zod 4.6 · Recharts 3.10 · @xyflow/react 12.12.1 · dayjs 1.11 · Vite 8.3 · TypeScript 5.9.3 | Majors fixed by spec §5.1; latest patch of each. See A‑19 for TS and xyflow. |
 
 ---
 
@@ -98,23 +98,23 @@ FR‑034, FR‑050, FR‑070, FR‑071 (core), FR‑072 (core), BR‑040, BR‑0
 - [x] M5.7 UI: Gates & decisions tab (panel per gate, readiness check panel, chain status, Request approval → Orion draft dialog → Send, decision dialog with conditions editor, disabled reasons), Approvals inbox (Waiting for me / Requested by me / All), Orion drafts page (basic), Outbox page (email + Adaptive Card preview + raw JSON), notification bell.
 - [x] M5.8 Tests: gate rules matrix, chain role enforcement, reject flow, flagship readiness = "Not ready for AtD" with scripted blockers (AC‑07 first half).
 
-### M6 OCET  – status: `[ ]`
+### M6 OCET  – status: `[x]` (done 2026‑11‑17; built in parallel with M7/M9, A‑53)
 FR‑060, BR‑070, AC‑09.
-- [ ] M6.1 `rules/ocet.py`: compounding projection with per‑year overrides, missing base ⇒ 0 + "Inputs pending", category × year totals, grand totals, 5‑year total, variance vs previous version (line + category) + tests incl. 100k @ 10 % → 100,000 · 110,000 · 121,000 · 133,100 · 146,410.
-- [ ] M6.2 API: `GET /transitions/{id}/ocet`, `PUT /ocet/versions/{vid}/lines` (Draft / Inputs pending only), `POST /ocet/versions/{vid}/submit` (blocked when base missing; chain Planner → OLM), `POST /transitions/{id}/ocet/new-version` (copy lines; previous superseded on submit), `POST /ocet/versions/{vid}/request-inputs` (Orion drafts with deep link), `GET /ocet/compare?from&to`.
-- [ ] M6.3 Chain completion: version Approved; linked items (FW‑008, S45‑006) → Complete with actor "Workflow rule" (BR‑030 linked modules); rejection → Rejected (new version needed).
-- [ ] M6.4 `AIService.explain_ocet_change()` mock card.
-- [ ] M6.5 UI `/transitions/:id/ocet`: header (currency, start year, horizon, version/status, chain progress, 5‑year total, variance), editable lines grid (overrides popover with reason, input owner/status), read‑only yearly columns, category × year table, stacked bar + total line charts, worked‑example tooltip, buttons (Request inputs, Submit, New version, Compare), ATO+12 note.
-- [ ] M6.6 Tests: maths, versioning rules, submit blocked on missing base, Planner → OLM across user switches, linked items complete (AC‑09).
+- [x] M6.1 `rules/ocet.py`: compounding projection with per‑year overrides, missing base ⇒ 0 + "Inputs pending", category × year totals, grand totals, 5‑year total, variance vs previous version (line + category) + tests incl. 100k @ 10 % → 100,000 · 110,000 · 121,000 · 133,100 · 146,410.
+- [x] M6.2 API: `GET /transitions/{id}/ocet`, `PUT /ocet/versions/{vid}/lines` (Draft / Inputs pending only), `POST /ocet/versions/{vid}/submit` (blocked when base missing; chain Planner → OLM), `POST /transitions/{id}/ocet/new-version` (copy lines; previous superseded on submit), `POST /ocet/versions/{vid}/request-inputs` (Orion drafts with deep link), `GET /ocet/compare?from&to`.
+- [x] M6.3 Chain completion: version Approved; linked items (FW‑008, S45‑006) → Complete with actor "Workflow rule" (BR‑030 linked modules); rejection → Rejected (new version needed).
+- [x] M6.4 `AIService.explain_ocet_change()` mock card.
+- [x] M6.5 UI `/transitions/:id/ocet`: header (currency, start year, horizon, version/status, chain progress, 5‑year total, variance), editable lines grid (overrides popover with reason, input owner/status), read‑only yearly columns, category × year table, stacked bar + total line charts, worked‑example tooltip, buttons (Request inputs, Submit, New version, Compare), ATO+12 note.
+- [x] M6.6 Tests: maths, versioning rules, submit blocked on missing base, Planner → OLM across user switches, linked items complete (AC‑09).
 
-### M7 Support model  – status: `[ ]`
+### M7 Support model  – status: `[x]` (done 2026‑11‑17)
 FR‑040, AC‑10.
-- [ ] M7.1 Mocks: ConfluenceService.fetch (url_contains match), TranscriptService.get_text (.vtt/.txt/.docx read; audio/video canned + log), DocumentStore.save (storage/<transition>/), SupportModelGenerator (VOC sample by name/URL; generic landscape otherwise, §10.6.1).
-- [ ] M7.2 API: `GET /transitions/{id}/support-model`, `POST …/support-model/inputs` (multipart + confluence_url), `POST …/support-model/generate`, `PUT /support-models/{id}`, `POST /support-models/{id}/send-for-review` (Architect → OLM), `POST /support-models/{id}/pptx`, `GET /support-models` (list).
-- [ ] M7.3 PPT export with python‑pptx (16:9, 5 slides: title, radial landscape with arrows + vendor box, L1→L2→L3 flow, contacts & SLA table, open questions & sources; `TEMPLATE_NAME = "PTIV ORB (placeholder)"`, single theme function, footer "Confidential") → Evidence (Generated, FW‑035); regeneration = new version.
-- [ ] M7.4 Agreed ⇒ support‑model‑linked items Complete (Workflow rule).
-- [ ] M7.5 UI: generator page (inputs, info note, 3‑step simulated progress, React Flow radial editor with add/rename/retype/delete nodes and edges, side panels: hosting & vendor, responsibilities, L1/L2/L3, contacts & SLA, open questions with "Draft question to architect", sources), status flow, Generate PPT + download (no `window.open`); list page `/support-models`.
-- [ ] M7.6 Tests: VOC + generic generation, PPT has 5 slides and opens (python‑pptx re‑read), review chain, linked items (AC‑10).
+- [x] M7.1 Mocks: ConfluenceService.fetch (url_contains match), TranscriptService.get_text (.vtt/.txt/.docx read; audio/video canned + log), DocumentStore.save (storage/<transition>/), SupportModelGenerator (VOC sample by name/URL; generic landscape otherwise, §10.6.1).
+- [x] M7.2 API: `GET /transitions/{id}/support-model`, `POST …/support-model/inputs` (multipart + confluence_url), `POST …/support-model/generate`, `PUT /support-models/{id}`, `POST /support-models/{id}/send-for-review` (Architect → OLM), `POST /support-models/{id}/pptx`, `GET /support-models` (list).
+- [x] M7.3 PPT export with python‑pptx (16:9, 5 slides: title, radial landscape with arrows + vendor box, L1→L2→L3 flow, contacts & SLA table, open questions & sources; `TEMPLATE_NAME = "PTIV ORB (placeholder)"`, single theme function, footer "Confidential") → Evidence (Generated, FW‑035); regeneration = new version.
+- [x] M7.4 Agreed ⇒ support‑model‑linked items Complete (Workflow rule).
+- [x] M7.5 UI: generator page (inputs, info note, 3‑step simulated progress, React Flow radial editor with add/rename/retype/delete nodes and edges, side panels: hosting & vendor, responsibilities, L1/L2/L3, contacts & SLA, open questions with "Draft question to architect", sources), status flow, Generate PPT + download (no `window.open`); list page `/support-models`.
+- [x] M7.6 Tests: VOC + generic generation, PPT has 5 slides and opens (python‑pptx re‑read), review chain, linked items (AC‑10).
 
 ### M8 Orion  – status: `[ ]`
 FR‑071, FR‑072, FR‑080, FR‑090, BR‑050, BR‑060, AC‑11, AC‑12.
@@ -127,11 +127,11 @@ FR‑071, FR‑072, FR‑080, FR‑090, BR‑050, BR‑060, AC‑11, AC‑12.
 - [ ] M8.7 UI: Orion side panel (≈420 px, every page) + `/orion` full page: context chip, 7 quick actions, form‑first cards, card renderers, AI badges, footer "Orion recommends and drafts. People decide." (FR‑090); drafts queue complete (edit recipients/subject/body, Send/Discard, Run reminder engine + counts, assistive/autonomous banner) (FR‑071); leadership updates page (FR‑080).
 - [ ] M8.8 Tests: chat intents, proposal accept audit, reminder rules + de‑dup + autonomous, leadership update content (AC‑11, AC‑12).
 
-### M9 Admin & demo  – status: `[ ]`
+### M9 Admin & demo  – status: `[x]` (done 2026‑11‑17; "Run reminder engine" button is enabled with M8; CR‑01 extends the admin)
 FR‑100, NFR‑06.
-- [ ] M9.1 Admin API + UI (ADMIN only): playbook library (search, edit title/description/gate/lens/tiers/mandatory/active, "lens suggested – confirm" badge), flavour rules, portfolio golden sets (add/remove/mandatory), eval targets grid metric × Tier 1–4 + "targets confirmed" flag, approval chains, reminder rules (thresholds, enable/disable), users (read‑only); notice "changes affect new transitions".
-- [ ] M9.2 Demo controls (`DEMO_MODE=true` only): Reset (re‑seed < 10 s), **Fast‑forward flagship** (complete open items due ≤ current gate except OCET/support‑model‑linked and exception items; re‑import passing evals), Set "today", Run reminder engine.
-- [ ] M9.3 Tests: admin permission 403 for non‑ADMIN, reset idempotent, fast‑forward + scripted fixes ⇒ "Ready for AtD" (AC‑07 second half).
+- [x] M9.1 Admin API + UI (ADMIN only): playbook library (search, edit title/description/gate/lens/tiers/mandatory/active, "lens suggested – confirm" badge), flavour rules, portfolio golden sets (add/remove/mandatory), eval targets grid metric × Tier 1–4 + "targets confirmed" flag, approval chains, reminder rules (thresholds, enable/disable), users (read‑only); notice "changes affect new transitions".
+- [x] M9.2 Demo controls (`DEMO_MODE=true` only): Reset (re‑seed < 10 s), **Fast‑forward flagship** (complete open items due ≤ current gate except OCET/support‑model‑linked and exception items; re‑import passing evals), Set "today", Run reminder engine.
+- [x] M9.3 Tests: admin permission 403 for non‑ADMIN, reset idempotent, fast‑forward + scripted fixes ⇒ "Ready for AtD" (AC‑07 second half).
 
 ### M10 Polish  – status: `[ ]`
 §12, NFR‑05, NFR‑09, NFR‑10, AC‑01, AC‑14, AC‑15.
@@ -140,6 +140,11 @@ FR‑100, NFR‑06.
 - [ ] M10.3 `docs/DEMO_SCRIPT.md` from §13 with exact clicks; scripted API walk of the full storyline (`backend/tests/test_storyline.py`) + manual UI walk; fix issues (AC‑14).
 - [ ] M10.4 VAPT hygiene: `pip-audit` and `npm audit` clean or documented; security headers verified; p95 timing spot check (NFR‑05).
 - [ ] M10.5 Final regression: all tests (AC‑15), build, lint; summary of what's built, how to run, known gaps.
+
+### Change requests after the M5 client demo (2026‑11‑17, from the user)
+- [~] **CR‑01 Admin no‑code configuration.** "Admin should be able to modify as many fields as possible – e.g. if a new project type is added in future we don't need to change code; done via the frontend so a non‑developer can handle all fields." Everything a business user may change (project types and their behaviour, portfolios, option lists, intake fields incl. admin‑defined custom fields, thresholds, chains, rules, message templates, users) becomes data edited in Admin with audit; only structural invariants stay in code (one gate model, the three lenses, BR‑050 guardrails). Extends FR‑100. Design in progress; built after M6/M7/M9 integration.
+- [~] **CR‑02 Orion natural‑language actions.** "Orion should be able to create a new transition and most features by just taking input in words or any other way." Typed text, a pasted email or an uploaded document → Orion extracts the fields → a proposal / pre‑filled form → a permitted human confirms (BR‑050). Mock = deterministic extraction against DB reference data; live = Azure OpenAI tool calling behind the same `AIService` interface. Built with M8 (FR‑090).
+- [ ] **R‑01 M3–M5 review fixes** (backend BE#1–#12 incl. per‑transition access control; UI findings not fixed in the demo polish).
 
 ---
 
@@ -247,6 +252,15 @@ Recorded per spec §0 ("choose the simplest behaviour that keeps the demo story 
 - **A‑63 Control‑tower context.** KPI tiles are computed over the filters except the tile keys, and the heatmap over the filters except portfolio and gate, so users keep the portfolio context after clicking a tile or cell; the register, region chart, escalations, calendar and Orion card use all filters.
 - **A‑64 My work** returns up to 200 rows (the UI shows 25 with "Show all"); "My open items" counts checklist items only, approvals are counted separately (A‑57 rule shared with the approvals inbox).
 - **A‑65 Insight wording.** Item titles in insight sentences use the short label before " - ", " (" or ": " (else a word‑boundary cut near 60 characters); drafting actions are hidden for Leadership (read‑only).
+- **A‑66 Second copy next to the demo.** The Vite proxy target is configurable (`ORION_API_URL`, default `http://127.0.0.1:8000`; also read from `frontend/.env`), so a development copy can run on other ports (e.g. API 8010 + web 5180, with its own `DATABASE_URL`/`STORAGE_DIR`) while a demo copy keeps 8000/5174.
+- **A‑67 Demo copy.** The M5 client demo runs from a separate git worktree (`../Orian-demo`, branch `demo/m5`) started by `start-demo.ps1` (`-Reset` re‑seeds). Its polish commits are merged into `build/mvp` (fast‑forward).
+- **A‑68 OCET "Planner approved"** is derived on read (stored `Submitted` + chain step 1 approved), never stored; the completion hook stores `Approved`/`Rejected` and completes the linked items (FW‑008, S45‑006) that are still open and applicable, actor *Workflow rule*.
+- **A‑69 OCET versioning details.** Line keys are never reused across the versions of one estimate (variance and compare match by key); "Request inputs" marks the lines `Requested` when the Orion draft is created; an override for the start year is rejected (growth applies from the second year); base amounts ≤ 1e12; submitting supersedes only older `Submitted`/`Approved` versions (a `Rejected` version keeps its status). The version selector shows the current version's lines; older versions are viewed through *Compare*.
+- **A‑70 Support model generation.** The VOC sample is used when the transition name or the Confluence URL contains the whole word "VOC" or "Medallia"; otherwise a generic landscape (5 platform components + up to 2 portfolio focus areas, SFTP when the transcript mentions it). One edge per component; limits 24 components / 50 contacts / 50 questions, unique names, no `child_of` cycles. Only the latest version can export a PPT. A regenerated version after *Agreed* leaves the linked items Complete (open question for the client).
+- **A‑71 Support model PPT.** 16:9, exactly 5 slides, template name "PTIV ORB (placeholder)", footer "Confidential"; child nodes are placed on the nearest free grid spot to avoid overlaps (verified numerically with python‑pptx – LibreOffice is not available on this machine).
+- **A‑72 Admin rules (M9).** Golden‑set rows are deactivated, never deleted, and restored by saving the row again; reminder thresholds 1–3650; an eval target value needs an operator; an approval‑chain role must have at least one user (the CISO/BISO mock step is allowed on any chain); a flavour rule needs at least one checklist.
+- **A‑73 Demo fast‑forward** writes passing eval results itself (`Imported (mock)`, actor *System*) and one *System* audit event per completed item plus a summary; OCET/support‑model linked items and items under an exception are skipped (they complete through their own workflows). *Reset* also removes generated files from storage.
+- **A‑74 Error contract additions.** Endpoints whose milestone is not built answer `501 {detail, reasons}` instead of a 500; validation errors never echo the request input (`input`/`ctx` removed from 422 bodies), so a NaN or a large payload cannot break the error response.
 
 ---
 
@@ -270,3 +284,5 @@ Recorded per spec §0 ("choose the simplest behaviour that keeps the demo story 
 | 2026‑11‑17 | M1 Foundation | Done. Backend: 164 tests green (rules, synthesis ±3 per A‑37, seed, API core, security, services, cards), ruff + black clean, `pip-audit` 0 known vulns over the full pin set. Frontend: strict build + lint green, `npm audit` 0 vulns after React Router 7.18.5 (A‑43). Live smoke test via the Vite proxy (users, /me 401/200, 404/405 contract, security headers, deep link). Review findings (21) fixed or documented (A‑36…A‑49). Python 3.15.2 still blocked by the corporate filter, also via winget (A‑01). |
 | 2026‑11‑17 | M2 Visibility | Done. Dashboard, control tower (heatmap, region chart, register, escalations, calendar, operating rhythm), transitions list, Orion insights. Review: 0 high; 17 fixes applied (A‑61…A‑65). Storyline step 2 verified in the browser (Forecourt POS refresh Red, 3 critical gaps, decision in 4 days). |
 | 2026‑11‑17 | M3–M5 (parallel, A‑53) | Done. Contracts written by 4 agents, built by 8 parallel builders, integrated in one pass: ~400 backend tests, strict build + lint, npm audit 0; live API walk of storyline steps 3 (SMSM Photo Capture → Tier 2 → IRM confirm → scope → launch: 72 + 208/8 + golden set + 2), 4, 5 (flagship Not ready for AtD incl. EV‑03/EV‑12; chaser → outbox email + Teams card) and 8 (EX‑01 IRM + CISO/BISO mock → S45‑014 covered; CON‑001 closed); browser smoke test of all 18 new routes. Commits grouped per milestone. |
+| 2026‑11‑17 | M5 client demo | Demo polish (readiness card top‑5 actions, assessment grid at 1440 px, deep‑link scroll, toasts, role labels, intake Enter/site row, tier confirm state) committed on `demo/m5` and fast‑forwarded into `build/mvp` (A‑67). After the demo the user raised CR‑01 (admin no‑code configuration) and CR‑02 (Orion natural‑language actions). Baseline before M6–M9 integration: 477 backend tests pass, 1 expected failure (stub test for `explain_ocet_change`). |
+| 2026‑11‑17 | M6, M7, M9 | Done (built in parallel by 6 builders, then integrated, reviewed and fixed). 492 backend tests green, ruff + black clean; strict build + lint, `npm audit` 0. Live API walk of storyline steps 6 (OCET inputs → Planner → OLM → Approved, FW‑008/S45‑006 Complete by Workflow rule), 7 (VOC support model → Architect → OLM → Agreed → 5‑slide PPT on FW‑035), 8 and 9 (fast‑forward → Ready for AtD → AtD chain → decision → SG5_HYPERCARE). Browser: 37 route runs at 1440/1024 px with 0 errors; review findings fixed: 11 backend, 8 UI (A‑68…A‑74). M8 contracts (incl. CR‑02 natural‑language actions) committed as stubs. |

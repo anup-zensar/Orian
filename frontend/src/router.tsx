@@ -11,7 +11,7 @@ const named = <T extends Record<string, ComponentType>>(load: () => Promise<T>, 
   lazy(async () => ({ default: (await load())[key] }));
 
 const placeholders = () => import('./pages/placeholders');
-const AdminPage = named(placeholders, 'AdminPage');
+const AdminPage = named(() => import('./features/admin/AdminPage'), 'AdminPage');
 const ApprovalsPage = named(() => import('./features/approvals/ApprovalsPage'), 'ApprovalsPage');
 const AuditPage = named(() => import('./features/audit/AuditPage'), 'AuditPage');
 const DraftsPage = named(() => import('./features/drafts/DraftsPage'), 'DraftsPage');
@@ -23,7 +23,10 @@ const NewTransitionPage = named(
 const OrionFullPage = named(placeholders, 'OrionFullPage');
 const OutboxPage = named(() => import('./features/outbox/OutboxPage'), 'OutboxPage');
 const ScopePage = named(() => import('./features/intake/ScopePage'), 'ScopePage');
-const SupportModelsPage = named(placeholders, 'SupportModelsPage');
+const SupportModelsPage = named(
+  () => import('./features/supportModels/SupportModelsPage'),
+  'SupportModelsPage',
+);
 const TieringPage = named(() => import('./features/intake/TieringPage'), 'TieringPage');
 const DashboardPage = named(() => import('./features/dashboard/DashboardPage'), 'DashboardPage');
 const ControlTowerPage = named(

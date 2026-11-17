@@ -12,17 +12,3 @@ export const LeadershipUpdatesPage = () => (
 export const OrionFullPage = () => (
   <PlaceholderPage title="Orion" purpose="Full-page Orion assistant." spec="FR-090 · built in M8" />
 );
-export const SupportModelsPage = () => (
-  <PlaceholderPage
-    title="Support models"
-    purpose="Generate and review support models."
-    spec="FR-040 · built in M7"
-  />
-);
-export const AdminPage = () => (
-  <PlaceholderPage
-    title="Admin"
-    purpose="Playbook configuration and demo controls."
-    spec="FR-100 · built in M9"
-  />
-);
