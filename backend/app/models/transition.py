@@ -64,6 +64,10 @@ class Transition(TimestampMixin, Base):
     # additions (PLAN.md): assessment launched from the Scope page (FR-022); hypercare "no defects" (FR-036)
     assessment_launched_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     hypercare_no_defects_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
+    # M3: playbook item id -> {"applies": "Yes"|"No"|"To confirm", "reason": str|None}, decided on the
+    # Scope page before launch (applied to TransitionItem.applicability at launch)
+    scope_decisions: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
 
 class TierAssessment(TimestampMixin, Base):
