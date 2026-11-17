@@ -1,0 +1,734 @@
+{
+  "note": "Sample transitions from the client prototype. snapshot = target metrics used to synthesise item statuses deterministically (see spec §11.3). Flagship has explicit overrides.",
+  "transitions": [
+    {
+      "id": "TR-0001",
+      "name": "Mobility Knowledge Agent",
+      "servicenow_project_id": "PRJ0041037",
+      "portfolio": "GCC",
+      "region": "Global",
+      "market": "Multi-market",
+      "project_type": "Agentic AI",
+      "current_gate": "SG4_ATD",
+      "or_focal_user_id": "U01",
+      "pm_user_id": "U10",
+      "architect_user_id": "U11",
+      "olm_user_id": "U12",
+      "snapshot": {
+        "readiness_pct": {
+          "Business": 82,
+          "Technical": 74,
+          "Compliance": 60
+        },
+        "open_gaps": 9,
+        "critical_gaps": 1,
+        "days_to_next_decision": 21,
+        "blocker": "IRM: data-classification control open"
+      },
+      "risk_tier": 2,
+      "tier_status": "Confirmed",
+      "is_flagship": true,
+      "description": "Internal RAG agent using approved SharePoint knowledge.",
+      "intake": {
+        "audience": "Internal department",
+        "write_actions": "No",
+        "sensitive_data": "No",
+        "target_gate": "AtD",
+        "investment_type": "Change",
+        "delivery_method": "AI / Agentic"
+      },
+      "tiering": {
+        "answers": {
+          "TQ1": false,
+          "TQ2": false,
+          "TQ3": false,
+          "TQ4": true,
+          "TQ5": false
+        },
+        "proposed_tier": 2,
+        "confirmed_tier": 2,
+        "confirmed_by": [
+          "U01",
+          "U14"
+        ],
+        "rationale": "Internal, bounded and advisory; no write actions; non-sensitive data."
+      },
+      "item_overrides": [
+        {
+          "item_id": "FW-008",
+          "status": "In progress",
+          "note": "OCET v2 in progress – monitoring tool cost input still pending",
+          "linked_module": "OCET"
+        },
+        {
+          "item_id": "S45-006",
+          "status": "In progress",
+          "note": "Token cost lines included in OCET v2 (not yet approved)",
+          "linked_module": "OCET"
+        },
+        {
+          "item_id": "FW-035",
+          "status": "Gap",
+          "note": "Support model not drafted yet – walkthrough held, no landscape",
+          "linked_module": "SUPPORT_MODEL"
+        },
+        {
+          "item_id": "FW-031",
+          "status": "In progress",
+          "note": "SLA per service tier depends on support model"
+        },
+        {
+          "item_id": "S45-014",
+          "status": "Non-compliant",
+          "note": "Red-team / prompt-injection evidence not yet available",
+          "design_effectiveness": "No"
+        },
+        {
+          "item_id": "S45-015",
+          "status": "In review",
+          "note": "Prompt-injection controls documented; evidence pending"
+        },
+        {
+          "item_id": "S45-026",
+          "status": "In review",
+          "note": "Input classification enforcement not yet evidenced"
+        },
+        {
+          "item_id": "S45-005",
+          "status": "In review",
+          "note": "AI Use Case Risk Assessment in review"
+        },
+        {
+          "item_id": "S45-035",
+          "status": "Not started",
+          "note": "Depends on S45-005"
+        },
+        {
+          "item_id": "FW-053",
+          "status": "In progress",
+          "note": "Hypercare KPI dashboard in build"
+        }
+      ],
+      "conditions": [
+        {
+          "id": "CON-001",
+          "item_id": "S3-019",
+          "set_at_gate": "SG3",
+          "owner_user_id": "U01",
+          "text": "Workflow-level stress/load test to be completed before AtD",
+          "due_gate": "SG4_ATD",
+          "status": "Open"
+        },
+        {
+          "id": "CON-002",
+          "item_id": "S02-012",
+          "set_at_gate": "SG2",
+          "owner_user_id": "U14",
+          "text": "Local-model processing restriction relies on platform policy only – technical control by closure",
+          "due_gate": "CLOSURE",
+          "status": "Open"
+        }
+      ],
+      "exceptions": [
+        {
+          "ref": "EX-01",
+          "item_id": "S45-014",
+          "text": "Scope red-teaming proportionate to Tier 2 (NFR sheet lists red-teaming for Tier 3/4)",
+          "status": "Pending CISO/BISO"
+        }
+      ],
+      "risks": [
+        {
+          "id": "CR-01",
+          "title": "Red-team / prompt-injection evidence not yet available",
+          "rating": "High",
+          "decision": "Remediate before AtD",
+          "item_ids": [
+            "S45-014",
+            "S45-015"
+          ]
+        },
+        {
+          "id": "CR-02",
+          "title": "Local-model processing restriction relies on platform policy only",
+          "rating": "Medium",
+          "decision": "Accepted with conditions (close by project closure)",
+          "item_ids": [
+            "S02-012"
+          ]
+        },
+        {
+          "id": "CR-03",
+          "title": "AI Use Case Risk Assessment still in review",
+          "rating": "Medium",
+          "decision": "In review",
+          "item_ids": [
+            "S45-005",
+            "S45-035"
+          ]
+        },
+        {
+          "id": "CR-04",
+          "title": "Input classification enforcement not yet evidenced",
+          "rating": "Low",
+          "decision": "Track to AtD",
+          "item_ids": [
+            "S45-026"
+          ]
+        }
+      ],
+      "gate_history": [
+        {
+          "gate": "SG0",
+          "outcome": "Proceed",
+          "by": "U14",
+          "note": "Tier 2 confirmed (IRM attested)"
+        },
+        {
+          "gate": "SG2",
+          "outcome": "Proceed with conditions",
+          "by": "U14",
+          "note": "Condition CON-002 (S02-012 / CR-02)"
+        },
+        {
+          "gate": "SG3",
+          "outcome": "Proceed with conditions",
+          "by": "U01",
+          "note": "Condition CON-001 (S3-019 stress test)"
+        }
+      ],
+      "actions": [
+        {
+          "id": "ACT-001",
+          "title": "Share red-team test report",
+          "owner_user_id": "U11",
+          "due_in_days": 5,
+          "status": "Open",
+          "item_ids": [
+            "S45-014"
+          ]
+        },
+        {
+          "id": "ACT-002",
+          "title": "Upload AI Use Case Risk Assessment",
+          "owner_user_id": "U10",
+          "due_in_days": 7,
+          "status": "In progress",
+          "item_ids": [
+            "S45-005"
+          ]
+        },
+        {
+          "id": "ACT-003",
+          "title": "Provide monitoring tool cost for OCET",
+          "owner_user_id": "U11",
+          "due_in_days": 3,
+          "status": "Open",
+          "item_ids": [
+            "FW-008"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "id": "EVD-001",
+          "item_id": "FW-006",
+          "title": "Solution & architecture walkthrough – recording",
+          "type": "Recording",
+          "url": "https://sharepoint.example/sites/orion/MKA/walkthrough.mp4",
+          "status": "Accepted"
+        },
+        {
+          "id": "EVD-002",
+          "item_id": "FW-012",
+          "title": "IAQ assessment (BIA, LRA)",
+          "type": "Document",
+          "url": "https://sharepoint.example/sites/orion/MKA/IAQ.pdf",
+          "status": "Accepted"
+        },
+        {
+          "id": "EVD-003",
+          "item_id": "S45-015",
+          "title": "Prompt-injection controls design",
+          "type": "Document",
+          "url": "https://sharepoint.example/sites/orion/MKA/pi-controls.docx",
+          "status": "Submitted"
+        }
+      ],
+      "eval_results": {
+        "EV-01": 92,
+        "EV-02": 91,
+        "EV-03": 3.1,
+        "EV-04": 84,
+        "EV-05": 96,
+        "EV-06": 95.5,
+        "EV-07": 88,
+        "EV-08": 72,
+        "EV-09": 1740,
+        "EV-10": 99.7,
+        "EV-11": 0,
+        "EV-12": 84,
+        "EV-13": 9
+      }
+    },
+    {
+      "id": "TR-0002",
+      "name": "Nucleus Mobility CAPs",
+      "servicenow_project_id": "PRJ0041074",
+      "portfolio": "GCC",
+      "region": "Central Apps",
+      "market": "Multi-market",
+      "project_type": "Combined",
+      "current_gate": "SG4_ATD",
+      "or_focal_user_id": "U02",
+      "pm_user_id": "U10",
+      "architect_user_id": "U11",
+      "olm_user_id": "U12",
+      "snapshot": {
+        "readiness_pct": {
+          "Business": 90,
+          "Technical": 86,
+          "Compliance": 88
+        },
+        "open_gaps": 4,
+        "critical_gaps": 0,
+        "days_to_next_decision": 12,
+        "blocker": ""
+      },
+      "risk_tier": 2,
+      "tier_status": "Confirmed"
+    },
+    {
+      "id": "TR-0003",
+      "name": "Virtual SME",
+      "servicenow_project_id": "PRJ0041111",
+      "portfolio": "GCC",
+      "region": "Europe & South Africa",
+      "market": "Netherlands",
+      "project_type": "Agentic AI",
+      "current_gate": "SG3",
+      "or_focal_user_id": "U01",
+      "pm_user_id": "U10",
+      "architect_user_id": "U11",
+      "olm_user_id": "U12",
+      "snapshot": {
+        "readiness_pct": {
+          "Business": 70,
+          "Technical": 58,
+          "Compliance": 45
+        },
+        "open_gaps": 14,
+        "critical_gaps": 2,
+        "days_to_next_decision": 30,
+        "blocker": "Support model not agreed with SOM"
+      },
+      "risk_tier": 2,
+      "tier_status": "Confirmed"
+    },
+    {
+      "id": "TR-0004",
+      "name": "France & Belgium e-invoicing",
+      "servicenow_project_id": "PRJ0041148",
+      "portfolio": "Fleets",
+      "region": "Europe & South Africa",
+      "market": "France / Belgium",
+      "project_type": "Normal",
+      "current_gate": "SG5_HYPERCARE",
+      "or_focal_user_id": "U03",
+      "pm_user_id": "U10",
+      "architect_user_id": "U11",
+      "olm_user_id": "U12",
+      "snapshot": {
+        "readiness_pct": {
+          "Business": 88,
+          "Technical": 80,
+          "Compliance": 72
+        },
+        "open_gaps": 6,
+        "critical_gaps": 1,
+        "days_to_next_decision": 6,
+        "blocker": "Reconciliation runbook evidence pending"
+      },
+      "risk_tier": null,
+      "tier_status": null
+    },
+    {
+      "id": "TR-0005",
+      "name": "Fleet card portal upgrade",
+      "servicenow_project_id": "PRJ0041185",
+      "portfolio": "Fleets",
+      "region": "Asia Pacific",
+      "market": "Philippines",
+      "project_type": "Normal",
+      "current_gate": "SG2",
+      "or_focal_user_id": "U04",
+      "pm_user_id": "U10",
+      "architect_user_id": "U11",
+      "olm_user_id": "U12",
+      "snapshot": {
+        "readiness_pct": {
+          "Business": 60,
+          "Technical": 55,
+          "Compliance": 50
+        },
+        "open_gaps": 8,
+        "critical_gaps": 0,
+        "days_to_next_decision": 40,
+        "blocker": ""
+      },
+      "risk_tier": null,
+      "tier_status": null
+    },
+    {
+      "id": "TR-0006",
+      "name": "Fleet telematics integration",
+      "servicenow_project_id": "PRJ0041222",
+      "portfolio": "Fleets",
+      "region": "Americas",
+      "market": "USA",
+      "project_type": "Normal",
+      "current_gate": "SG4_ATD",
+      "or_focal_user_id": "U03",
+      "pm_user_id": "U10",
+      "architect_user_id": "U11",
+      "olm_user_id": "U12",
+      "snapshot": {
+        "readiness_pct": {
+          "Business": 76,
+          "Technical": 69,
+          "Compliance": 80
+        },
+        "open_gaps": 7,
+        "critical_gaps": 1,
+        "days_to_next_decision": 17,
+        "blocker": "Vendor SLA not signed"
+      },
+      "risk_tier": null,
+      "tier_status": null
+    },
+    {
+      "id": "TR-0007",
+      "name": "Shell Café digital ordering",
+      "servicenow_project_id": "PRJ0041259",
+      "portfolio": "Retail Site Systems",
+      "region": "Europe & South Africa",
+      "market": "UK",
+      "project_type": "Normal",
+      "current_gate": "SG5_HYPERCARE",
+      "or_focal_user_id": "U05",
+      "pm_user_id": "U10",
+      "architect_user_id": "U11",
+      "olm_user_id": "U12",
+      "snapshot": {
+        "readiness_pct": {
+          "Business": 84,
+          "Technical": 77,
+          "Compliance": 90
+        },
+        "open_gaps": 5,
+        "critical_gaps": 0,
+        "days_to_next_decision": 9,
+        "blocker": ""
+      },
+      "risk_tier": null,
+      "tier_status": null
+    },
+    {
+      "id": "TR-0008",
+      "name": "Forecourt POS refresh",
+      "servicenow_project_id": "PRJ0041296",
+      "portfolio": "Retail Site Systems",
+      "region": "Asia Pacific",
+      "market": "India",
+      "project_type": "Infrastructure",
+      "current_gate": "SG4_ATD",
+      "or_focal_user_id": "U06",
+      "pm_user_id": "U10",
+      "architect_user_id": "U11",
+      "olm_user_id": "U12",
+      "snapshot": {
+        "readiness_pct": {
+          "Business": 62,
+          "Technical": 48,
+          "Compliance": 70
+        },
+        "open_gaps": 15,
+        "critical_gaps": 3,
+        "days_to_next_decision": 4,
+        "blocker": "DOMS/POS IP & network baseline missing for 42 sites"
+      },
+      "risk_tier": null,
+      "tier_status": null
+    },
+    {
+      "id": "TR-0009",
+      "name": "Wet stock reconciliation tool",
+      "servicenow_project_id": "PRJ0041333",
+      "portfolio": "Retail Site Systems",
+      "region": "Central Apps",
+      "market": "Multi-market",
+      "project_type": "Normal",
+      "current_gate": "SG3",
+      "or_focal_user_id": "U06",
+      "pm_user_id": "U10",
+      "architect_user_id": "U11",
+      "olm_user_id": "U12",
+      "snapshot": {
+        "readiness_pct": {
+          "Business": 72,
+          "Technical": 66,
+          "Compliance": 58
+        },
+        "open_gaps": 10,
+        "critical_gaps": 1,
+        "days_to_next_decision": 25,
+        "blocker": "Market process for variance approval not defined"
+      },
+      "risk_tier": null,
+      "tier_status": null
+    },
+    {
+      "id": "TR-0010",
+      "name": "Fuel pricing engine migration",
+      "servicenow_project_id": "PRJ0041370",
+      "portfolio": "Retail Site Systems",
+      "region": "Americas",
+      "market": "Brazil",
+      "project_type": "Combined",
+      "current_gate": "SG4_ATD",
+      "or_focal_user_id": "U05",
+      "pm_user_id": "U10",
+      "architect_user_id": "U11",
+      "olm_user_id": "U12",
+      "snapshot": {
+        "readiness_pct": {
+          "Business": 68,
+          "Technical": 61,
+          "Compliance": 55
+        },
+        "open_gaps": 12,
+        "critical_gaps": 2,
+        "days_to_next_decision": 14,
+        "blocker": "Price-change rollback not tested"
+      },
+      "risk_tier": 3,
+      "tier_status": "Confirmed"
+    },
+    {
+      "id": "TR-0011",
+      "name": "Card authorisation switch",
+      "servicenow_project_id": "PRJ0041407",
+      "portfolio": "Retail Site Systems",
+      "region": "Europe & South Africa",
+      "market": "Germany",
+      "project_type": "Infrastructure",
+      "current_gate": "SG6_ATO",
+      "or_focal_user_id": "U02",
+      "pm_user_id": "U10",
+      "architect_user_id": "U11",
+      "olm_user_id": "U12",
+      "snapshot": {
+        "readiness_pct": {
+          "Business": 95,
+          "Technical": 92,
+          "Compliance": 94
+        },
+        "open_gaps": 2,
+        "critical_gaps": 0,
+        "days_to_next_decision": 10,
+        "blocker": ""
+      },
+      "risk_tier": null,
+      "tier_status": null
+    },
+    {
+      "id": "TR-0012",
+      "name": "EV charging roaming hub",
+      "servicenow_project_id": "PRJ0041444",
+      "portfolio": "eMobility",
+      "region": "Europe & South Africa",
+      "market": "Multi-market",
+      "project_type": "Normal",
+      "current_gate": "SG4_ATD",
+      "or_focal_user_id": "U07",
+      "pm_user_id": "U10",
+      "architect_user_id": "U11",
+      "olm_user_id": "U12",
+      "snapshot": {
+        "readiness_pct": {
+          "Business": 80,
+          "Technical": 71,
+          "Compliance": 66
+        },
+        "open_gaps": 9,
+        "critical_gaps": 1,
+        "days_to_next_decision": 19,
+        "blocker": "Roaming partner escalation matrix incomplete"
+      },
+      "risk_tier": null,
+      "tier_status": null
+    },
+    {
+      "id": "TR-0013",
+      "name": "Charger monitoring platform",
+      "servicenow_project_id": "PRJ0041481",
+      "portfolio": "eMobility",
+      "region": "Asia Pacific",
+      "market": "Singapore",
+      "project_type": "Combined",
+      "current_gate": "SG5_HYPERCARE",
+      "or_focal_user_id": "U07",
+      "pm_user_id": "U10",
+      "architect_user_id": "U11",
+      "olm_user_id": "U12",
+      "snapshot": {
+        "readiness_pct": {
+          "Business": 86,
+          "Technical": 83,
+          "Compliance": 79
+        },
+        "open_gaps": 4,
+        "critical_gaps": 0,
+        "days_to_next_decision": 7,
+        "blocker": ""
+      },
+      "risk_tier": 2,
+      "tier_status": "Confirmed"
+    },
+    {
+      "id": "TR-0014",
+      "name": "Medallia VOC",
+      "servicenow_project_id": "PRJ0041518",
+      "portfolio": "Global Marketing",
+      "region": "Global",
+      "market": "Multi-market",
+      "project_type": "Normal",
+      "current_gate": "SG5_HYPERCARE",
+      "or_focal_user_id": "U08",
+      "pm_user_id": "U10",
+      "architect_user_id": "U11",
+      "olm_user_id": "U12",
+      "snapshot": {
+        "readiness_pct": {
+          "Business": 79,
+          "Technical": 82,
+          "Compliance": 68
+        },
+        "open_gaps": 6,
+        "critical_gaps": 1,
+        "days_to_next_decision": 11,
+        "blocker": "Consent & privacy evidence for IRM pending"
+      },
+      "risk_tier": null,
+      "tier_status": null
+    },
+    {
+      "id": "TR-0015",
+      "name": "Loyalty campaign platform",
+      "servicenow_project_id": "PRJ0041555",
+      "portfolio": "Global Marketing",
+      "region": "Americas",
+      "market": "Multi-market",
+      "project_type": "Normal",
+      "current_gate": "SG2",
+      "or_focal_user_id": "U08",
+      "pm_user_id": "U10",
+      "architect_user_id": "U11",
+      "olm_user_id": "U12",
+      "snapshot": {
+        "readiness_pct": {
+          "Business": 66,
+          "Technical": 60,
+          "Compliance": 62
+        },
+        "open_gaps": 6,
+        "critical_gaps": 0,
+        "days_to_next_decision": 35,
+        "blocker": ""
+      },
+      "risk_tier": null,
+      "tier_status": null
+    },
+    {
+      "id": "TR-0016",
+      "name": "SD-WAN site connectivity",
+      "servicenow_project_id": "PRJ0041592",
+      "portfolio": "Telecoms",
+      "region": "Asia Pacific",
+      "market": "Malaysia",
+      "project_type": "Infrastructure",
+      "current_gate": "SG4_ATD",
+      "or_focal_user_id": "U09",
+      "pm_user_id": "U10",
+      "architect_user_id": "U11",
+      "olm_user_id": "U12",
+      "snapshot": {
+        "readiness_pct": {
+          "Business": 83,
+          "Technical": 64,
+          "Compliance": 75
+        },
+        "open_gaps": 8,
+        "critical_gaps": 1,
+        "days_to_next_decision": 16,
+        "blocker": "Carrier restoration runbook not tested"
+      },
+      "risk_tier": null,
+      "tier_status": null
+    },
+    {
+      "id": "TR-0017",
+      "name": "Retail site circuit migration",
+      "servicenow_project_id": "PRJ0041629",
+      "portfolio": "Telecoms",
+      "region": "Europe & South Africa",
+      "market": "Multi-market",
+      "project_type": "Infrastructure",
+      "current_gate": "CLOSURE",
+      "or_focal_user_id": "U09",
+      "pm_user_id": "U10",
+      "architect_user_id": "U11",
+      "olm_user_id": "U12",
+      "snapshot": {
+        "readiness_pct": {
+          "Business": 98,
+          "Technical": 97,
+          "Compliance": 100
+        },
+        "open_gaps": 0,
+        "critical_gaps": 0,
+        "days_to_next_decision": 3,
+        "blocker": ""
+      },
+      "risk_tier": null,
+      "tier_status": null
+    },
+    {
+      "id": "TR-0018",
+      "name": "Contact-centre telephony",
+      "servicenow_project_id": "PRJ0041666",
+      "portfolio": "Telecoms",
+      "region": "Europe & South Africa",
+      "market": "South Africa",
+      "project_type": "Normal",
+      "current_gate": "SG3",
+      "or_focal_user_id": "U04",
+      "pm_user_id": "U10",
+      "architect_user_id": "U11",
+      "olm_user_id": "U12",
+      "snapshot": {
+        "readiness_pct": {
+          "Business": 74,
+          "Technical": 70,
+          "Compliance": 64
+        },
+        "open_gaps": 7,
+        "critical_gaps": 0,
+        "days_to_next_decision": 28,
+        "blocker": ""
+      },
+      "risk_tier": null,
+      "tier_status": null
+    }
+  ]
+}

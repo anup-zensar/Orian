@@ -1,0 +1,450 @@
+{
+  "gates": [
+    {
+      "code": "SG0",
+      "order": 0,
+      "label": "SG0 – Initiate & tiering",
+      "short": "SG0",
+      "type": "stage_review"
+    },
+    {
+      "code": "SG2",
+      "order": 1,
+      "label": "SG1–SG2 – Scope, blueprint & architecture",
+      "short": "SG0–SG2",
+      "type": "stage_review"
+    },
+    {
+      "code": "SG3",
+      "order": 2,
+      "label": "SG3 – Build & test",
+      "short": "SG3",
+      "type": "stage_review"
+    },
+    {
+      "code": "SG4_ATD",
+      "order": 3,
+      "label": "SG4 – Agreement to Deploy (AtD)",
+      "short": "AtD",
+      "type": "decision"
+    },
+    {
+      "code": "SG5_HYPERCARE",
+      "order": 4,
+      "label": "SG4–SG5 – Hypercare",
+      "short": "Hypercare",
+      "type": "stage_review"
+    },
+    {
+      "code": "SG6_ATO",
+      "order": 5,
+      "label": "SG6 – Agreement to Operate (AtO)",
+      "short": "AtO",
+      "type": "decision"
+    },
+    {
+      "code": "CLOSURE",
+      "order": 6,
+      "label": "Project closure",
+      "short": "Closure",
+      "type": "closure"
+    }
+  ],
+  "gate_outcomes": {
+    "stage_review": [
+      "Proceed",
+      "Proceed with conditions",
+      "Hold"
+    ],
+    "decision": [
+      "Approve",
+      "Approve with conditions",
+      "Return"
+    ],
+    "closure": [
+      "Close",
+      "Return"
+    ]
+  },
+  "lenses": [
+    {
+      "code": "Business",
+      "question": "Is the value, cost and commercial case sound?",
+      "owner_roles": [
+        "OLM",
+        "PM"
+      ],
+      "signoff_role": "OLM",
+      "color_hint": "amber"
+    },
+    {
+      "code": "Technical",
+      "question": "Is it built, tested and runnable to standard?",
+      "owner_roles": [
+        "PM",
+        "ARCHITECT"
+      ],
+      "signoff_role": "OR_FOCAL",
+      "color_hint": "blue"
+    },
+    {
+      "code": "Compliance",
+      "question": "Are policy and regulatory controls met?",
+      "owner_roles": [
+        "IRM"
+      ],
+      "signoff_role": "IRM",
+      "color_hint": "teal"
+    }
+  ],
+  "item_statuses": {
+    "Business": [
+      "Not started",
+      "In progress",
+      "Complete",
+      "Gap",
+      "N/A"
+    ],
+    "Technical": [
+      "Not started",
+      "In progress",
+      "Complete",
+      "Gap",
+      "N/A"
+    ],
+    "Compliance": [
+      "Not started",
+      "In review",
+      "Compliant",
+      "Compliant with conditions",
+      "Non-compliant",
+      "Not applicable"
+    ]
+  },
+  "done_statuses": [
+    "Complete",
+    "Compliant",
+    "Compliant with conditions"
+  ],
+  "na_statuses": [
+    "N/A",
+    "Not applicable"
+  ],
+  "gap_statuses": [
+    "Gap",
+    "Non-compliant"
+  ],
+  "design_effectiveness_options": [
+    "–",
+    "Yes",
+    "No",
+    "N/A"
+  ],
+  "project_types": [
+    {
+      "code": "Normal",
+      "checklists": [
+        "FRAMEWORK"
+      ]
+    },
+    {
+      "code": "Infrastructure",
+      "checklists": [
+        "FRAMEWORK"
+      ],
+      "note": "Appears in client sample data; behaves like Normal – confirm"
+    },
+    {
+      "code": "Agentic AI",
+      "checklists": [
+        "FRAMEWORK",
+        "AI_PLAYBOOK"
+      ],
+      "requires_tiering": true
+    },
+    {
+      "code": "Combined",
+      "checklists": [
+        "FRAMEWORK",
+        "AI_PLAYBOOK"
+      ],
+      "requires_tiering": true
+    }
+  ],
+  "flavour_rule_note": "Default assumption: the 72 Framework activities apply to every transition; the AI Playbook adds items (filtered by tier) for Agentic AI and Combined. Portfolio golden set + common items always added. Configurable in Admin. To be confirmed with the client.",
+  "portfolios": [
+    "GCC",
+    "eMobility",
+    "Global Marketing",
+    "Fleets",
+    "Telecoms",
+    "Retail Site Systems"
+  ],
+  "regions": [
+    "Global",
+    "Europe & South Africa",
+    "Asia Pacific",
+    "Americas",
+    "Central Apps"
+  ],
+  "intake_options": {
+    "audience": [
+      "Internal department",
+      "Enterprise",
+      "External"
+    ],
+    "write_actions": [
+      "No",
+      "Yes"
+    ],
+    "sensitive_data": [
+      "No",
+      "Personal sensitive",
+      "SOX / MC"
+    ],
+    "target_gate": [
+      "SG0-SG2",
+      "SG3",
+      "AtD",
+      "AtO",
+      "Closure"
+    ],
+    "investment_type": [
+      "Run",
+      "Change",
+      "Grow"
+    ],
+    "delivery_method": [
+      "Waterfall",
+      "Agile",
+      "AI / Agentic"
+    ]
+  },
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "Low risk, productivity-centric",
+      "definition": "Individual / immediate team productivity with low authority, bounded assist/read use cases, reversible outcomes; no write to enterprise source systems; non-sensitive (internal) data; pre-approved tools; no MC data.",
+      "examples": "Internal drafting, summarization, search, coding assistance with no sensitive data or actions.",
+      "builder_persona": "Citizen user / General end user"
+    },
+    {
+      "tier": 2,
+      "name": "Medium risk, advisory, limited action",
+      "definition": "Team or department level agents; bounded read/assist, reversible outcomes; non-sensitive data; internal-only approved tools and connectors; no MC data; no write-backs to BC or SOX enterprise systems; limited autonomy within predefined steps.",
+      "examples": "RAG over business knowledge, internal workflow recommendations, controlled tool use.",
+      "builder_persona": "Citizen user* / Pro-dev"
+    },
+    {
+      "tier": 3,
+      "name": "High risk, sensitive, material operational authority/impact",
+      "definition": "Enterprise-shared agents supporting operational processes; controlled write access to BC systems (excluding SOX); broader reach (externally facing); workflow execution with human-in-the-loop guardrails; personal sensitive (GDPR) data but no MC.",
+      "examples": "Sensitive data, privileged actions, customer/employee impact, automated decision support.",
+      "builder_persona": "Pro-dev"
+    },
+    {
+      "tier": 4,
+      "name": "Very high risk",
+      "definition": "Potential harm to people (e.g. safety systems) or irreversible actions; high autonomy; MC data; external users or safety/financial (e.g. SOX) critical systems; human oversight of every output required.",
+      "examples": "Autonomous write actions on systems of record, regulated decisions.",
+      "builder_persona": "Pro-dev"
+    }
+  ],
+  "tier_dimensions": [
+    "Blast radius – how many users, transactions or decisions one agent error affects",
+    "Reversibility – can an error be undone? Irreversible actions need a human write-gate",
+    "Regulatory exposure – regulated domain (pricing, credit, consent, energy retail, data residency)?"
+  ],
+  "tier_questions": [
+    {
+      "id": "TQ1",
+      "text": "Does the agent communicate directly with external parties (customers, regulators, suppliers)?",
+      "if_yes": "Tier 3/4"
+    },
+    {
+      "id": "TQ2",
+      "text": "Does the agent take autonomous write-actions on systems of record (CRM, ERP, payment, marketing platforms)?",
+      "if_yes": "Tier 4 regardless of audience"
+    },
+    {
+      "id": "TQ3",
+      "text": "Does the agent operate within a regulated function (pricing, credit eligibility, safety decisions)?",
+      "if_yes": "Tier 4 regardless of user base"
+    },
+    {
+      "id": "TQ4",
+      "text": "Is the user base internal, trusted and bounded, with outputs advisory rather than authoritative?",
+      "if_yes": "Tier 2"
+    },
+    {
+      "id": "TQ5",
+      "text": "Is the deployment explicitly time-boxed (<90 days), with <100 users and no autonomous write-actions?",
+      "if_yes": "Tier 1/2"
+    }
+  ],
+  "rag_rule": {
+    "red": "critical_gaps >= 2 OR min_lens_readiness < 50 OR (critical_gaps >= 1 AND days_to_next_decision <= 7)",
+    "amber": "critical_gaps >= 1 OR min_lens_readiness < 70",
+    "green": "otherwise"
+  },
+  "approval_chains": {
+    "OCET": [
+      {
+        "step": 1,
+        "role": "PLANNER",
+        "label": "Planner approval"
+      },
+      {
+        "step": 2,
+        "role": "OLM",
+        "label": "Lead SOM OLM approval"
+      }
+    ],
+    "AtD": [
+      {
+        "step": 1,
+        "role": "OLM",
+        "label": "SOM OLM approval"
+      },
+      {
+        "step": 2,
+        "role": "IRM",
+        "label": "IRM compliance sign-off"
+      }
+    ],
+    "AtO": [
+      {
+        "step": 1,
+        "role": "IRM",
+        "label": "IRM compliance sign-off"
+      },
+      {
+        "step": 2,
+        "role": "OLM",
+        "label": "SOM (OLM) Agreement to Operate"
+      }
+    ],
+    "SUPPORT_MODEL": [
+      {
+        "step": 1,
+        "role": "ARCHITECT",
+        "label": "Architect review"
+      },
+      {
+        "step": 2,
+        "role": "OLM",
+        "label": "SOM OLM agreement"
+      }
+    ],
+    "EXCEPTION": [
+      {
+        "step": 1,
+        "role": "IRM",
+        "label": "IRM review"
+      },
+      {
+        "step": 2,
+        "role": "CISO_BISO",
+        "label": "CISO/BISO approval (mocked)"
+      }
+    ]
+  },
+  "risk_acceptance_routes": [
+    {
+      "gap_category": "Service model gaps",
+      "endorsement": "Portfolio SOM Lead"
+    },
+    {
+      "gap_category": "Finance gaps",
+      "endorsement": "Portfolio SOM Lead + Finance lead"
+    },
+    {
+      "gap_category": "Vendor issues",
+      "endorsement": "Portfolio SOM Lead + Vendor management lead"
+    },
+    {
+      "gap_category": "Technical / solution issues",
+      "endorsement": "Portfolio SOM Lead + Architect / Product"
+    },
+    {
+      "gap_category": "Others",
+      "endorsement": "Portfolio SOM Lead"
+    }
+  ],
+  "risk_acceptance_then": [
+    "Mobility BISO focal",
+    "Portfolio business approval",
+    "Head of SOM approval (SVP for high/critical residual risk)"
+  ],
+  "ocet": {
+    "categories": [
+      "Hosting / cloud",
+      "Application maintenance (AMS)",
+      "Licences",
+      "Third-party support",
+      "AI tokens / inference",
+      "Other"
+    ],
+    "pricing_basis": [
+      "Fixed (contract)",
+      "Consumption-based"
+    ],
+    "currencies": [
+      "USD",
+      "EUR",
+      "GBP"
+    ],
+    "default_horizon_years": 5,
+    "default_growth_pct": {
+      "Hosting / cloud": 10,
+      "Application maintenance (AMS)": 3,
+      "Licences": 0,
+      "Third-party support": 0,
+      "AI tokens / inference": 15,
+      "Other": 0
+    },
+    "statuses": [
+      "Draft",
+      "Inputs pending",
+      "Submitted",
+      "Planner approved",
+      "Approved",
+      "Rejected"
+    ],
+    "revision_cadence_months": "2–3"
+  },
+  "roles": [
+    {
+      "code": "OR_FOCAL",
+      "label": "OR focal (S&T)"
+    },
+    {
+      "code": "PM",
+      "label": "Project manager"
+    },
+    {
+      "code": "ARCHITECT",
+      "label": "Solution architect"
+    },
+    {
+      "code": "OLM",
+      "label": "SOM OLM (Ops lead)"
+    },
+    {
+      "code": "PLANNER",
+      "label": "Planner (Finance)"
+    },
+    {
+      "code": "IRM",
+      "label": "IRM (Compliance)"
+    },
+    {
+      "code": "LEADERSHIP",
+      "label": "Leadership (read-only)"
+    },
+    {
+      "code": "ADMIN",
+      "label": "Playbook admin"
+    }
+  ]
+}

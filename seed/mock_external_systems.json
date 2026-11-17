@@ -1,0 +1,46 @@
+{
+  "servicenow_projects": [
+    {
+      "project_id": "PRJ0052210",
+      "name": "SMSM Photo Capture",
+      "project_type": "Agentic AI",
+      "investment_type": "Change",
+      "delivery_method": "AI / Agentic",
+      "portfolio": "Retail Site Systems",
+      "region": "Europe & South Africa",
+      "market": "UK",
+      "pm": "Daniel Brooks",
+      "description": "AI agent that checks site photos for compliance and raises maintenance tickets."
+    },
+    {
+      "project_id": "PRJ0049920",
+      "name": "Fleet card self-service portal",
+      "project_type": "Normal",
+      "investment_type": "Change",
+      "delivery_method": "Agile",
+      "portfolio": "Fleets",
+      "region": "Asia Pacific",
+      "market": "Philippines",
+      "pm": "Daniel Brooks",
+      "description": "Customer self-service for fleet card limits and statements."
+    }
+  ],
+  "confluence_pages": [
+    {
+      "url_contains": "voc",
+      "title": "Medallia VOC – Solution Design",
+      "summary": "Medallia SaaS, KPMG supplier, integrations with GCC, MDH, SFTP, Logic Apps, SSO.",
+      "diagrams": [
+        "voc_landscape.png"
+      ]
+    },
+    {
+      "url_contains": "",
+      "title": "Solution Design Document (generic)",
+      "summary": "Generic SDD returned for any other link.",
+      "diagrams": [
+        "generic_architecture.png"
+      ]
+    }
+  ]
+}

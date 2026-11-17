@@ -1,0 +1,41 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+.coverage
+htmlcov/
+
+# --- Backend runtime artefacts ---
+.env
+!.env.example
+backend/orion.db
+backend/*.db
+backend/*.db-journal
+backend/app/storage/*
+!backend/app/storage/.gitkeep
+
+# --- Node / frontend ---
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+npm-debug.log*
+*.log
+
+# --- OS / editors ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# --- Local duplicates of the spec pack (canonical copies live in docs/ and reference/) ---
+/REQUIREMENTS.md
+/KICKOFF_PROMPT.md
+/OR_Agent_Prototype_V4_4_Scope_Requirements 1.html
+/orion_spec.zip

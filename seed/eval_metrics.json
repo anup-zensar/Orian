@@ -1,0 +1,630 @@
+[
+  {
+    "id": "EV-01",
+    "metric": "Groundedness / Faithfulness",
+    "target_text": "≥ 90%",
+    "machine_check": {
+      "operator": ">=",
+      "value": 90.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "≥ 90%",
+      "2": "≥ 90%",
+      "3": "≥ 90%",
+      "4": "≥ 90%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-02",
+    "metric": "Factual accuracy vs. ground truth",
+    "target_text": "≥ 90%",
+    "machine_check": {
+      "operator": ">=",
+      "value": 90.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "≥ 90%",
+      "2": "≥ 90%",
+      "3": "≥ 90%",
+      "4": "≥ 90%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-03",
+    "metric": "Hallucination rate",
+    "target_text": "≤ 2%",
+    "machine_check": {
+      "operator": "<=",
+      "value": 2.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "≤ 2%",
+      "2": "≤ 2%",
+      "3": "≤ 2%",
+      "4": "≤ 2%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-04",
+    "metric": "Task completion rate",
+    "target_text": "≥ 80%",
+    "machine_check": {
+      "operator": ">=",
+      "value": 80.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "≥ 80%",
+      "2": "≥ 80%",
+      "3": "≥ 80%",
+      "4": "≥ 80%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-05",
+    "metric": "Instruction following rate",
+    "target_text": "≥ 95%",
+    "machine_check": {
+      "operator": ">=",
+      "value": 95.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "≥ 95%",
+      "2": "≥ 95%",
+      "3": "≥ 95%",
+      "4": "≥ 95%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-06",
+    "metric": "Tool-use accuracy",
+    "target_text": "≥ 95%",
+    "machine_check": {
+      "operator": ">=",
+      "value": 95.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "≥ 95%",
+      "2": "≥ 95%",
+      "3": "≥ 95%",
+      "4": "≥ 95%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-07",
+    "metric": "Retrieval recall@5",
+    "target_text": "≥ 85%",
+    "machine_check": {
+      "operator": ">=",
+      "value": 85.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "≥ 85%",
+      "2": "≥ 85%",
+      "3": "≥ 85%",
+      "4": "≥ 85%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-08",
+    "metric": "Retrieval precision@5",
+    "target_text": "≥ 70%",
+    "machine_check": {
+      "operator": ">=",
+      "value": 70.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "≥ 70%",
+      "2": "≥ 70%",
+      "3": "≥ 70%",
+      "4": "≥ 70%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-09",
+    "metric": "P95 latency",
+    "target_text": "< 2,000 ms",
+    "machine_check": {
+      "operator": "<",
+      "value": 2000.0,
+      "unit": "ms"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "< 2,000 ms",
+      "2": "< 2,000 ms",
+      "3": "< 2,000 ms",
+      "4": "< 2,000 ms"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-10",
+    "metric": "Availability",
+    "target_text": "≥ 99.5%",
+    "machine_check": {
+      "operator": ">=",
+      "value": 99.5,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "≥ 99.5%",
+      "2": "≥ 99.5%",
+      "3": "≥ 99.5%",
+      "4": "≥ 99.5%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-11",
+    "metric": "PII / sensitive-data leak rate",
+    "target_text": "0",
+    "machine_check": {
+      "operator": "==",
+      "value": 0.0,
+      "unit": ""
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "0",
+      "2": "0",
+      "3": "0",
+      "4": "0"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-12",
+    "metric": "Prompt-injection resistance",
+    "target_text": "≥ 90%",
+    "machine_check": {
+      "operator": ">=",
+      "value": 90.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "≥ 90%",
+      "2": "≥ 90%",
+      "3": "≥ 90%",
+      "4": "≥ 90%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-13",
+    "metric": "Cost variance vs. monthly budget",
+    "target_text": "±15%",
+    "machine_check": {
+      "operator": "abs<=",
+      "value": 15.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "±15%",
+      "2": "±15%",
+      "3": "±15%",
+      "4": "±15%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-14",
+    "metric": "Containment rate (AI-resolved %)",
+    "target_text": "55–75% for Tier 1; use-case dependent",
+    "machine_check": null,
+    "evaluation": "manual",
+    "targets_by_tier": {
+      "1": "55–75% for Tier 1; use-case dependent",
+      "2": "55–75% for Tier 1; use-case dependent",
+      "3": "55–75% for Tier 1; use-case dependent",
+      "4": "55–75% for Tier 1; use-case dependent"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-15",
+    "metric": "First Contact Resolution (FCR)",
+    "target_text": "≥ 75%",
+    "machine_check": {
+      "operator": ">=",
+      "value": 75.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "≥ 75%",
+      "2": "≥ 75%",
+      "3": "≥ 75%",
+      "4": "≥ 75%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-16",
+    "metric": "Customer Satisfaction (CSAT)",
+    "target_text": "≥ 85% (must be ≥ human baseline)",
+    "machine_check": null,
+    "evaluation": "manual",
+    "targets_by_tier": {
+      "1": "≥ 85% (must be ≥ human baseline)",
+      "2": "≥ 85% (must be ≥ human baseline)",
+      "3": "≥ 85% (must be ≥ human baseline)",
+      "4": "≥ 85% (must be ≥ human baseline)"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-17",
+    "metric": "Net Promoter Score (NPS) delta",
+    "target_text": "Non-negative",
+    "machine_check": null,
+    "evaluation": "manual",
+    "targets_by_tier": {
+      "1": "Non-negative",
+      "2": "Non-negative",
+      "3": "Non-negative",
+      "4": "Non-negative"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-18",
+    "metric": "Average Handle Time (AHT)",
+    "target_text": "20–40% reduction vs. human baseline",
+    "machine_check": null,
+    "evaluation": "manual",
+    "targets_by_tier": {
+      "1": "20–40% reduction vs. human baseline",
+      "2": "20–40% reduction vs. human baseline",
+      "3": "20–40% reduction vs. human baseline",
+      "4": "20–40% reduction vs. human baseline"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-19",
+    "metric": "Cost per resolved contact",
+    "target_text": "< 30–50% of human baseline",
+    "machine_check": null,
+    "evaluation": "manual",
+    "targets_by_tier": {
+      "1": "< 30–50% of human baseline",
+      "2": "< 30–50% of human baseline",
+      "3": "< 30–50% of human baseline",
+      "4": "< 30–50% of human baseline"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-20",
+    "metric": "Escalation rate",
+    "target_text": "Balanced: too low → quality issues; too high → low containment",
+    "machine_check": null,
+    "evaluation": "manual",
+    "targets_by_tier": {
+      "1": "Balanced: too low → quality issues; too high → low containment",
+      "2": "Balanced: too low → quality issues; too high → low containment",
+      "3": "Balanced: too low → quality issues; too high → low containment",
+      "4": "Balanced: too low → quality issues; too high → low containment"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-21",
+    "metric": "Repeat-contact rate (72h)",
+    "target_text": "< 10%",
+    "machine_check": {
+      "operator": "<",
+      "value": 10.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "< 10%",
+      "2": "< 10%",
+      "3": "< 10%",
+      "4": "< 10%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-22",
+    "metric": "Time saved per query",
+    "target_text": "40–70% reduction",
+    "machine_check": null,
+    "evaluation": "manual",
+    "targets_by_tier": {
+      "1": "40–70% reduction",
+      "2": "40–70% reduction",
+      "3": "40–70% reduction",
+      "4": "40–70% reduction"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-23",
+    "metric": "Adoption / DAU over eligible user base",
+    "target_text": "≥ 40% DAU within 90 days",
+    "machine_check": null,
+    "evaluation": "manual",
+    "targets_by_tier": {
+      "1": "≥ 40% DAU within 90 days",
+      "2": "≥ 40% DAU within 90 days",
+      "3": "≥ 40% DAU within 90 days",
+      "4": "≥ 40% DAU within 90 days"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-24",
+    "metric": "Query depth (msgs/session)",
+    "target_text": "≥ 3 messages/session",
+    "machine_check": null,
+    "evaluation": "manual",
+    "targets_by_tier": {
+      "1": "≥ 3 messages/session",
+      "2": "≥ 3 messages/session",
+      "3": "≥ 3 messages/session",
+      "4": "≥ 3 messages/session"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-25",
+    "metric": "Answer-acceptance rate",
+    "target_text": "≥ 70%",
+    "machine_check": {
+      "operator": ">=",
+      "value": 70.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "≥ 70%",
+      "2": "≥ 70%",
+      "3": "≥ 70%",
+      "4": "≥ 70%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-26",
+    "metric": "Productivity lift (self-reported + observed)",
+    "target_text": "≥ 15% measured lift at 6 months",
+    "machine_check": null,
+    "evaluation": "manual",
+    "targets_by_tier": {
+      "1": "≥ 15% measured lift at 6 months",
+      "2": "≥ 15% measured lift at 6 months",
+      "3": "≥ 15% measured lift at 6 months",
+      "4": "≥ 15% measured lift at 6 months"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-27",
+    "metric": "Knowledge recency accuracy",
+    "target_text": "≥ 95%",
+    "machine_check": {
+      "operator": ">=",
+      "value": 95.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "≥ 95%",
+      "2": "≥ 95%",
+      "3": "≥ 95%",
+      "4": "≥ 95%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-28",
+    "metric": "Decision acceptance rate",
+    "target_text": "≥ 70%",
+    "machine_check": {
+      "operator": ">=",
+      "value": 70.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "≥ 70%",
+      "2": "≥ 70%",
+      "3": "≥ 70%",
+      "4": "≥ 70%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-29",
+    "metric": "Decision reversal rate",
+    "target_text": "< 5%",
+    "machine_check": {
+      "operator": "<",
+      "value": 5.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "< 5%",
+      "2": "< 5%",
+      "3": "< 5%",
+      "4": "< 5%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-30",
+    "metric": "Time to decision",
+    "target_text": "30–60% reduction vs. baseline",
+    "machine_check": null,
+    "evaluation": "manual",
+    "targets_by_tier": {
+      "1": "30–60% reduction vs. baseline",
+      "2": "30–60% reduction vs. baseline",
+      "3": "30–60% reduction vs. baseline",
+      "4": "30–60% reduction vs. baseline"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-31",
+    "metric": "False-positive rate (risk domain)",
+    "target_text": "< 10%",
+    "machine_check": {
+      "operator": "<",
+      "value": 10.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "< 10%",
+      "2": "< 10%",
+      "3": "< 10%",
+      "4": "< 10%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-32",
+    "metric": "False-negative rate (risk domain)",
+    "target_text": "< 2% (use-case dependent)",
+    "machine_check": null,
+    "evaluation": "manual",
+    "targets_by_tier": {
+      "1": "< 2% (use-case dependent)",
+      "2": "< 2% (use-case dependent)",
+      "3": "< 2% (use-case dependent)",
+      "4": "< 2% (use-case dependent)"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-33",
+    "metric": "Explanation quality score",
+    "target_text": "≥ 4 / 5",
+    "machine_check": null,
+    "evaluation": "manual",
+    "targets_by_tier": {
+      "1": "≥ 4 / 5",
+      "2": "≥ 4 / 5",
+      "3": "≥ 4 / 5",
+      "4": "≥ 4 / 5"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-34",
+    "metric": "End-to-end workflow success rate",
+    "target_text": "≥ 85%",
+    "machine_check": {
+      "operator": ">=",
+      "value": 85.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "≥ 85%",
+      "2": "≥ 85%",
+      "3": "≥ 85%",
+      "4": "≥ 85%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-35",
+    "metric": "Right-action rate",
+    "target_text": "≥ 95%",
+    "machine_check": {
+      "operator": ">=",
+      "value": 95.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "≥ 95%",
+      "2": "≥ 95%",
+      "3": "≥ 95%",
+      "4": "≥ 95%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-36",
+    "metric": "SLA adherence",
+    "target_text": "≥ 99%",
+    "machine_check": {
+      "operator": ">=",
+      "value": 99.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "≥ 99%",
+      "2": "≥ 99%",
+      "3": "≥ 99%",
+      "4": "≥ 99%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-37",
+    "metric": "Rollback rate",
+    "target_text": "< 1%",
+    "machine_check": {
+      "operator": "<",
+      "value": 1.0,
+      "unit": "%"
+    },
+    "evaluation": "auto",
+    "targets_by_tier": {
+      "1": "< 1%",
+      "2": "< 1%",
+      "3": "< 1%",
+      "4": "< 1%"
+    },
+    "tier_targets_confirmed": false
+  },
+  {
+    "id": "EV-38",
+    "metric": "Cost per successful workflow",
+    "target_text": "Improvement over baseline quarterly",
+    "machine_check": null,
+    "evaluation": "manual",
+    "targets_by_tier": {
+      "1": "Improvement over baseline quarterly",
+      "2": "Improvement over baseline quarterly",
+      "3": "Improvement over baseline quarterly",
+      "4": "Improvement over baseline quarterly"
+    },
+    "tier_targets_confirmed": false
+  }
+]

@@ -1,0 +1,100 @@
+{
+  "transition_id": "TR-0001",
+  "currency": "USD",
+  "start_year": 2027,
+  "horizon_years": 5,
+  "versions": [
+    {
+      "version": 1,
+      "status": "Superseded",
+      "created_by": "U01",
+      "note": "Initial estimate from IP figures"
+    },
+    {
+      "version": 2,
+      "status": "Inputs pending",
+      "created_by": "U01",
+      "note": "Architect inputs added; token growth adjusted; monitoring tool cost still requested"
+    }
+  ],
+  "lines": [
+    {
+      "id": "L1",
+      "category": "Hosting / cloud",
+      "description": "Azure App Service, Azure SQL, storage",
+      "vendor": "Microsoft Azure",
+      "pricing_basis": "Consumption-based",
+      "base_amount": 100000,
+      "growth_pct": 10,
+      "year_overrides": {},
+      "input_owner_role": "ARCHITECT",
+      "input_status": "Provided"
+    },
+    {
+      "id": "L2",
+      "category": "AI tokens / inference",
+      "description": "Azure OpenAI tokens (chat + extraction)",
+      "vendor": "Microsoft Azure",
+      "pricing_basis": "Consumption-based",
+      "base_amount": 40000,
+      "growth_pct": 15,
+      "year_overrides": {
+        "2028": 30
+      },
+      "override_reason": "Two more markets onboard in 2028 (architect input)",
+      "input_owner_role": "ARCHITECT",
+      "input_status": "Provided"
+    },
+    {
+      "id": "L3",
+      "category": "Application maintenance (AMS)",
+      "description": "L2/L3 application support",
+      "vendor": "AMS vendor",
+      "pricing_basis": "Fixed (contract)",
+      "base_amount": 120000,
+      "growth_pct": 3,
+      "year_overrides": {},
+      "input_owner_role": "PM",
+      "input_status": "Provided"
+    },
+    {
+      "id": "L4",
+      "category": "Licences",
+      "description": "200 user licences \u00d7 125",
+      "vendor": "Licence vendor",
+      "pricing_basis": "Fixed (contract)",
+      "base_amount": 25000,
+      "growth_pct": 0,
+      "year_overrides": {},
+      "input_owner_role": "PM",
+      "input_status": "Provided"
+    },
+    {
+      "id": "L5",
+      "category": "Third-party support",
+      "description": "Vendor premium support",
+      "vendor": "Platform vendor",
+      "pricing_basis": "Fixed (contract)",
+      "base_amount": 18000,
+      "growth_pct": 0,
+      "year_overrides": {},
+      "input_owner_role": "PM",
+      "input_status": "Provided"
+    },
+    {
+      "id": "L6",
+      "category": "Other",
+      "description": "Monitoring tool subscription",
+      "vendor": "Monitoring vendor",
+      "pricing_basis": "Fixed (contract)",
+      "base_amount": null,
+      "growth_pct": 5,
+      "year_overrides": {},
+      "input_owner_role": "ARCHITECT",
+      "input_status": "Requested"
+    }
+  ],
+  "worked_example": {
+    "text": "Cloud 100k in 2027 at +10% a year (compounding): 2027 100.0k, 2028 110.0k, 2029 121.0k, 2030 133.1k, 2031 146.4k"
+  }
+}

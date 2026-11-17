@@ -1,0 +1,473 @@
+{
+  "note": "Portfolio golden sets from the client prototype (approximate). 'mandatory'=always applies; otherwise the OR focal confirms applicability (Yes / No / To confirm). 5–10 items per portfolio are expected; client to confirm final lists.",
+  "common_items": [
+    {
+      "id": "ALL-01",
+      "title": "Certificate renewal process and renewal dates",
+      "gate": "SG4_ATD",
+      "owner_role_hint": "SOM / Product / Vendor",
+      "lens": "Technical",
+      "mandatory": true,
+      "mandatory_rule": "always"
+    },
+    {
+      "id": "ALL-02",
+      "title": "Customer journey (if applicable)",
+      "gate": "SG2",
+      "owner_role_hint": "Business owner / Product",
+      "lens": "Business",
+      "mandatory": true,
+      "mandatory_rule": "if_applicable"
+    }
+  ],
+  "portfolios": [
+    {
+      "name": "GCC",
+      "code": "GCC",
+      "focus_areas": [
+        "Global service ownership and product support model",
+        "Enterprise integration and dependency mapping",
+        "Central monitoring, observability and support dashboards",
+        "Global release, incident and problem governance"
+      ],
+      "golden_set": [
+        {
+          "id": "GCC-01",
+          "title": "Global support model and RACI",
+          "gate": "SG2",
+          "owner_role_hint": "SOM / Product",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "GCC-02",
+          "title": "Integration support matrix",
+          "gate": "SG2",
+          "owner_role_hint": "Project / Architecture",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "GCC-03",
+          "title": "Service-level and escalation model",
+          "gate": "SG4_ATD",
+          "owner_role_hint": "SOM",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "GCC-04",
+          "title": "Business continuity and DR evidence",
+          "gate": "SG4_ATD",
+          "owner_role_hint": "Project / SRE",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "GCC-05",
+          "title": "Operational dashboard and runbook",
+          "gate": "SG6_ATO",
+          "owner_role_hint": "SOM / Support",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        }
+      ],
+      "intake_extra_fields": []
+    },
+    {
+      "name": "eMobility",
+      "code": "EMOB",
+      "focus_areas": [
+        "Charging ecosystem and partner support model",
+        "EV platform, charger and roaming dependency monitoring",
+        "Customer-impact and transaction-failure escalation",
+        "Market and partner onboarding governance"
+      ],
+      "golden_set": [
+        {
+          "id": "EMOB-01",
+          "title": "Charging operations support model",
+          "gate": "SG2",
+          "owner_role_hint": "SOM / Product",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "EMOB-02",
+          "title": "Roaming and partner dependency matrix",
+          "gate": "SG2",
+          "owner_role_hint": "Project / Partner mgmt",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "EMOB-03",
+          "title": "Charger monitoring and alert catalogue",
+          "gate": "SG4_ATD",
+          "owner_role_hint": "Support / Vendor",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "EMOB-04",
+          "title": "Transaction reconciliation procedure",
+          "gate": "SG4_ATD",
+          "owner_role_hint": "Business / Finance",
+          "lens": "Business",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "EMOB-05",
+          "title": "Market rollout and hypercare plan",
+          "gate": "SG6_ATO",
+          "owner_role_hint": "Project / Regional owner",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        }
+      ],
+      "intake_extra_fields": []
+    },
+    {
+      "name": "Global Marketing",
+      "code": "GM",
+      "focus_areas": [
+        "Campaign and customer-experience support model",
+        "Digital channel, consent and data dependency mapping",
+        "Agency and vendor operating governance",
+        "Campaign-critical support coverage"
+      ],
+      "golden_set": [
+        {
+          "id": "GM-01",
+          "title": "Campaign operations RACI",
+          "gate": "SG2",
+          "owner_role_hint": "Business / SOM",
+          "lens": "Business",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "GM-02",
+          "title": "Customer-data and consent assurance",
+          "gate": "SG4_ATD",
+          "owner_role_hint": "Privacy / IRM",
+          "lens": "Compliance",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "GM-03",
+          "title": "Agency and vendor escalation matrix",
+          "gate": "SG4_ATD",
+          "owner_role_hint": "Vendor mgmt",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "GM-04",
+          "title": "Peak-event support plan",
+          "gate": "SG6_ATO",
+          "owner_role_hint": "SOM / Support",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "GM-05",
+          "title": "Digital analytics and service dashboard",
+          "gate": "SG6_ATO",
+          "owner_role_hint": "Product",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        }
+      ],
+      "intake_extra_fields": []
+    },
+    {
+      "name": "Fleets",
+      "code": "FLT",
+      "focus_areas": [
+        "B2B customer and fleet-card operational model",
+        "Payment, invoicing and downstream integration ownership",
+        "Contract and vendor support governance",
+        "Customer-critical incident and reconciliation controls"
+      ],
+      "golden_set": [
+        {
+          "id": "FLT-01",
+          "title": "Fleet application support model",
+          "gate": "SG2",
+          "owner_role_hint": "SOM / Product",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "FLT-02",
+          "title": "Customer and market escalation matrix",
+          "gate": "SG2",
+          "owner_role_hint": "Business / SOM",
+          "lens": "Business",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "FLT-03",
+          "title": "Payment and invoicing reconciliation runbook",
+          "gate": "SG4_ATD",
+          "owner_role_hint": "Business / Finance",
+          "lens": "Business",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "FLT-04",
+          "title": "Vendor governance schedule",
+          "gate": "SG4_ATD",
+          "owner_role_hint": "Vendor mgmt",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "FLT-05",
+          "title": "Operational KPI and cost dashboard",
+          "gate": "SG6_ATO",
+          "owner_role_hint": "SOM",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        }
+      ],
+      "intake_extra_fields": []
+    },
+    {
+      "name": "Telecoms",
+      "code": "TEL",
+      "focus_areas": [
+        "Carrier, network and service-provider ownership model",
+        "Site connectivity and service restoration process",
+        "Network monitoring and regional escalation",
+        "Contract, circuit and inventory governance"
+      ],
+      "golden_set": [
+        {
+          "id": "TEL-01",
+          "title": "Telecoms support and carrier RACI",
+          "gate": "SG2",
+          "owner_role_hint": "SOM / Network",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "TEL-02",
+          "title": "Circuit and site inventory",
+          "gate": "SG2",
+          "owner_role_hint": "Network owner",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "TEL-03",
+          "title": "Network monitoring and alert design",
+          "gate": "SG4_ATD",
+          "owner_role_hint": "Network / Support",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "TEL-04",
+          "title": "Carrier escalation and restoration runbook",
+          "gate": "SG4_ATD",
+          "owner_role_hint": "Network / Vendor",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "TEL-05",
+          "title": "Contract and service-level evidence",
+          "gate": "SG6_ATO",
+          "owner_role_hint": "Vendor mgmt",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "TEL-06",
+          "title": "Network diagram",
+          "gate": "SG2",
+          "owner_role_hint": "Network owner / Architecture",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": true
+        },
+        {
+          "id": "TEL-07",
+          "title": "SIP registration",
+          "gate": "SG4_ATD",
+          "owner_role_hint": "Network / Telephony",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": true
+        },
+        {
+          "id": "TEL-08",
+          "title": "Regional SOM onboarding",
+          "gate": "SG4_ATD",
+          "owner_role_hint": "Regional SOM",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": true
+        }
+      ],
+      "intake_extra_fields": []
+    },
+    {
+      "name": "Retail Site Systems",
+      "code": "RSS",
+      "focus_areas": [
+        "Regional site support and local-market ownership",
+        "Forecourt, POS, BOS and DOMS dependency mapping",
+        "Site, payment and connectivity monitoring",
+        "Regional deployment, maintenance and field-support model"
+      ],
+      "golden_set": [
+        {
+          "id": "RSS-01",
+          "title": "Site ID and site key captured for every in-scope site",
+          "gate": "SG2",
+          "owner_role_hint": "Regional owner / Site ops",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": true
+        },
+        {
+          "id": "RSS-02",
+          "title": "DOMS / POS / BOS configuration – IPs and network info",
+          "gate": "SG2",
+          "owner_role_hint": "Site deployment / Network",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "RSS-03",
+          "title": "Site opening (NTI)",
+          "gate": "SG4_ATD",
+          "owner_role_hint": "Regional owner / Site ops",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "RSS-04",
+          "title": "Site closure (temporary / permanent)",
+          "gate": "SG6_ATO",
+          "owner_role_hint": "Regional owner / Site ops",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "RSS-05",
+          "title": "Site reopening",
+          "gate": "SG6_ATO",
+          "owner_role_hint": "Regional owner / Site ops",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "RSS-06",
+          "title": "Dealership change",
+          "gate": "SG6_ATO",
+          "owner_role_hint": "Business / Access mgmt",
+          "lens": "Business",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "RSS-07",
+          "title": "Equipment, tank, pump or nozzle changes",
+          "gate": "SG4_ATD",
+          "owner_role_hint": "Field service / Vendor",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "RSS-08",
+          "title": "Patch management",
+          "gate": "SG6_ATO",
+          "owner_role_hint": "Support / Security",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "RSS-09",
+          "title": "Fuel pricing",
+          "gate": "SG4_ATD",
+          "owner_role_hint": "Business / Pricing",
+          "lens": "Business",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "RSS-10",
+          "title": "Cards authorization",
+          "gate": "SG4_ATD",
+          "owner_role_hint": "Payments / Security",
+          "lens": "Technical",
+          "lens_is_suggested": true,
+          "mandatory": false
+        },
+        {
+          "id": "RSS-11",
+          "title": "Wet stock & reconciliation",
+          "gate": "SG6_ATO",
+          "owner_role_hint": "Business / Finance",
+          "lens": "Business",
+          "lens_is_suggested": true,
+          "mandatory": false
+        }
+      ],
+      "intake_extra_fields": [
+        {
+          "key": "sites",
+          "label": "In-scope sites (Site ID + Site key)",
+          "type": "repeatable_group",
+          "required": true,
+          "fields": [
+            {
+              "key": "site_id",
+              "label": "Site ID",
+              "required": true
+            },
+            {
+              "key": "site_key",
+              "label": "Site key",
+              "required": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

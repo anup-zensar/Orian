@@ -1,0 +1,118 @@
+{
+  "samples": [
+    {
+      "key": "voc",
+      "match": {
+        "transition_name_contains": [
+          "VOC",
+          "Medallia"
+        ],
+        "confluence_url_contains": [
+          "voc",
+          "medallia"
+        ]
+      },
+      "landscape": {
+        "central_app": "Medallia VOC",
+        "hosting": "Medallia’s own SaaS platform on Medallia AWS (not Shell AWS)",
+        "vendor": "Medallia",
+        "supplier": "KPMG",
+        "vendor_responsibilities": [
+          "Hosting",
+          "Development",
+          "Configuration",
+          "Technical access"
+        ],
+        "components": [
+          {
+            "name": "GCC Integration",
+            "type": "Integration",
+            "relation": "bidirectional"
+          },
+          {
+            "name": "App Teams",
+            "type": "Team",
+            "relation": "inbound"
+          },
+          {
+            "name": "Shell Asia Integration",
+            "type": "Integration",
+            "relation": "inbound"
+          },
+          {
+            "name": "MDH Data Flow",
+            "type": "Data flow",
+            "relation": "outbound",
+            "target": "MDH"
+          },
+          {
+            "name": "MDH",
+            "type": "Data platform",
+            "relation": "outbound"
+          },
+          {
+            "name": "SFTP Ownership",
+            "type": "File transfer",
+            "relation": "outbound"
+          },
+          {
+            "name": "Middleware (Logic Apps)",
+            "type": "Middleware",
+            "relation": "inbound",
+            "target": "SSO"
+          },
+          {
+            "name": "SSO",
+            "type": "Identity",
+            "relation": "outbound"
+          },
+          {
+            "name": "SPN",
+            "type": "Identity",
+            "relation": "child_of:SSO"
+          },
+          {
+            "name": "Groups",
+            "type": "Identity",
+            "relation": "child_of:SSO"
+          }
+        ],
+        "support_tiers": {
+          "L1": "L1 Support (escalation from Shell Asia Integration)",
+          "L2": "KPMG (supplier) – to confirm",
+          "L3": "Medallia – to confirm"
+        },
+        "contacts": [
+          {
+            "party": "KPMG",
+            "role": "Supplier support",
+            "email": "to be provided",
+            "sla": "to be provided"
+          },
+          {
+            "party": "Medallia",
+            "role": "Vendor",
+            "email": "to be provided",
+            "sla": "to be provided"
+          }
+        ],
+        "open_questions": [
+          "Confirm L2/L3 split between KPMG and Medallia",
+          "Who owns SFTP credentials and rotation?",
+          "Escalation path from Shell Asia Integration to L1 – confirm hours"
+        ],
+        "sources": [
+          {
+            "type": "diagram",
+            "ref": "Architecture diagram p.3"
+          },
+          {
+            "type": "recording",
+            "ref": "Walkthrough 00:12:40–00:18:05"
+          }
+        ]
+      }
+    }
+  ],
+  "generic_template_note": "For any other transition, build a generic landscape: central app = transition name; components from the portfolio focus areas + typical integrations (SSO/Entra ID, ServiceNow, monitoring, data platform); support tiers L1 Service Desk / L2 vendor / L3 product team; 3 open questions."
+}
