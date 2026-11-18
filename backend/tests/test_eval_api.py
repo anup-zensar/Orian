@@ -57,16 +57,16 @@ def test_requires_header_and_404(client, headers):
 
 
 def test_non_ai_is_409(client, headers, fresh_seed):
-    res = client.get(f"{API}/transitions/{NON_AI}/eval-metrics", headers=headers())
+    res = client.get(f"{API}/transitions/{NON_AI}/eval-metrics", headers=headers("U03"))
     assert res.status_code == 409
     assert res.json()["detail"] == "Eval metrics apply to AI flavours only"
     put = client.put(
         f"{API}/transitions/{NON_AI}/eval-results",
         json=[{"metric_id": "EV-01", "value_number": 95}],
-        headers=headers(),
+        headers=headers("U03"),
     )
     assert put.status_code == 409
-    imp = client.post(f"{API}/transitions/{NON_AI}/eval-results/import", headers=headers())
+    imp = client.post(f"{API}/transitions/{NON_AI}/eval-results/import", headers=headers("U03"))
     assert imp.status_code == 409
 
 

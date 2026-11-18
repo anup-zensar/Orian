@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from typing import Annotated
+
+from fastapi import APIRouter, Body, Depends
 from sqlalchemy.orm import Session
 
 from app.deps import get_current_user, get_db, require
@@ -42,7 +44,7 @@ def get_eval_metrics(
 @router.put("/transitions/{transition_id}/eval-results", response_model=EvalTableOut)
 def put_eval_results(
     transition_id: str,
-    body: list[EvalResultIn],
+    body: Annotated[list[EvalResultIn], Body(max_length=200)],
     user: User = Depends(require(Perm.EDIT_EVAL_RESULTS)),
     db: Session = Depends(get_db),
 ) -> EvalTableOut:

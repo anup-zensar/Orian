@@ -169,7 +169,7 @@ def test_list_conditions_seed(client, headers):
 def test_condition_create_close_edit(client, headers, db, fresh_seed):
     url = f"{API}/transitions/{T}/conditions"
     body = {
-        "item_id": "S45-035",
+        "item_id": "S3-019",
         "owner_user_id": "U11",
         "due_gate": "SG6_ATO",
         "text": "Fix logging",
@@ -186,7 +186,7 @@ def test_condition_create_close_edit(client, headers, db, fresh_seed):
     assert res.status_code == 201, res.text
     cond = res.json()
     assert cond["id"] == "CON-003" and cond["status"] == "Open" and cond["covers_now"] is True
-    assert cond["set_at_gate"] == "SG4_ATD" and cond["item_id"] == "S45-035"
+    assert cond["set_at_gate"] == "SG4_ATD" and cond["item_id"] == "S3-019"
 
     patch = f"{API}/conditions/{cond['id']}"
     assert client.patch(patch, json={"status": "Closed"}, headers=headers()).status_code == 422

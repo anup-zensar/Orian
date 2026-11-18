@@ -101,4 +101,11 @@ def propose_tier(
         return TierProposal(1, rationale + ["TQ5 = yes -> Tier 1"])
     if yes("TQ4"):
         return TierProposal(2, rationale + ["TQ4 = yes -> Tier 2"])
-    return TierProposal(3, rationale + ["No rule matched -> Tier 3 (conservative default)"])
+    reasons = ["No rule matched -> Tier 3 (conservative default)"]
+    if audience == "Internal department" and write_actions == WRITE_NO and sensitive_data == "No":
+        # The intake answers alone cannot reach Tier 2 (rule 4 needs TQ4): say so, never guess it.
+        reasons.append(
+            "The intake answers look low risk - answer TQ4 (internal, bounded, advisory) with Yes "
+            "if it applies to reach Tier 2"
+        )
+    return TierProposal(3, rationale + reasons)

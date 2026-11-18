@@ -38,9 +38,11 @@ def add_evidence(
     transition_id: str,
     title: str = Form(..., min_length=1, max_length=300),
     type: EvidenceType = Form(...),
-    item_id: str | None = Form(default=None, description="Playbook item id, e.g. S45-014"),
-    url: str | None = Form(default=None),
-    text: str | None = Form(default=None),
+    item_id: str | None = Form(
+        default=None, max_length=50, description="Playbook item id, e.g. S45-014"
+    ),
+    url: str | None = Form(default=None, max_length=2000),
+    text: str | None = Form(default=None, max_length=4000),
     file: UploadFile | None = File(default=None),
     user: User = Depends(require(Perm.MANAGE_EVIDENCE)),
     db: Session = Depends(get_db),

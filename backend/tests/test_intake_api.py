@@ -274,7 +274,9 @@ def test_patch_closed_transition_is_409(client, headers, db, fresh_seed):
 
 def test_patch_on_seeded_row_without_intake_answers_is_not_blocked(client, headers, fresh_seed):
     res = client.patch(
-        f"{API}/transitions/TR-0002", json={"blocker_note": "Waiting for vendor"}, headers=headers()
+        f"{API}/transitions/TR-0002",
+        json={"blocker_note": "Waiting for vendor"},
+        headers=headers("U02"),
     )
     assert res.status_code == 200, res.text
 

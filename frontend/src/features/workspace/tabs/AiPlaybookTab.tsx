@@ -15,6 +15,7 @@ export function AiPlaybookTab({ transitionId }: TabProps) {
   return (
     <div className={s.stack}>
       <PageHeader
+        as="h2"
         title="AI playbook"
         subtitle="Risk tier, AI profile and evaluation results for this AI transition."
       />

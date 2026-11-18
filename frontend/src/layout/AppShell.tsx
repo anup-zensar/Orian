@@ -1,9 +1,16 @@
-import { Suspense, useState } from 'react';
-import { Outlet } from 'react-router';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Outlet, useMatch } from 'react-router';
 import { Toaster, makeStyles, tokens } from '@fluentui/react-components';
+import { useAuth } from '../auth/useAuth';
+import { chatStore } from '../features/orion/chatStore';
 import { useMe } from '../features/users/api';
 import { LoadingState } from '../components/LoadingState';
 import { OrionPanel } from '../components/OrionPanel';
+import {
+  OrionPanelContext,
+  type OrionPanelState,
+  type OrionPanelTarget,
+} from '../features/orion/panelContext';
 import { TOASTER_ID } from '../hooks/useApiErrorToast';
 import { SideNav } from './SideNav';
 import { TopBar } from './TopBar';
@@ -34,24 +41,43 @@ export function AppShell() {
   const s = useStyles();
   const me = useMe();
   const [orionOpen, setOrionOpen] = useState(false);
+  const [orionTarget, setOrionTarget] = useState<OrionPanelTarget>({});
+  const { userId } = useAuth();
+  const onOrionPage = !!useMatch('/orion');
+  useEffect(() => chatStore.resetFor(userId), [userId]);
   const isAdmin = me.data?.user.role === 'ADMIN';
+  const orionPanel = useMemo<OrionPanelState>(
+    () => ({
+      isOpen: orionOpen,
+      target: orionTarget,
+      open: (target) => {
+        setOrionTarget(target ?? {});
+        setOrionOpen(true);
+      },
+      close: () => setOrionOpen(false),
+      toggle: () => setOrionOpen((o) => !o),
+    }),
+    [orionOpen, orionTarget],
+  );
 
   return (
-    <div className={s.root}>
-      <a href="#main" className={s.skip}>
-        Skip to main content
-      </a>
-      <TopBar orionOpen={orionOpen} onToggleOrion={() => setOrionOpen((o) => !o)} />
-      <div className={s.body}>
-        <SideNav isAdmin={isAdmin} />
-        <main id="main" tabIndex={-1} className={s.main}>
-          <Suspense fallback={<LoadingState />}>
-            <Outlet />
-          </Suspense>
-        </main>
-        <OrionPanel open={orionOpen} onClose={() => setOrionOpen(false)} />
+    <OrionPanelContext.Provider value={orionPanel}>
+      <div className={s.root}>
+        <a href="#main" className={s.skip}>
+          Skip to main content
+        </a>
+        <TopBar orionOpen={orionOpen} onToggleOrion={() => setOrionOpen((o) => !o)} />
+        <div className={s.body}>
+          <SideNav isAdmin={isAdmin} />
+          <main id="main" tabIndex={-1} className={s.main}>
+            <Suspense fallback={<LoadingState />}>
+              <Outlet />
+            </Suspense>
+          </main>
+          <OrionPanel open={orionOpen && !onOrionPage} onClose={() => setOrionOpen(false)} />
+        </div>
+        <Toaster toasterId={TOASTER_ID} position="top-end" />
       </div>
-      <Toaster toasterId={TOASTER_ID} position="top-end" />
-    </div>
+    </OrionPanelContext.Provider>
   );
 }

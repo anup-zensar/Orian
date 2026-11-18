@@ -22,10 +22,14 @@ class TierCardOut(BaseModel):
 class TierProposeIn(BaseModel):
     """Inputs of the pure BR-011 rule. ``answers`` keys TQ1..TQ5 (missing key = false)."""
 
-    audience: str | None = None  # Internal department | Enterprise | External
-    write_actions: str | None = None  # No | Yes
-    sensitive_data: str | None = None  # No | Personal sensitive | SOX / MC
-    answers: dict[str, bool] = Field(default_factory=dict)
+    audience: str | None = Field(
+        default=None, max_length=100
+    )  # Internal department | Enterprise | External
+    write_actions: str | None = Field(default=None, max_length=100)  # No | Yes
+    sensitive_data: str | None = Field(
+        default=None, max_length=100
+    )  # No | Personal sensitive | SOX / MC
+    answers: dict[str, bool] = Field(default_factory=dict, max_length=20)
 
 
 class TierProposalOut(BaseModel):
@@ -39,12 +43,14 @@ class TierSetIn(BaseModel):
     """PUT /transitions/{id}/tier body. The server computes the proposal from the transition's
     intake fields + ``answers``."""
 
-    answers: dict[str, bool] = Field(default_factory=dict)
+    answers: dict[str, bool] = Field(default_factory=dict, max_length=20)
 
 
 class TierConfirmIn(BaseModel):
     tier: int = Field(ge=1, le=4)
-    reason: str | None = None  # required when tier differs from the proposal ("Change tier")
+    reason: str | None = Field(
+        default=None, max_length=4000
+    )  # required when tier differs from the proposal ("Change tier")
 
 
 class TierAssessmentOut(BaseModel):
@@ -69,15 +75,15 @@ class TierAssessmentOut(BaseModel):
 class AIProfileIn(BaseModel):
     """All fields of spec §6 AIProfile (PUT replaces all)."""
 
-    infrastructure_solution: str = ""
-    agentic_framework: str = ""
+    infrastructure_solution: str = Field(default="", max_length=4000)
+    agentic_framework: str = Field(default="", max_length=4000)
     multi_agent_orchestration: bool = False
-    number_of_users: str = ""
-    agentic_workflows: str = ""
-    models_used: str = ""
-    data_sources: str = ""
-    hosting: str = ""
-    write_actions_detail: str = ""
+    number_of_users: str = Field(default="", max_length=200)
+    agentic_workflows: str = Field(default="", max_length=4000)
+    models_used: str = Field(default="", max_length=4000)
+    data_sources: str = Field(default="", max_length=4000)
+    hosting: str = Field(default="", max_length=4000)
+    write_actions_detail: str = Field(default="", max_length=4000)
 
 
 class AIProfileOut(AIProfileIn):

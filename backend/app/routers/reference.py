@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.deps import get_db
+from app.domain.approvals import pending_exception_statuses
 from app.errors import NotFound
 from app.models import ApprovalChainConfig, FlavourRule, PlaybookItem, Portfolio, ReferenceData
 from app.rules.constants import ACTOR_TYPES, SEVERITIES
@@ -36,7 +37,13 @@ ENUMS = EnumsOut(
     action_statuses=["Open", "In progress", "Done", "Cancelled"],
     action_priorities=["High", "Medium", "Low"],
     condition_statuses=["Open", "Closed"],
-    exception_statuses=["Draft", "Pending CISO/BISO", "Approved", "Rejected"],
+    exception_statuses=[
+        "Draft",
+        "Pending IRM",
+        "Pending CISO/BISO",
+        "Approved",
+        "Rejected",
+    ],  # default; computed per request
     risk_ratings=["High", "Medium", "Low"],
     defect_priorities=["P1", "P2", "P3", "P4"],
     defect_statuses=["Open", "Resolved"],
@@ -148,7 +155,17 @@ def get_reference(db: Session = Depends(get_db)) -> ReferenceOut:
         ocet=ref["ocet"],
         roles=ref["roles"],
         checklist_counts=_checklist_counts(db),
-        enums=ENUMS,
+        enums=ENUMS.model_copy(
+            update={
+                # "Pending <role>" per step of the configured EXCEPTION chain (EX-status)
+                "exception_statuses": [
+                    "Draft",
+                    *pending_exception_statuses(db),
+                    "Approved",
+                    "Rejected",
+                ]
+            }
+        ),
         app=AppInfoOut(
             demo_mode=settings.demo_mode,
             ai_mode=settings.ai_mode,

@@ -1,9 +1,9 @@
+import { ReturnFocusDialog } from '../../components/ReturnFocusDialog';
 import { useState } from 'react';
 import {
   Badge,
   Button,
   Caption1,
-  Dialog,
   DialogActions,
   DialogBody,
   DialogContent,
@@ -106,7 +106,7 @@ export function CompareDialog(props: {
   );
   const d = q.data;
   return (
-    <Dialog open onOpenChange={(_, o) => !o.open && props.onClose()}>
+    <ReturnFocusDialog open onOpenChange={(_, o) => !o.open && props.onClose()}>
       <DialogSurface style={{ maxWidth: 980, width: '95vw' }}>
         <DialogBody>
           <DialogTitle>Compare OCET versions</DialogTitle>
@@ -165,6 +165,6 @@ export function CompareDialog(props: {
           </DialogActions>
         </DialogBody>
       </DialogSurface>
-    </Dialog>
+    </ReturnFocusDialog>
   );
 }

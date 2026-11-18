@@ -1,6 +1,6 @@
+import { ReturnFocusDialog } from '../../components/ReturnFocusDialog';
 import {
   Button,
-  Dialog,
   DialogActions,
   DialogBody,
   DialogContent,
@@ -20,7 +20,7 @@ export function ApprovalDraftDialog(props: {
 }) {
   const live = useDraft(props.draft.id);
   return (
-    <Dialog open onOpenChange={(_, d) => !d.open && props.onClose()}>
+    <ReturnFocusDialog open onOpenChange={(_, d) => !d.open && props.onClose()}>
       <DialogSurface style={{ maxWidth: 980, width: '95vw' }}>
         <DialogBody>
           <DialogTitle>Approval request draft</DialogTitle>
@@ -45,6 +45,6 @@ export function ApprovalDraftDialog(props: {
           </DialogActions>
         </DialogBody>
       </DialogSurface>
-    </Dialog>
+    </ReturnFocusDialog>
   );
 }

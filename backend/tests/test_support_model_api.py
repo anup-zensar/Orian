@@ -48,7 +48,7 @@ def test_not_started_view(client, headers, fresh_seed):
 
 
 def test_voc_sample_by_transition_name(client, headers, fresh_seed):
-    out = _generate(client, headers, "TR-0014")
+    out = _generate(client, headers, "TR-0014", user="U08")
     landscape = out["support_model"]["landscape"]
     assert landscape["central_app"] == "Medallia VOC"
     assert landscape["vendor"] == "Medallia" and landscape["supplier"] == "KPMG"
@@ -286,7 +286,7 @@ def test_question_draft(client, headers, db, fresh_seed):
 
 
 def test_list_models_filter(client, headers, fresh_seed):
-    _generate(client, headers, "TR-0014")
+    _generate(client, headers, "TR-0014", user="U08")
     _generate(client, headers, "TR-0001")
     rows = client.get(f"{API}/support-models", headers=headers("U15")).json()
     assert {r["transition_id"] for r in rows} == {"TR-0014", "TR-0001"}

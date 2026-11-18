@@ -12,6 +12,7 @@ import {
   TableHeaderCell,
   TableRow,
   Subtitle2,
+  mergeClasses,
 } from '@fluentui/react-components';
 import { AiBadge } from '../../../components/AiBadge';
 import { EmptyState } from '../../../components/EmptyState';
@@ -35,7 +36,7 @@ import {
   type Item,
 } from '../../records/api';
 import { GuardedButton } from '../../records/common';
-import { useRecordStyles, usePerm, useUrlParams } from '../../records/hooks';
+import { useRecordStyles, usePerm, useOwnerException, useUrlParams } from '../../records/hooks';
 import type { TabProps } from '../types';
 
 const DEFAULT_GAP_STATUSES = ['Gap', 'Non-compliant'];
@@ -46,7 +47,8 @@ export function GapsTab({ transitionId }: TabProps) {
   const navigate = useNavigate();
   const { params, set } = useUrlParams();
   const showError = useApiErrorToast();
-  const manage = usePerm('manage_actions');
+  const manage = usePerm('manage_actions', transitionId);
+  const rowReason = useOwnerException('manage_actions', manage.reason);
   const ref = useReference();
   const transition = useTransition(transitionId);
   const items = useItems(transitionId);
@@ -90,6 +92,7 @@ export function GapsTab({ transitionId }: TabProps) {
   return (
     <div className={s.stack}>
       <PageHeader
+        as="h2"
         title="Gaps & actions"
         subtitle="Open gaps up to the current gate, with Orion's suggested next steps, and the action list."
         actions={
@@ -132,7 +135,7 @@ export function GapsTab({ transitionId }: TabProps) {
                   <Caption1>
                     Owner: {item.owner?.name ?? 'Unassigned'} · Decision {daysLabel(daysToDecision)}
                   </Caption1>
-                  <div className={`${s.card} ${s.cardAi}`}>
+                  <div className={mergeClasses(s.card, s.cardAi)}>
                     <div className={s.row}>
                       <AiBadge />
                       <Body1>
@@ -240,7 +243,7 @@ export function GapsTab({ transitionId }: TabProps) {
                       <div className={s.row}>
                         <GuardedButton
                           size="small"
-                          reason={manage.reason}
+                          reason={rowReason(a.owner?.id)}
                           onClick={() => set({ action: a.id }, false)}
                         >
                           Edit
@@ -248,7 +251,7 @@ export function GapsTab({ transitionId }: TabProps) {
                         {a.status !== 'Done' && a.status !== 'Cancelled' && (
                           <GuardedButton
                             size="small"
-                            reason={manage.reason}
+                            reason={rowReason(a.owner?.id)}
                             onClick={() => closeAction(a)}
                           >
                             Close

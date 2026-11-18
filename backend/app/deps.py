@@ -7,8 +7,9 @@ about it, so Entra ID token validation can replace it later without touching any
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator
+from typing import Annotated
 
-from fastapi import Depends, Header
+from fastapi import Depends, Header, Path
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -16,6 +17,10 @@ from app.db import get_db as _get_db
 from app.errors import Forbidden, NotFound, Unauthorized
 from app.models import User
 from app.permissions import DENIAL_REASONS, Perm, has_perm
+
+# Integer path ids are bounded so huge values give 422 instead of a SQLite overflow 500 (BE#11).
+IdPath = Annotated[int, Path(ge=1, le=2**31 - 1)]
+MAX_BULK = 500  # upper bound for id lists in bulk requests (BE#11)
 
 
 def get_db() -> Iterator[Session]:

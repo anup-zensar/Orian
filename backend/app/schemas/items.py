@@ -8,10 +8,11 @@ Vocabulary comes from ``app.rules.constants``: lens statuses (``STATUSES_BY_LENS
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
+from app.deps import MAX_BULK
 from app.schemas.common import PersonRef
 
 Lens = Literal["Business", "Technical", "Compliance"]
@@ -33,8 +34,10 @@ class ItemFilters(BaseModel):
     all_gates: bool = Field(default=False, description="Ignore the gate cut-off (every gate)")
     lens: Lens | None = None
     source: ItemSource | None = None
-    status: str | None = Field(default=None, description="Exact item status, e.g. 'Gap'")
-    owner: str | None = Field(default=None, description="Owner user id")
+    status: str | None = Field(
+        default=None, max_length=100, description="Exact item status, e.g. 'Gap'"
+    )
+    owner: str | None = Field(default=None, max_length=20, description="Owner user id")
     mine: bool = Field(default=False, description="Only items owned by the current user")
     applicability: ApplicabilityFilter = Field(
         default="applies",
@@ -43,6 +46,7 @@ class ItemFilters(BaseModel):
     )
     q: str | None = Field(
         default=None,
+        max_length=200,
         description="Case-insensitive search in playbook id, title, description and owner name",
     )
 
@@ -112,33 +116,35 @@ class ItemListOut(BaseModel):
 
 
 class ItemConditionIn(BaseModel):
-    owner_user_id: str
-    due_gate: str
-    text: str
+    owner_user_id: str = Field(max_length=20)
+    due_gate: str = Field(max_length=50)
+    text: str = Field(max_length=4000)
 
 
 class ItemPatchIn(BaseModel):
     """Partial update; only fields present in the body are applied (``model_fields_set``)."""
 
-    status: str | None = None
+    status: str | None = Field(default=None, max_length=100)
     gap_severity: Severity | None = None
-    note: str | None = None
-    owner_user_id: str | None = None
+    note: str | None = Field(default=None, max_length=4000)
+    owner_user_id: str | None = Field(default=None, max_length=20)
     design_effectiveness: DesignEffectiveness | None = None
     applicability: Applicability | None = None
-    na_reason: str | None = None
+    na_reason: str | None = Field(default=None, max_length=4000)
     condition: ItemConditionIn | None = Field(
         default=None, description="Required when status is 'Compliant with conditions'"
     )
 
 
 class BulkNaIn(BaseModel):
-    reason: str
+    reason: str = Field(max_length=4000)
 
 
 class BulkItemsIn(BaseModel):
-    item_ids: list[int] = Field(min_length=1)
-    owner_user_id: str | None = None
+    item_ids: list[Annotated[int, Field(ge=1, le=2**31 - 1)]] = Field(
+        min_length=1, max_length=MAX_BULK
+    )
+    owner_user_id: str | None = Field(default=None, max_length=20)
     mark_na: BulkNaIn | None = None
 
 

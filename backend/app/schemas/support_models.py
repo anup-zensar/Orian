@@ -41,8 +41,8 @@ class ComponentIO(BaseModel):
     id: str = Field(min_length=1, max_length=20)  # c1..cn
     name: str = Field(min_length=1, max_length=120)
     type: str = Field(min_length=1, max_length=60)  # Integration, Data flow, Identity, Team ...
-    relation: str = "bidirectional"
-    target: str | None = None
+    relation: str = Field(default="bidirectional", max_length=200)
+    target: str | None = Field(default=None, max_length=120)
 
 
 class SupportTiersIO(BaseModel):

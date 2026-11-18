@@ -6,14 +6,19 @@ from __future__ import annotations
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
-from app.deps import get_current_user, get_db, require
+from app.deps import IdPath, get_current_user, get_db, require
+from app.domain import orion_chat, proposals
 from app.domain.insights import build_insights
+from app.domain.leadership import generate_update, leadership_out
+from app.domain.nl_intake import PayloadTooLarge, intent_catalog_for
 from app.models import User
 from app.permissions import Perm
 from app.schemas.leadership import LeadershipUpdateCreateIn, LeadershipUpdateOut
 from app.schemas.orion import (
+    EXTRACT_MAX_BYTES,
     AcceptOut,
     ChatIn,
     ChatOut,
@@ -64,7 +69,7 @@ def chat(
     ``update_item`` / ... proposal cards; decisions, sending, deleting and configuration changes are
     refused in text (nothing is created). Up to 5 commands per message. A user without the permission
     of a proposal still sees the card with ``can_accept`` false and the reason."""
-    raise NotImplementedError("M8")
+    return orion_chat.handle_chat(db, user, body)
 
 
 @router.post("/orion/extract", response_model=ExtractOut)
@@ -88,7 +93,25 @@ async def extract(
     (the file text is silently cut at 20000 characters, ``truncated`` true). No permission is needed
     to ask; ``can_accept`` on the cards tells whether this user may accept (create_transition needs
     Perm.CREATE_TRANSITION). Never writes statuses/decisions (BR-050)."""
-    raise NotImplementedError("M8")
+    content: bytes | None = None
+    filename: str | None = None
+    if file is not None and file.filename:
+        filename = file.filename
+        content = await file.read(EXTRACT_MAX_BYTES + 1)
+        if len(content) > EXTRACT_MAX_BYTES:
+            raise PayloadTooLarge("The file is larger than 5 MB")
+    # The extractor is CPU-bound and synchronous: keep it off the event loop so one big paste
+    # cannot stall every other user.
+    return await run_in_threadpool(
+        orion_chat.handle_extract_full,
+        db,
+        user,
+        text=text,
+        filename=filename,
+        content=content,
+        transition_id=transition_id,
+        intent_hint=intent_hint,
+    )
 
 
 @router.get("/orion/intents", response_model=IntentCatalogOut)
@@ -98,17 +121,17 @@ def get_intents(
     """The intent catalog for the panel's "Try saying" chips and help: label, examples, result type,
     proposal kind and whether THIS user may accept/run it (``allowed`` / ``denied_reason``), plus the
     plain-language list of what Orion refuses. Read-only, deterministic."""
-    raise NotImplementedError("M8")
+    return intent_catalog_for(db, user)
 
 
 @router.get("/orion/proposals/{proposal_id}", response_model=ProposalOut)
 def get_proposal(
-    proposal_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+    proposal_id: IdPath, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> ProposalOut:
     """One proposal in any status (404 unknown). Used by the intake page to load a
     ``create_transition`` prefill (``/transitions/new?proposal=<id>``) and for deep links to a
     proposal card. Any signed-in user may read."""
-    raise NotImplementedError("M8")
+    return proposals.get_proposal(db, proposal_id, user)
 
 
 @router.get("/orion/proposals", response_model=list[ProposalOut])
@@ -120,12 +143,12 @@ def list_proposals(
 ) -> list[ProposalOut]:
     """Stored proposals, newest first, optionally filtered; ``can_accept`` evaluated for the
     current user (BR-050)."""
-    raise NotImplementedError("M8")
+    return proposals.list_proposals(db, user, transition_id=transition_id, status=status)
 
 
 @router.post("/orion/proposals/{proposal_id}/accept", response_model=AcceptOut)
 def accept_proposal(
-    proposal_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+    proposal_id: IdPath, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> AcceptOut:
     """Execute the proposal's normal domain operation as the current user (that operation's
     permission checks apply -> 403 with the reason, proposal stays Open). Audit actor_type "Human",
@@ -133,15 +156,19 @@ def accept_proposal(
     ``create_transition`` is a hand-off: nothing is created, ``navigate_to`` is
     ``/transitions/new?proposal=<id>`` and the human clicks Create in the form. 403 when the current
     user lacks the permission of the kind (CREATE_TRANSITION for create_transition)."""
-    raise NotImplementedError("M8")
+    out = proposals.accept_proposal(db, proposal_id, user)
+    db.commit()
+    return out
 
 
 @router.post("/orion/proposals/{proposal_id}/dismiss", response_model=ProposalOut)
 def dismiss_proposal(
-    proposal_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+    proposal_id: IdPath, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> ProposalOut:
     """Open -> Dismissed. 404 unknown, 409 if not Open. Commits."""
-    raise NotImplementedError("M8")
+    out = proposals.dismiss_proposal(db, proposal_id, user)
+    db.commit()
+    return out
 
 
 @router.post("/orion/leadership-update", response_model=LeadershipUpdateOut)
@@ -154,4 +181,6 @@ def create_leadership_update(
     data (scope transition|portfolio|all; scope_id required unless all). 403 without
     Perm.GENERATE_LEADERSHIP_UPDATE; 404 unknown transition/portfolio; 400 scope/scope_id mismatch.
     Commits. Storyline step 10: GCC portfolio update shows the AtD approval and remaining risks."""
-    raise NotImplementedError("M8")
+    row = generate_update(db, user, body.scope, body.scope_id)
+    db.commit()
+    return leadership_out(db, row)

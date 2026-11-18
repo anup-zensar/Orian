@@ -164,22 +164,22 @@ class GatesOverviewOut(BaseModel):
 class ConditionIn(BaseModel):
     """Condition requested with a Proceed / Approve-with-conditions outcome (BR-040)."""
 
-    item_id: str  # playbook item id
-    owner_user_id: str
-    due_gate: str  # strictly later than the gate being decided
-    text: str = Field(min_length=1)
+    item_id: str = Field(max_length=40)  # playbook item id
+    owner_user_id: str = Field(max_length=40)
+    due_gate: str = Field(max_length=40)  # strictly later than the gate being decided
+    text: str = Field(min_length=1, max_length=4000)
 
 
 class GateReviewIn(BaseModel):
-    outcome: str  # Proceed | Proceed with conditions | Hold
-    note: str = ""  # required for Hold
-    conditions: list[ConditionIn] = []
+    outcome: str = Field(max_length=60)  # Proceed | Proceed with conditions | Hold
+    note: str = Field(default="", max_length=4000)  # required for Hold
+    conditions: list[ConditionIn] = Field(default=[], max_length=100)
 
 
 class GateDecisionIn(BaseModel):
-    decision: str  # Approve | Approve with conditions | Return | Close
-    note: str = ""  # required for Return
-    conditions: list[ConditionIn] = []
+    decision: str = Field(max_length=60)  # Approve | Approve with conditions | Return | Close
+    note: str = Field(default="", max_length=4000)  # required for Return
+    conditions: list[ConditionIn] = Field(default=[], max_length=100)
 
 
 class GateReviewOut(BaseModel):
@@ -190,8 +190,12 @@ class GateReviewOut(BaseModel):
 
 
 class GateApprovalRequestIn(BaseModel):
-    note: str | None = None
-    draft_id: int | None = None  # accepted Orion draft this request is sent from (assistive mode)
+    note: str | None = Field(default=None, max_length=4000)
+    # accepted Orion draft this request is sent from (assistive mode); same transition, kind
+    # "Approval request", action request_approval for this gate, status Draft (BE#6)
+    draft_id: int | None = Field(default=None, ge=1, le=2**31 - 1)
+    # optional approver per chain step {step: user_id}; default from the transition roles (BE#12)
+    approvers: dict[int, str] | None = Field(default=None, max_length=10)
 
 
 class GateApprovalRequestOut(BaseModel):

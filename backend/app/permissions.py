@@ -52,6 +52,7 @@ class Perm(StrEnum):
     TOGGLE_AUTONOMOUS = "toggle_autonomous"
     GENERATE_LEADERSHIP_UPDATE = "generate_leadership_update"
     RUN_REMINDERS = "run_reminders"
+    EDIT_TRANSITION = "edit_transition"  # PATCH /transitions/{id}: its OR focal; Admin re-assigns
 
 
 R = Role
@@ -82,6 +83,7 @@ MATRIX: dict[Perm, frozenset[Role]] = {
     Perm.TOGGLE_AUTONOMOUS: frozenset({R.OR_FOCAL}),
     Perm.GENERATE_LEADERSHIP_UPDATE: frozenset({R.OR_FOCAL, R.ADMIN}),
     Perm.RUN_REMINDERS: frozenset({R.OR_FOCAL, R.ADMIN}),
+    Perm.EDIT_TRANSITION: frozenset({R.OR_FOCAL, R.ADMIN}),
 }
 
 # Human-readable reasons shown as tooltips / 403 messages (spec §3.3 "Only IRM can set compliance status").
@@ -112,6 +114,7 @@ DENIAL_REASONS: dict[Perm, str] = {
     Perm.TOGGLE_AUTONOMOUS: "Only the OR focal can change autonomous mode",
     Perm.GENERATE_LEADERSHIP_UPDATE: "Only the OR focal can generate and send leadership updates",
     Perm.RUN_REMINDERS: "Only the OR focal or Admin can run the reminder engine",
+    Perm.EDIT_TRANSITION: "Only the OR focal of the transition or an Admin can edit it",
 }
 
 

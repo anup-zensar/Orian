@@ -7,16 +7,17 @@ const useStyles = makeStyles({
     listStyle: 'none',
     margin: 0,
     padding: 0,
-    display: 'flex',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
     gap: tokens.spacingHorizontalXS,
-    flexWrap: 'wrap',
+    overflowX: 'auto',
+    '@media (max-width: 900px)': { gridTemplateColumns: 'repeat(7, minmax(88px, 1fr))' },
   },
   step: {
     display: 'flex',
     flexDirection: 'column',
     gap: '2px',
-    minWidth: '92px',
-    flex: '1 1 92px',
+    minWidth: 0,
     padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
     borderTop: `4px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground2,
@@ -33,8 +34,14 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground1,
     fontWeight: tokens.fontWeightSemibold,
   },
-  line: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS },
+  line: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXS,
+    whiteSpace: 'nowrap',
+  },
   ok: { color: tokens.colorPaletteGreenForeground1 },
+  caption: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
 });
 
 /** 7-gate stepper: done gates checked, current highlighted, decision gates marked (spec 8.7). */
@@ -60,9 +67,11 @@ export function GateStepper({ gates }: { gates: TransitionDetail['gates'] }) {
               <Diamond16Regular aria-label="Decision gate" title="Decision gate" />
             )}
           </span>
-          <Caption1>
+          <Caption1
+            className={s.caption}
+            title={g.type === 'decision' ? 'Decision gate' : undefined}
+          >
             {g.state === 'done' ? 'Done' : g.state === 'current' ? 'Current' : 'Upcoming'}
-            {g.type === 'decision' ? ' · decision' : ''}
           </Caption1>
         </li>
       ))}

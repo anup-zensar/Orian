@@ -1,55 +1,98 @@
 import {
-  Body1,
   Button,
-  Caption1,
   DrawerBody,
-  DrawerFooter,
   DrawerHeader,
   DrawerHeaderTitle,
   InlineDrawer,
+  OverlayDrawer,
   makeStyles,
-  tokens,
 } from '@fluentui/react-components';
-import { Dismiss24Regular } from '@fluentui/react-icons';
-import { AiBadge } from './AiBadge';
+import { Dismiss24Regular, Open20Regular } from '@fluentui/react-icons';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
+import { OrionChat } from '../features/orion/OrionChat';
 
 const useStyles = makeStyles({
   drawer: { width: '420px', flexShrink: 0 },
-  footer: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS },
+  body: { display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' },
 });
 
-/** Right-side Orion assistant panel (FR-090). Content arrives in M8; the frame is final. */
+/** Below 1200 px the panel overlays the page instead of squeezing it (the workspace needs width). */
+function useNarrow() {
+  const query = '(max-width: 1199px)';
+  const [narrow, setNarrow] = useState(
+    () => typeof window !== 'undefined' && !!window.matchMedia?.(query).matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia?.(query);
+    if (!mq) return;
+    const on = () => setNarrow(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return narrow;
+}
+
+/** Right-side Orion assistant panel (FR-090): the shared chat, available on every page. */
 export function OrionPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const s = useStyles();
+  const navigate = useNavigate();
+  const narrow = useNarrow();
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    // Keyboard users: focus the message box on open, return to the top-bar button on close.
+    if (open) {
+      const t = window.setTimeout(
+        () => document.querySelector<HTMLElement>('[aria-label="Message to Orion"]')?.focus(),
+        50,
+      );
+      wasOpen.current = true;
+      return () => window.clearTimeout(t);
+    }
+    if (wasOpen.current) {
+      wasOpen.current = false;
+      document.querySelector<HTMLElement>('[data-orion-toggle]')?.focus();
+    }
+  }, [open]);
+  const Drawer = narrow ? OverlayDrawer : InlineDrawer;
+  const extra = narrow
+    ? { modal: false, onOpenChange: (_: unknown, d: { open: boolean }) => !d.open && onClose() }
+    : { separator: true };
   return (
-    <InlineDrawer
+    <Drawer
       className={s.drawer}
       position="end"
       open={open}
-      separator
+      role="complementary"
       aria-label="Orion assistant"
+      {...extra}
     >
       <DrawerHeader>
         <DrawerHeaderTitle
           action={
-            <Button
-              appearance="subtle"
-              aria-label="Close Orion panel"
-              icon={<Dismiss24Regular />}
-              onClick={onClose}
-            />
+            <>
+              <Button
+                appearance="subtle"
+                aria-label="Open the full Orion page"
+                title="Open the full Orion page"
+                icon={<Open20Regular />}
+                onClick={() => navigate('/orion')}
+              />
+              <Button
+                appearance="subtle"
+                aria-label="Close Orion panel"
+                icon={<Dismiss24Regular />}
+                onClick={onClose}
+              />
+            </>
           }
         >
           Orion – Operate Readiness Agent
         </DrawerHeaderTitle>
       </DrawerHeader>
-      <DrawerBody>
-        <Body1>Quick actions and chat arrive in M8</Body1>
+      <DrawerBody className={s.body}>
+        <OrionChat />
       </DrawerBody>
-      <DrawerFooter className={s.footer}>
-        <AiBadge />
-        <Caption1>Orion recommends and drafts. People decide.</Caption1>
-      </DrawerFooter>
-    </InlineDrawer>
+    </Drawer>
   );
 }

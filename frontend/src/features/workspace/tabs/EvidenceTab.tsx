@@ -44,7 +44,7 @@ export function EvidenceTab({ transitionId }: TabProps) {
   };
   const list = useEvidence(transitionId, filters);
   const items = useItems(transitionId, { all_gates: 'true', applicability: 'all' });
-  const manage = usePerm('manage_evidence');
+  const manage = usePerm('manage_evidence', transitionId);
   const addOpen = params.get('new') === '1';
   const [review, setReview] = useState<{ ev: Evidence; decision: 'Accept' | 'Reject' } | null>(
     null,
@@ -55,6 +55,7 @@ export function EvidenceTab({ transitionId }: TabProps) {
   return (
     <div className={s.stack}>
       <PageHeader
+        as="h2"
         title="Evidence"
         subtitle="Files, links and sign-offs that back up checklist items."
         actions={
@@ -173,20 +174,24 @@ export function EvidenceTab({ transitionId }: TabProps) {
                   </TableCell>
                   <TableCell>
                     <div className={s.row}>
-                      <GuardedButton
-                        size="small"
-                        reason={ev.can_review ? '' : (ev.review_denied_reason ?? 'Cannot review')}
-                        onClick={() => setReview({ ev, decision: 'Accept' })}
-                      >
-                        Accept
-                      </GuardedButton>
-                      <GuardedButton
-                        size="small"
-                        reason={ev.can_review ? '' : (ev.review_denied_reason ?? 'Cannot review')}
-                        onClick={() => setReview({ ev, decision: 'Reject' })}
-                      >
-                        Reject
-                      </GuardedButton>
+                      {ev.status !== 'Accepted' && (
+                        <GuardedButton
+                          size="small"
+                          reason={ev.can_review ? '' : (ev.review_denied_reason ?? 'Cannot review')}
+                          onClick={() => setReview({ ev, decision: 'Accept' })}
+                        >
+                          Accept
+                        </GuardedButton>
+                      )}
+                      {ev.status !== 'Rejected' && (
+                        <GuardedButton
+                          size="small"
+                          reason={ev.can_review ? '' : (ev.review_denied_reason ?? 'Cannot review')}
+                          onClick={() => setReview({ ev, decision: 'Reject' })}
+                        >
+                          Reject
+                        </GuardedButton>
+                      )}
                       {ev.has_file && (
                         <Button
                           size="small"

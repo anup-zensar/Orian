@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
+from app.access import ensure_open, ensure_transition_role
 from app.domain import audit
 from app.domain.conditions import create_condition
 from app.domain.ids import next_id
@@ -25,7 +26,8 @@ from app.models import (
     TransitionItem,
     User,
 )
-from app.rules.constants import ACTOR_HUMAN, GATE_ORDER, GATE_SHORT
+from app.permissions import Perm
+from app.rules.constants import ACTOR_HUMAN, DECISION_GATES, GATE_ORDER, GATE_SHORT
 from app.schemas.common import PersonRef
 from app.schemas.records import (
     ActionCreateIn,
@@ -60,12 +62,7 @@ def get_transition(db: Session, transition_id: str) -> Transition:
     return transition
 
 
-def ensure_not_closed(transition: Transition) -> None:
-    if transition.status == "Closed":
-        raise Conflict(
-            "Transition is closed",
-            [f"{transition.id} is closed - records can no longer be added or changed"],
-        )
+ensure_not_closed = ensure_open  # closure freezes the record (BE#7); kept for older callers
 
 
 def users_by_id(db: Session) -> dict[str, User]:
@@ -166,7 +163,7 @@ def list_actions(db: Session, transition_id: str) -> list[ActionOut]:
 
 def create_action(db: Session, transition_id: str, body: ActionCreateIn, user: User) -> ActionOut:
     transition = get_transition(db, transition_id)
-    ensure_not_closed(transition)
+    ensure_transition_role(db, user, transition, Perm.MANAGE_ACTIONS)
     if _blank(body.title) or not body.title.strip():
         raise BadRequest("Invalid action", ["The action needs a title"])
     check_owner(db, body.owner_user_id)
@@ -202,6 +199,14 @@ def patch_action(db: Session, action_id: str, body: ActionPatchIn, user: User) -
     action = db.get(Action, action_id)
     if action is None:
         raise NotFound(f"Action {action_id} not found")
+    # the OR focal, PM, Architect, OLM or IRM of the transition, or the action's owner (BE#1)
+    ensure_transition_role(
+        db,
+        user,
+        get_transition(db, action.transition_id),
+        Perm.MANAGE_ACTIONS,
+        also_allowed=[action.owner_user_id],
+    )
     fields = body.model_fields_set
     if action.status not in OPEN_ACTION_STATUSES and not (
         "status" in fields and body.status in OPEN_ACTION_STATUSES
@@ -308,12 +313,25 @@ def list_conditions(db: Session, transition_id: str) -> list[ConditionOut]:
     ]
 
 
+def _is_compliance(item: TransitionItem | None) -> bool:
+    return item is not None and item.playbook_item.lens == "Compliance"
+
+
 def create_manual_condition(
     db: Session, transition_id: str, body: ConditionCreateIn, user: User
 ) -> ConditionOut:
+    """Add a condition by hand. The transition's OR focal or IRM may (BE#1); a condition on a
+    Compliance item only the transition's assigned IRM (BE#3)."""
     transition = get_transition(db, transition_id)
     item = find_item(db, transition, body.item_id) if body.item_id else None
-    ensure_not_closed(transition)
+    ensure_transition_role(
+        db,
+        user,
+        transition,
+        Perm.MANAGE_CONDITIONS,
+        roles=["IRM"] if _is_compliance(item) else None,
+        phrase="manage conditions on Compliance items" if _is_compliance(item) else None,
+    )
     check_owner(db, body.owner_user_id)
     condition = create_condition(
         db,
@@ -336,9 +354,34 @@ def patch_condition(
     if condition is None:
         raise NotFound(f"Condition {condition_id} not found")
     transition = get_transition(db, condition.transition_id)
+    fields = body.model_fields_set
+    # BE#3: Compliance-item conditions, and moving the due gate of a condition due at a decision
+    # gate (AtD / AtO), belong to the transition's assigned IRM; the OR focal handles the rest.
+    compliance = _is_compliance(_condition_item(db, condition))
+    moves_decision_due = (
+        "due_gate" in fields
+        and body.due_gate is not None
+        and body.due_gate != condition.due_gate
+        and condition.due_gate in DECISION_GATES
+    )
+    ensure_transition_role(
+        db,
+        user,
+        transition,
+        Perm.MANAGE_CONDITIONS,
+        roles=["IRM"] if compliance or moves_decision_due else None,
+        phrase=(
+            "manage conditions on Compliance items"
+            if compliance
+            else (
+                "move the due gate of a condition due at a decision gate"
+                if moves_decision_due
+                else None
+            )
+        ),
+    )
     if condition.status == "Closed":
         raise Conflict("Condition is already closed", ["Condition is already closed"])
-    fields = body.model_fields_set
     reasons: list[str] = []
     closing = "status" in fields and body.status == "Closed"
     if closing and not (body.close_note or "").strip():
@@ -404,6 +447,7 @@ def list_risks(db: Session, transition_id: str) -> list[RiskOut]:
 
 def create_risk(db: Session, transition_id: str, body: RiskCreateIn, user: User) -> RiskOut:
     transition = get_transition(db, transition_id)
+    ensure_transition_role(db, user, transition, Perm.MANAGE_RISKS)
     if not body.title.strip():
         raise BadRequest("Invalid risk", ["The risk needs a title"])
     item_ids = check_item_ids(db, transition, body.item_ids)
@@ -462,7 +506,7 @@ def get_hypercare(db: Session, transition_id: str) -> HypercareOut:
 
 def create_defect(db: Session, transition_id: str, body: DefectCreateIn, user: User) -> DefectOut:
     transition = get_transition(db, transition_id)
-    ensure_not_closed(transition)
+    ensure_transition_role(db, user, transition, Perm.MANAGE_DEFECTS)
     if not body.title.strip():
         raise BadRequest("Invalid defect", ["The defect needs a title"])
     check_owner(db, body.owner_user_id)
@@ -498,6 +542,7 @@ def patch_defect(db: Session, defect_id: str, body: DefectPatchIn, user: User) -
     defect = db.get(HypercareDefect, defect_id)
     if defect is None:
         raise NotFound(f"Defect {defect_id} not found")
+    ensure_transition_role(db, user, get_transition(db, defect.transition_id), Perm.MANAGE_DEFECTS)
     fields = body.model_fields_set
     if "title" in fields and body.title is not None and not body.title.strip():
         raise BadRequest("Invalid defect", ["The defect needs a title"])
@@ -535,6 +580,7 @@ def confirm_no_defects(
     db: Session, transition_id: str, body: ConfirmNoDefectsIn, user: User
 ) -> HypercareOut:
     transition = get_transition(db, transition_id)
+    ensure_transition_role(db, user, transition, Perm.MANAGE_DEFECTS)
     if body.confirmed:
         count = len(
             db.scalars(

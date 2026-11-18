@@ -8,11 +8,12 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.deps import get_current_user, get_db, require
+from app.access import transition_denial
+from app.deps import IdPath, get_current_user, get_db, require
 from app.domain import drafts as domain
 from app.errors import NotFound
 from app.models import OrionDraft, Transition, User
-from app.permissions import Perm
+from app.permissions import DENIAL_REASONS, Perm, has_perm
 from app.schemas.common import PersonRef
 from app.schemas.messages import (
     ApprovalRequestDraftIn,
@@ -26,8 +27,19 @@ from app.schemas.messages import (
 router = APIRouter(tags=["drafts"], dependencies=[Depends(get_current_user)])
 
 
-def draft_out(db: Session, draft: OrionDraft) -> DraftOut:
+def _use_denial(db: Session, user: User, transition: Transition | None) -> str | None:
+    """Reason the user may not send or edit drafts (None = allowed); role-level without a transition."""
+    if transition is None:
+        return None if has_perm(user.role, Perm.SEND_DRAFTS) else DENIAL_REASONS[Perm.SEND_DRAFTS]
+    reason = transition_denial(db, user, transition, Perm.SEND_DRAFTS)
+    if reason is None and transition.status == "Closed":
+        reason = f"{transition.id} is closed - records can no longer be added or changed"
+    return reason
+
+
+def draft_out(db: Session, draft: OrionDraft, user: User) -> DraftOut:
     transition = db.get(Transition, draft.transition_id) if draft.transition_id else None
+    denial = None if draft.status != "Draft" else _use_denial(db, user, transition)
     sender = db.get(User, draft.sent_by) if draft.sent_by else None
     if draft.created_source == "Workflow rule":
         label = f"Workflow rule {draft.rule_id}" if draft.rule_id else "Workflow rule"
@@ -51,6 +63,10 @@ def draft_out(db: Session, draft: OrionDraft) -> DraftOut:
         sent_at=draft.sent_at,
         action=draft.action,
         related_ids=list(draft.related_ids or []),
+        can_send=denial is None and draft.status == "Draft",
+        send_denied_reason=denial,
+        can_edit=denial is None and draft.status == "Draft",
+        edit_denied_reason=denial,
     )
 
 
@@ -84,7 +100,7 @@ def list_drafts(
         query = query.where(OrionDraft.kind == kind)
     if transition_id:
         query = query.where(OrionDraft.transition_id == transition_id)
-    return [draft_out(db, d) for d in db.scalars(query).all()]
+    return [draft_out(db, d, user) for d in db.scalars(query).all()]
 
 
 # Static POST paths are declared before /orion/drafts/{draft_id}/... routes for clarity.
@@ -105,7 +121,7 @@ def draft_approval_request(
     transition = _transition(db, body.transition_id)
     draft = domain.draft_approval_request(db, transition=transition, gate=body.gate, user=user)
     db.commit()
-    return draft_out(db, draft)
+    return draft_out(db, draft, user)
 
 
 @router.post("/orion/drafts/chaser", response_model=DraftOut, status_code=201)
@@ -122,24 +138,24 @@ def draft_chaser(
     related_ids = [transition_id, *item_ids]. Returns 201.
     """
     transition = _transition(db, body.transition_id)
-    draft = domain.draft_chaser(db, transition=transition, item_ids=body.item_ids)
+    draft = domain.draft_chaser(db, transition=transition, item_ids=body.item_ids, user=user)
     db.commit()
-    return draft_out(db, draft)
+    return draft_out(db, draft, user)
 
 
 @router.get("/orion/drafts/{draft_id}", response_model=DraftOut)
 def get_draft(
-    draft_id: int,
+    draft_id: IdPath,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> DraftOut:
     """One draft. 404 if unknown."""
-    return draft_out(db, _load(db, draft_id))
+    return draft_out(db, _load(db, draft_id), user)
 
 
 @router.patch("/orion/drafts/{draft_id}", response_model=DraftOut)
 def edit_draft(
-    draft_id: int,
+    draft_id: IdPath,
     body: DraftPatchIn,
     user: User = Depends(require(Perm.SEND_DRAFTS)),
     db: Session = Depends(get_db),
@@ -157,24 +173,24 @@ def edit_draft(
         body_html=body.body_html,
     )
     db.commit()
-    return draft_out(db, draft)
+    return draft_out(db, draft, user)
 
 
 @router.post("/orion/drafts/{draft_id}/send", response_model=DraftSendOut)
 def send_draft_endpoint(
-    draft_id: int,
+    draft_id: IdPath,
     user: User = Depends(require(Perm.SEND_DRAFTS)),
     db: Session = Depends(get_db),
 ) -> DraftSendOut:
     """Human send via ``domain.drafts.send_draft`` (BR-050): executes the draft action (e.g.
     request_approval -> ``domain.gate_actions.request_gate_approval``) then sends mock email +
-    Teams card; draft becomes Sent. 404 unknown; 409 when not Draft or the action is blocked
+    Teams card; draft becomes Sent. 403 unless the OR focal of the draft's transition. 404 unknown; 409 when not Draft or the action is blocked
     (reasons returned). Commits. ``result.approval_request_id`` set for approval-request drafts.
     """
     draft, message_ids, result = domain.send_draft(db, draft=_load(db, draft_id), user=user)
     db.commit()
     return DraftSendOut(
-        draft=draft_out(db, draft),
+        draft=draft_out(db, draft, user),
         outbox_message_ids=message_ids,
         result=DraftSendResult(approval_request_id=result.get("approval_request_id")),
     )
@@ -182,11 +198,11 @@ def send_draft_endpoint(
 
 @router.post("/orion/drafts/{draft_id}/discard", response_model=DraftOut)
 def discard_draft(
-    draft_id: int,
+    draft_id: IdPath,
     user: User = Depends(require(Perm.SEND_DRAFTS)),
     db: Session = Depends(get_db),
 ) -> DraftOut:
     """Discard a draft (status Discarded, audited, never sent). 404 unknown; 409 unless Draft."""
     draft = domain.discard_draft(db, draft=_load(db, draft_id), user=user)
     db.commit()
-    return draft_out(db, draft)
+    return draft_out(db, draft, user)

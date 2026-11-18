@@ -10,13 +10,15 @@ from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app import clock
+from app.access import ensure_transition_role
 from app.domain import audit
 from app.errors import BadRequest, Conflict
 from app.models import (
+    Evidence,
     FlavourRule,
     PlaybookItem,
     Portfolio,
@@ -25,6 +27,7 @@ from app.models import (
     TransitionItem,
     User,
 )
+from app.permissions import Perm
 from app.rules.checklist import (
     EXCLUDED_BY_PROJECT_TYPE,
     SOURCE_COMMON,
@@ -40,6 +43,7 @@ from app.rules.checklist import (
 from app.rules.constants import (
     ACTOR_HUMAN,
     APPLIES,
+    DONE_STATUSES,
     GATE_SHORT,
     NA_STATUSES,
     NOT_APPLICABLE,
@@ -60,6 +64,8 @@ from app.services.factory import get_ai_service
 
 DEFAULT_CHECKLISTS: tuple[str, ...] = ("FRAMEWORK",)
 _YES, _NO = "Yes", "No"
+# Fields written to the per-item audit event of a scope decision made after launch (BE#9).
+_SCOPE_ITEM_FIELDS = ("applicability", "na_reason", "excluded_by", "status")
 _APPLIES_TO_DECISION = {APPLIES: _YES, NOT_APPLICABLE: _NO, TO_CONFIRM: TO_CONFIRM}
 
 
@@ -445,8 +451,49 @@ def build_scope(db: Session, t: Transition) -> ScopeOut:
     )
 
 
+def _check_late_no(
+    db: Session,
+    t: Transition,
+    body: ScopeUpdateIn,
+    rows: Mapping[str, PlaybookItem],
+    stored: Mapping[str, TransitionItem],
+) -> None:
+    """After launch a "No" is a real removal (BE#9): it needs a reason (422) and may not drop an item
+    that already has evidence or a done status (409, reasons list every offender)."""
+    missing: list[str] = []
+    blocked: list[str] = []
+    for d in body.decisions:
+        item = stored.get(d.item_id)
+        if d.applies != _NO or (item is not None and item.applicability == NOT_APPLICABLE):
+            continue
+        if not (d.reason or "").strip():
+            missing.append(f"{d.item_id} - a reason is required to mark an item 'No' after launch")
+        if item is None:
+            continue
+        evidence_count = (
+            db.scalar(
+                select(func.count())
+                .select_from(Evidence)
+                .where(Evidence.transition_item_id == item.id)
+            )
+            or 0
+        )
+        if evidence_count:
+            blocked.append(f"{d.item_id} already has {evidence_count} evidence record(s)")
+        elif item.status in DONE_STATUSES:
+            blocked.append(f"{d.item_id} is already '{item.status}'")
+    if missing:
+        raise BadRequest("Reason required", missing)
+    if blocked:
+        raise Conflict(
+            "Items with progress cannot be set to 'No'",
+            [f"{b} - it cannot be removed from the scope" for b in blocked],
+        )
+
+
 def update_scope(db: Session, user: User, t: Transition, body: ScopeUpdateIn) -> None:
     """Persist decisions (caller commits and rebuilds the page)."""
+    ensure_transition_role(db, user, t, Perm.CONFIRM_SCOPE)
     rows = {r.id: r for r in library_rows(db)}
     eligible = {
         r.id
@@ -463,8 +510,6 @@ def update_scope(db: Session, user: User, t: Transition, body: ScopeUpdateIn) ->
             "Validation failed",
             [f"{i} is not a golden-set or common item of this transition" for i in unknown],
         )
-    if t.status == "Closed":
-        raise Conflict("Transition is closed")
     locked = [
         f"{d.item_id} is mandatory and cannot be set to '{d.applies}'"
         for d in body.decisions
@@ -477,6 +522,8 @@ def update_scope(db: Session, user: User, t: Transition, body: ScopeUpdateIn) ->
     tally = {"yes": 0, "no": 0, "to_confirm": 0}
     key = {_YES: "yes", _NO: "no", TO_CONFIRM: "to_confirm"}
     stored = {i.playbook_item_id: i for i in stored_items(db, t.id)} if launched else {}
+    if launched:
+        _check_late_no(db, t, body, rows, stored)
     plan = {p.playbook_item_id: p for p in plan_transition(db, t, list(rows.values()))}
     new_decisions = dict(t.scope_decisions or {})
     for d in body.decisions:
@@ -493,6 +540,7 @@ def update_scope(db: Session, user: User, t: Transition, body: ScopeUpdateIn) ->
             item = _new_item(t.id, planned)
             db.add(item)
         lens = rows[d.item_id].lens
+        item_before = audit.snapshot(item, _SCOPE_ITEM_FIELDS) if item.id is not None else None
         if d.applies == _YES:
             item.applicability, item.na_reason = APPLIES, None
         elif d.applies == _NO:
@@ -505,6 +553,24 @@ def update_scope(db: Session, user: User, t: Transition, body: ScopeUpdateIn) ->
         item.excluded_by = None
         item.last_updated_by = user.id
         item.last_updated_source = ACTOR_HUMAN
+        db.flush()
+        item_after = audit.snapshot(item, _SCOPE_ITEM_FIELDS)
+        item_changed = [
+            k for k in _SCOPE_ITEM_FIELDS if (item_before or {}).get(k) != item_after.get(k)
+        ]
+        if item_changed:
+            audit.record(
+                db,
+                actor=user,
+                actor_type=ACTOR_HUMAN,
+                entity="TransitionItem",
+                entity_id=item.id,
+                action="Scope decision",
+                transition_id=t.id,
+                before={k: (item_before or {}).get(k) for k in item_changed},
+                after={k: item_after.get(k) for k in item_changed},
+                note=f"{d.item_id} - scope: {d.applies}" + (f" ({reason})" if reason else ""),
+            )
     t.scope_decisions = new_decisions
     db.flush()
     audit.record(
@@ -526,6 +592,7 @@ def update_scope(db: Session, user: User, t: Transition, body: ScopeUpdateIn) ->
 
 def launch_assessment(db: Session, user: User, t: Transition) -> LaunchOut:
     """Create the TransitionItems (BR-010) and mark the assessment launched (caller commits)."""
+    ensure_transition_role(db, user, t, Perm.CONFIRM_SCOPE)
     reasons: list[str] = []
     if t.assessment_launched_at is not None:
         reasons.append("Assessment already launched")

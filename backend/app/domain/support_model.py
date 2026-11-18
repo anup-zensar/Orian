@@ -14,8 +14,7 @@ from typing import Any, BinaryIO
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import clock
-from app.deps import ensure
+from app import access, clock
 from app.domain import audit
 from app.domain.ids import next_id
 from app.errors import BadRequest, Conflict, NotFound
@@ -29,7 +28,7 @@ from app.models import (
     TransitionItem,
     User,
 )
-from app.permissions import DENIAL_REASONS, Perm, has_perm
+from app.permissions import Perm
 from app.rules.constants import (
     ACTOR_HUMAN,
     ACTOR_ORION,
@@ -220,10 +219,10 @@ def _view(
     db: Session, transition: Transition, model: SupportModel | None, user: User
 ) -> SupportModelOut:
     status = model.status if model else "Not started"
-    denied: str | None = None
-    if not has_perm(user.role, Perm.EDIT_SUPPORT_MODEL):
-        denied = DENIAL_REASONS[Perm.EDIT_SUPPORT_MODEL]
-    elif status not in ("Not started", "Draft"):
+    denied: str | None = access.transition_denial(db, user, transition, Perm.EDIT_SUPPORT_MODEL)
+    if denied is None and transition.status == "Closed":
+        denied = f"{transition.id} is closed - records can no longer be added or changed"
+    if denied is None and status not in ("Not started", "Draft"):
         denied = f"Support model is {status}"
     inputs = _inputs(model)
     confluence = inputs["confluence"]
@@ -315,8 +314,8 @@ def save_inputs(
     from app.domain.evidence import read_upload
     from app.services.mock.document_store import sanitize_filename
 
-    ensure(user, Perm.EDIT_SUPPORT_MODEL)
     transition = _transition(db, transition_id)
+    access.ensure_transition_role(db, user, transition, Perm.EDIT_SUPPORT_MODEL)
     latest = _latest(db, transition_id)
     if latest is not None and latest.status != "Draft":
         raise Conflict(
@@ -408,8 +407,8 @@ def _transition_ctx(db: Session, transition: Transition) -> dict[str, Any]:
 
 def generate(db: Session, transition_id: str, user: User) -> GenerateOut:
     """Run SupportModelGenerator.generate and store the landscape (see router docstring)."""
-    ensure(user, Perm.EDIT_SUPPORT_MODEL)
     transition = _transition(db, transition_id)
+    access.ensure_transition_role(db, user, transition, Perm.EDIT_SUPPORT_MODEL)
     latest = _latest(db, transition_id)
     if latest is None:
         raise Conflict("No inputs yet", ["Add a Confluence link or upload at least one file first"])
@@ -483,8 +482,10 @@ def update_landscape(
     db: Session, support_model_id: int, landscape: LandscapeIn, user: User
 ) -> SupportModelOut:
     """Replace the landscape of a Draft model (see router docstring)."""
-    ensure(user, Perm.EDIT_SUPPORT_MODEL)
     model = _model(db, support_model_id)
+    access.ensure_transition_role(
+        db, user, _transition(db, model.transition_id), Perm.EDIT_SUPPORT_MODEL
+    )
     if model.status != "Draft":
         raise Conflict(
             "Support model cannot be edited",
@@ -512,8 +513,10 @@ def send_for_review(db: Session, support_model_id: int, user: User) -> SupportMo
     """Draft -> In review; creates the SUPPORT_MODEL approval chain."""
     from app.domain import approvals
 
-    ensure(user, Perm.EDIT_SUPPORT_MODEL)
     model = _model(db, support_model_id)
+    access.ensure_transition_role(
+        db, user, _transition(db, model.transition_id), Perm.EDIT_SUPPORT_MODEL
+    )
     if model.status != "Draft":
         raise Conflict("Support model is not a draft", [f"The support model is {model.status}"])
     if not model.landscape:
@@ -555,8 +558,10 @@ def build_pptx(db: Session, support_model_id: int, user: User) -> PptxOut:
     """Generate the .pptx, store it, create the Generated Evidence row on FW-035."""
     from app.services.pptx_support_model import build_support_model_pptx
 
-    ensure(user, Perm.EDIT_SUPPORT_MODEL)
     model = _model(db, support_model_id)
+    access.ensure_transition_role(
+        db, user, _transition(db, model.transition_id), Perm.EDIT_SUPPORT_MODEL
+    )
     if not model.landscape:
         raise Conflict("Nothing to export", ["Generate the support model first"])
     latest = _latest(db, model.transition_id)
@@ -664,8 +669,10 @@ def draft_question_to_architect(
     from app.domain.drafts import create_draft
     from app.domain.html_sanitize import escape_text as esc
 
-    ensure(user, Perm.EDIT_SUPPORT_MODEL)
     model = _model(db, support_model_id)
+    access.ensure_transition_role(
+        db, user, _transition(db, model.transition_id), Perm.EDIT_SUPPORT_MODEL
+    )
     questions = list((model.landscape or {}).get("open_questions") or [])
     if question_index < 0 or question_index >= len(questions):
         raise NotFound(f"Open question {question_index} not found")

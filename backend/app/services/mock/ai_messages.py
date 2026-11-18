@@ -7,7 +7,11 @@
 * ``items``: list of ``{"id", "title", "due_gate_short"?, "owner_name"?, "deep_link"?}`` (Chaser,
   Reminder, Input request)
 * ``deep_link``: overrides the default link (otherwise ``APP_BASE_URL`` + the standard route)
-* Approval request: ``gate``, ``verdict``, ``approver_role``, ``summary``
+* Approval request: ``gate``, ``verdict``, ``approver_role``, ``summary``; ``ready`` (R4: the
+  draft is for the OR focal and Send starts the chain) with ``subject``
+* Reminder-engine variants (BR-060): Chaser with ``days_overdue``/``action_title`` (R2) or
+  ``escalation`` + ``approver_name`` + ``days_pending`` (R3); Reminder with ``pending_step``
+  (R3), ``monitoring`` (R6) or ``support_model`` (R7) + ``subject``
 * Leadership update: ``scope`` (title) and ``text`` (plain lines, blank line = new paragraph)
 
 The text is only a draft: nothing is sent until a human clicks Send (BR-050).
@@ -91,7 +95,50 @@ def _item_title(ctx: Mapping[str, Any]) -> str:
     return first if len(items) == 1 else f"{first} and {_s(len(items) - 1, 'other item')}"
 
 
+def _link_para(ctx: Mapping[str, Any], label: str = "Open in Orion") -> str:
+    return f'<p><a href="{esc(ctx.get("deep_link") or _base())}">{esc(label)}</a></p>'
+
+
+def _overdue_action(ctx: Mapping[str, Any]) -> DraftText:
+    transition = str(ctx.get("transition_name", ""))
+    title = str(ctx.get("action_title") or "an action")
+    days = int(ctx.get("days_overdue") or 0)
+    body = (
+        f"<p>{_greeting(ctx)}</p>"
+        f"<p>The action <strong>{esc(title)}</strong> for {esc(transition)} was due "
+        f"{esc(str(ctx.get('due_date') or ''))} and is now overdue by {_s(days, 'day')}. "
+        f"Could you please update it or let us know what is blocking you?</p>"
+        + _link_para(ctx)
+        + _sign_off(ctx)
+    )
+    return {
+        "subject": f"Overdue action: {title} for {transition} ({_s(days, 'day')} overdue)",
+        "body_html": body,
+    }
+
+
+def _escalation(ctx: Mapping[str, Any]) -> DraftText:
+    transition = str(ctx.get("transition_name", ""))
+    approver = str(ctx.get("approver_name") or "The approver")
+    gate = str(ctx.get("gate_short") or "the gate")
+    days = int(ctx.get("days_pending") or 0)
+    body = (
+        f"<p>{_greeting(ctx)}</p>"
+        f"<p>{esc(approver)} has not yet decided the {esc(gate)} approval for "
+        f"{esc(transition)}; it has been pending for {_s(days, 'day')}. "
+        f"You may want to follow up with them directly.</p>" + _link_para(ctx) + _sign_off(ctx)
+    )
+    return {
+        "subject": f"Escalation: {gate} approval for {transition} pending {_s(days, 'day')}",
+        "body_html": body,
+    }
+
+
 def _chaser(ctx: Mapping[str, Any]) -> DraftText:
+    if ctx.get("escalation"):
+        return _escalation(ctx)
+    if ctx.get("days_overdue") is not None:
+        return _overdue_action(ctx)
     transition = str(ctx.get("transition_name", ""))
     when = _when(ctx)
     subject = f"Action needed: {_item_title(ctx)} for {transition}"
@@ -109,8 +156,38 @@ def _chaser(ctx: Mapping[str, Any]) -> DraftText:
     return {"subject": subject, "body_html": body}
 
 
+def _simple_reminder(ctx: Mapping[str, Any], subject: str, text: str) -> DraftText:
+    body = (
+        f"<p>{_greeting(ctx)}</p><p>{text}</p>" + _item_list(ctx) + _link_para(ctx) + _sign_off(ctx)
+    )
+    return {"subject": subject, "body_html": body}
+
+
 def _reminder(ctx: Mapping[str, Any]) -> DraftText:
     transition = str(ctx.get("transition_name", ""))
+    gate_short = str(ctx.get("gate_short") or "the gate")
+    if ctx.get("pending_step"):
+        days = int(ctx.get("days_pending") or 0)
+        return _simple_reminder(
+            ctx,
+            f"Reminder: {gate_short} approval for {transition} is waiting for you",
+            f"Your approval of {esc(gate_short)} for {esc(transition)} has been pending for "
+            f"{_s(days, 'day')}. Please review and decide in Orion.",
+        )
+    if ctx.get("monitoring"):
+        return _simple_reminder(
+            ctx,
+            f"Monitoring requirements for {transition}",
+            f"{esc(transition)} is in the design stage. Please capture the monitoring "
+            f"requirements below with the team.",
+        )
+    if ctx.get("support_model"):
+        return _simple_reminder(
+            ctx,
+            str(ctx.get("subject") or "Create support model now?"),
+            f"The support-model evidence for {esc(transition)} has been accepted. "
+            f"Orion can now prepare the support model.",
+        )
     n = len(_items(ctx))
     when = _when(ctx)
     subject = f"Reminder: {_s(n, 'open item')} for {transition}" + (f" ({when})" if when else "")
@@ -136,9 +213,24 @@ def _input_request(ctx: Mapping[str, Any]) -> DraftText:
     return {"subject": subject, "body_html": body}
 
 
+def _ready_for_gate(ctx: Mapping[str, Any], transition: str, gate: str) -> DraftText:
+    role = str(ctx.get("approver_role") or "the first approver")
+    subject = str(ctx.get("subject") or f"Ready for {gate} - request {role} approval")
+    body = (
+        f"<p>{_greeting(ctx)}</p>"
+        f"<p>{esc(transition)} has no open items left for {esc(gate)}. "
+        f"Sending this starts the approval chain with {esc(role)}.</p>"
+        + _link_para(ctx, "Review readiness in Orion")
+        + _sign_off(ctx)
+    )
+    return {"subject": subject, "body_html": body}
+
+
 def _approval_request(ctx: Mapping[str, Any]) -> DraftText:
     transition = str(ctx.get("transition_name", ""))
     gate = str(ctx.get("gate_short") or ctx.get("gate") or "gate")
+    if ctx.get("ready"):
+        return _ready_for_gate(ctx, transition, gate)
     link = ctx.get("deep_link") or f"{_base()}/transitions/{ctx.get('transition_id', '')}/gates"
     verdict = str(ctx.get("verdict") or "").strip()
     role = str(ctx.get("approver_role") or "").strip()

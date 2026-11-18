@@ -1,6 +1,6 @@
 // Small shared building blocks for the records tabs.
-import type { ReactNode } from 'react';
-import { Button, Field, Select, Tooltip } from '@fluentui/react-components';
+import { useState, type ReactNode } from 'react';
+import { Button, Field, Input, Select, Tooltip } from '@fluentui/react-components';
 import { useUsers } from '../users/api';
 import { useReference } from '../reference/api';
 import type { Item } from './api';
@@ -70,11 +70,32 @@ export function ItemSelect(props: {
   required?: boolean;
   emptyLabel?: string;
 }) {
+  const [search, setSearch] = useState('');
+  const all = props.items ?? [];
+  const q = search.trim().toLowerCase();
+  // keep the selected item in the list even when the filter would hide it
+  const shown = q
+    ? all.filter(
+        (i) =>
+          i.item_id === props.value ||
+          i.item_id.toLowerCase().includes(q) ||
+          i.title.toLowerCase().includes(q),
+      )
+    : all;
   return (
     <Field label={props.label} required={props.required}>
+      {all.length > 20 && (
+        <Input
+          size="small"
+          aria-label={`Filter ${props.label.toLowerCase()} list`}
+          placeholder={`Type to filter ${all.length} items (id or title)`}
+          value={search}
+          onChange={(_, d) => setSearch(d.value)}
+        />
+      )}
       <Select value={props.value} onChange={(_, d) => props.onChange(d.value)}>
         <option value="">{props.emptyLabel ?? 'No linked item'}</option>
-        {(props.items ?? []).map((i) => (
+        {shown.map((i) => (
           <option key={i.item_id} value={i.item_id}>
             {i.item_id} – {i.title}
           </option>

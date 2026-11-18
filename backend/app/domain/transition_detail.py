@@ -29,8 +29,14 @@ _ROLE_LABELS = {
 }
 
 
-def build_transition_detail(db: Session, transition: Transition) -> TransitionDetailOut:
-    """Full detail DTO for ``transition`` (summary fields come from ``metrics.to_summary``)."""
+def build_transition_detail(
+    db: Session, transition: Transition, user: User | None = None
+) -> TransitionDetailOut:
+    """Full detail DTO for ``transition`` (summary fields come from ``metrics.to_summary``).
+
+    With ``user`` the DTO also carries ``access``: what this user may do on this transition
+    (``app.access.access_map``), so the UI can disable controls with the reason (spec 12)."""
+    from app.access import access_map
     from app.domain import scope as scope_domain
     from app.domain.metrics import compute_metrics, to_summary
     from app.domain.tiering import reference
@@ -158,4 +164,5 @@ def build_transition_detail(db: Session, transition: Transition) -> TransitionDe
         hypercare_no_defects_confirmed=bool(t.hypercare_no_defects_confirmed),
         created_at=t.created_at,
         created_by=person(t.created_by),
+        access=access_map(db, user, t) if user is not None else {},
     )

@@ -117,6 +117,7 @@ function ItemRowImpl(p: ItemRowProps) {
       aria-label={`Status of ${item.item_id}`}
       value={item.status}
       disabled={!item.can_edit || p.busy}
+      title={item.can_edit ? undefined : (item.edit_denied_reason ?? undefined)}
       onChange={(_, d) => d.value !== item.status && p.onStatus(item, d.value)}
     >
       {item.allowed_statuses.map((st) => (
@@ -175,7 +176,9 @@ function ItemRowImpl(p: ItemRowProps) {
             )}
             {item.covered && (
               <Badge size="small" appearance="tint" color="success">
-                covered by condition
+                {item.exception_status === 'Approved' && !item.open_condition_id
+                  ? `covered by approved exception${item.exception_ref ? ` ${item.exception_ref}` : ''}`
+                  : `covered by condition${item.open_condition_id ? ` ${item.open_condition_id}` : ''}`}
               </Badge>
             )}
           </div>

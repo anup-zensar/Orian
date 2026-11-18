@@ -4,6 +4,8 @@ import {
   Button,
   Caption1,
   Link,
+  MessageBar,
+  MessageBarBody,
   Select,
   Toast,
   ToastBody,
@@ -23,7 +25,6 @@ import { plural } from '../../../lib/format';
 import type { Lens } from '../../../theme/tokens';
 import { useReference } from '../../reference/api';
 import { useTransition } from '../../transition/api';
-import { useMe } from '../../users/api';
 import { useUsers } from '../../users/api';
 import { useBulkItems, useItems, usePatchItem, type ItemOut, type ItemPatchIn } from '../api';
 import { AssessmentFilters } from '../assessment/AssessmentFilters';
@@ -122,7 +123,6 @@ export function AssessmentTab({ transitionId }: TabProps) {
   const { values, query, update, clear, activeCount } = useAssessmentFilters();
   const detail = useTransition(transitionId);
   const ref = useReference();
-  const me = useMe();
   const users = useUsers();
   const items = useItems(transitionId, query);
   const patch = usePatchItem(transitionId);
@@ -171,10 +171,15 @@ export function AssessmentTab({ transitionId }: TabProps) {
     };
   }, [values.item, list]);
 
-  const perms: RowPermissions = useMemo(
-    () => ({ permissions: me.data?.permissions ?? [], denied: me.data?.denied_reasons ?? {} }),
-    [me.data],
-  );
+  const perms: RowPermissions = useMemo(() => {
+    const access = detail.data?.access ?? {};
+    return {
+      permissions: Object.keys(access).filter((k) => access[k] === null),
+      denied: Object.fromEntries(
+        Object.entries(access).filter((e): e is [string, string] => e[1] !== null),
+      ),
+    };
+  }, [detail.data?.access]);
   const isFocal = perms.permissions.includes('confirm_scope');
   const deOptions = ref.data?.design_effectiveness_options ?? ['–', 'Yes', 'No', 'N/A'];
 
@@ -273,6 +278,16 @@ export function AssessmentTab({ transitionId }: TabProps) {
           gateShort={gateShort(data.gate)}
           summary={data.summary}
         />
+      )}
+
+      {data && data.items.length > 0 && !data.items.some((i) => i.can_edit) && (
+        <MessageBar intent="info" className={s.note}>
+          <MessageBarBody>
+            You can view but not edit these items:{' '}
+            {data.items.find((i) => i.edit_denied_reason)?.edit_denied_reason ??
+              'you do not have edit access on this transition'}
+          </MessageBarBody>
+        </MessageBar>
       )}
 
       {data && data.excluded_count > 0 && !values.excluded && (

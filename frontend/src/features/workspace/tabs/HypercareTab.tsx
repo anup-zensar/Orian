@@ -29,7 +29,7 @@ export function HypercareTab({ transitionId }: TabProps) {
   const s = useRecordStyles();
   const showError = useApiErrorToast();
   const data = useHypercare(transitionId);
-  const manage = usePerm('manage_defects');
+  const manage = usePerm('manage_defects', transitionId);
   const patch = usePatchDefect(transitionId);
   const confirmNone = useConfirmNoDefects(transitionId);
   const [dialog, setDialog] = useState<{ defect?: Defect } | null>(null);
@@ -49,6 +49,7 @@ export function HypercareTab({ transitionId }: TabProps) {
   return (
     <div className={s.stack}>
       <PageHeader
+        as="h2"
         title="Hypercare"
         subtitle="Defects found after go-live. Open P1/P2 defects hold up closure."
         actions={

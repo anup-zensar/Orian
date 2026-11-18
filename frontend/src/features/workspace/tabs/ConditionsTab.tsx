@@ -32,12 +32,17 @@ import { GuardedButton } from '../../records/common';
 import { useRecordStyles, usePerm, useUrlParams } from '../../records/hooks';
 import type { TabProps } from '../types';
 
-function Head({ cols }: { cols: string[] }) {
+function Head({ cols, widths }: { cols: string[]; widths?: Array<number | undefined> }) {
   return (
     <TableHeader>
       <TableRow>
-        {cols.map((c) => (
-          <TableHeaderCell key={c || 'actions'}>{c}</TableHeaderCell>
+        {cols.map((c, i) => (
+          <TableHeaderCell
+            key={c || 'actions'}
+            style={widths?.[i] ? { width: widths[i] } : undefined}
+          >
+            {c}
+          </TableHeaderCell>
         ))}
       </TableRow>
     </TableHeader>
@@ -53,9 +58,9 @@ export function ConditionsTab({ transitionId }: TabProps) {
   const exceptions = useExceptions(transitionId);
   const risks = useRisks(transitionId);
   const items = useItems(transitionId, { all_gates: 'true' });
-  const manageCond = usePerm('manage_conditions');
-  const reqExc = usePerm('request_exception');
-  const manageRisk = usePerm('manage_risks');
+  const manageCond = usePerm('manage_conditions', transitionId);
+  const reqExc = usePerm('request_exception', transitionId);
+  const manageRisk = usePerm('manage_risks', transitionId);
   const [closing, setClosing] = useState<ConditionRow | null>(null);
   const [riskOpen, setRiskOpen] = useState(false);
 
@@ -67,6 +72,7 @@ export function ConditionsTab({ transitionId }: TabProps) {
   return (
     <div className={s.stack}>
       <PageHeader
+        as="h2"
         title="Conditions, exceptions & risks"
         subtitle="Conditions carried across gates, approved exceptions and the risk register."
       />
@@ -91,8 +97,11 @@ export function ConditionsTab({ transitionId }: TabProps) {
           <EmptyState message="No conditions set." />
         ) : (
           <div className={s.tableWrap}>
-            <Table aria-label="Conditions" size="small">
-              <Head cols={['ID', 'Item', 'Set at', 'Due', 'Owner', 'Status', 'Condition', '']} />
+            <Table aria-label="Conditions" size="small" style={{ minWidth: 1000 }}>
+              <Head
+                cols={['ID', 'Item', 'Set at', 'Due', 'Owner', 'Status', 'Condition', '']}
+                widths={[76, 76, 76, 90, 120, 76, undefined, 90]}
+              />
               <TableBody>
                 {conditions.data.map((c) => (
                   <TableRow key={c.id}>

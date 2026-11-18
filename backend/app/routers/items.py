@@ -7,7 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.deps import get_current_user, get_db, require
+from app.deps import IdPath, get_current_user, get_db, require
 from app.models import User
 from app.permissions import Perm
 from app.schemas.items import (
@@ -58,7 +58,7 @@ def list_items(
 
 @router.patch("/items/{item_id}", response_model=ItemOut)
 def patch_item(
-    item_id: int,
+    item_id: IdPath,
     body: ItemPatchIn,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

@@ -75,7 +75,10 @@ def test_tier_3_beats_tq5():
 def test_default_is_tier_3():
     result = propose_tier("Internal department", "No", "No", {})
     assert result.tier == 3
-    assert "conservative default" in result.rationale[-1]
+    assert any("conservative default" in line for line in result.rationale)
+    # the safe-looking intake answers explain how to reach Tier 2 instead of contradicting Tier 3
+    assert "TQ4" in result.rationale[-1]
+    assert propose_tier("Enterprise", "No", "No", {}).rationale[-1].startswith("No rule matched")
 
 
 def test_missing_intake_values_are_tolerated():

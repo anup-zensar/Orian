@@ -7,13 +7,15 @@ open and due AFTER the transition's current gate it covers the item for readines
 
 from __future__ import annotations
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import clock
 from app.domain import audit
 from app.domain.ids import next_id
 from app.errors import BadRequest
 from app.models import Condition, Transition, TransitionItem, User
-from app.rules.constants import GATE_ORDER
+from app.rules.constants import GATE_ORDER, GATE_SHORT
 
 CONDITION_FIELDS = (
     "transition_item_id",
@@ -81,3 +83,52 @@ def create_condition(
         note=note,
     )
     return condition
+
+
+def close_superseded_conditions(
+    db: Session,
+    *,
+    transition: Transition,
+    item: TransitionItem | None,
+    gate: str,
+    new_condition: Condition,
+    actor: User | None,
+    actor_type: str,
+) -> list[str]:
+    """Re-conditioning (BE#8): when a gate outcome puts a NEW condition on an item that still has an
+    open condition due at or before ``gate``, the old one is closed with the note
+    "Re-conditioned at <gate> as CON-xxx" so the item never carries two open conditions.
+    Audited per closed condition; returns the ids closed. Caller commits."""
+    if item is None or gate not in GATE_ORDER:
+        return []
+    older = db.scalars(
+        select(Condition).where(
+            Condition.transition_id == transition.id,
+            Condition.transition_item_id == item.id,
+            Condition.status == "Open",
+            Condition.id != new_condition.id,
+        )
+    ).all()
+    closed: list[str] = []
+    for old in older:
+        if GATE_ORDER.get(old.due_gate, 99) > GATE_ORDER[gate]:
+            continue
+        before = audit.snapshot(old, CONDITION_FIELDS)
+        old.status = "Closed"
+        old.close_note = f"Re-conditioned at {GATE_SHORT[gate]} as {new_condition.id}"
+        old.closed_by = actor.id if actor is not None else None
+        old.closed_at = clock.now()
+        audit.record(
+            db,
+            actor=actor,
+            actor_type=actor_type,
+            entity="Condition",
+            entity_id=old.id,
+            action="closed",
+            transition_id=transition.id,
+            before=before,
+            after=audit.snapshot(old, CONDITION_FIELDS),
+            note=old.close_note,
+        )
+        closed.append(old.id)
+    return closed

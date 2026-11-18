@@ -1,8 +1,8 @@
+import { ReturnFocusDialog } from '../../components/ReturnFocusDialog';
 import { useState } from 'react';
 import dayjs from 'dayjs';
 import {
   Button,
-  Dialog,
   DialogActions,
   DialogBody,
   DialogContent,
@@ -92,7 +92,7 @@ export function ActionDialog(props: {
   };
 
   return (
-    <Dialog open onOpenChange={(_, d) => !d.open && props.onClose()}>
+    <ReturnFocusDialog open onOpenChange={(_, d) => !d.open && props.onClose()}>
       <DialogSurface>
         <DialogBody>
           <DialogTitle>{a ? `Edit action ${a.id}` : 'Create action'}</DialogTitle>
@@ -141,6 +141,6 @@ export function ActionDialog(props: {
           </DialogActions>
         </DialogBody>
       </DialogSurface>
-    </Dialog>
+    </ReturnFocusDialog>
   );
 }

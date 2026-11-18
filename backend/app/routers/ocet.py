@@ -6,12 +6,10 @@ Routers commit the session after each mutation. Errors follow app.errors (403 pe
 
 from __future__ import annotations
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.deps import get_current_user, get_db, require
+from app.deps import IdPath, get_current_user, get_db, require
 from app.domain import ocet as domain
 from app.errors import NotFound
 from app.models import Transition, User
@@ -24,9 +22,6 @@ from app.schemas.ocet import (
     RequestInputsIn,
     RequestInputsOut,
 )
-
-# Database ids fit SQLite's 64-bit INTEGER; anything bigger is a 422, never a 500.
-PathId = Annotated[int, Path(ge=1, le=2**62)]
 
 router = APIRouter(tags=["ocet"], dependencies=[Depends(get_current_user)])
 
@@ -75,7 +70,7 @@ def create_ocet(
 
 @router.put("/ocet/versions/{version_id}/lines", response_model=OcetOut, responses=_ERR)
 def save_lines(
-    version_id: PathId,
+    version_id: IdPath,
     payload: OcetSaveIn,
     db: Session = Depends(get_db),
     user: User = Depends(require(Perm.EDIT_OCET)),
@@ -91,7 +86,7 @@ def save_lines(
 
 @router.post("/ocet/versions/{version_id}/submit", response_model=OcetOut, responses=_ERR)
 def submit_version(
-    version_id: PathId,
+    version_id: IdPath,
     db: Session = Depends(get_db),
     user: User = Depends(require(Perm.EDIT_OCET)),
 ) -> OcetOut:
@@ -126,7 +121,7 @@ def new_version(
     responses=_ERR,
 )
 def request_inputs(
-    version_id: PathId,
+    version_id: IdPath,
     payload: RequestInputsIn,
     db: Session = Depends(get_db),
     user: User = Depends(require(Perm.EDIT_OCET)),
@@ -142,8 +137,10 @@ def request_inputs(
 
 @router.get("/ocet/compare", response_model=OcetCompareOut, responses=_ERR)
 def compare(
-    from_version: int = Query(alias="from", ge=1, le=2**62, description="OcetVersion id (older)"),
-    to_version: int = Query(alias="to", ge=1, le=2**62, description="OcetVersion id (newer)"),
+    from_version: int = Query(
+        alias="from", ge=1, le=2**31 - 1, description="OcetVersion id (older)"
+    ),
+    to_version: int = Query(alias="to", ge=1, le=2**31 - 1, description="OcetVersion id (newer)"),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> OcetCompareOut:

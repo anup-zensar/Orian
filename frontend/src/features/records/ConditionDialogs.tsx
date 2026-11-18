@@ -1,7 +1,7 @@
+import { ReturnFocusDialog } from '../../components/ReturnFocusDialog';
 import { useState } from 'react';
 import {
   Button,
-  Dialog,
   DialogActions,
   DialogBody,
   DialogContent,
@@ -37,7 +37,7 @@ function Shell(props: {
 }) {
   const s = useRecordStyles();
   return (
-    <Dialog open onOpenChange={(_, d) => !d.open && props.onClose()}>
+    <ReturnFocusDialog open onOpenChange={(_, d) => !d.open && props.onClose()}>
       <DialogSurface>
         <DialogBody>
           <DialogTitle>{props.title}</DialogTitle>
@@ -56,7 +56,7 @@ function Shell(props: {
           </DialogActions>
         </DialogBody>
       </DialogSurface>
-    </Dialog>
+    </ReturnFocusDialog>
   );
 }
 

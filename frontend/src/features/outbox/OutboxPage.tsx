@@ -17,6 +17,7 @@ import {
   TableHeaderCell,
   TableRow,
   makeStyles,
+  mergeClasses,
   tokens,
 } from '@fluentui/react-components';
 import { useEffect, useRef } from 'react';
@@ -167,7 +168,7 @@ export function OutboxPage() {
               {q.data.map((m) => (
                 <TableRow
                   key={m.id}
-                  className={`${s.row} ${m.id === selected ? s.rowSelected : ''}`}
+                  className={mergeClasses(s.row, m.id === selected && s.rowSelected)}
                   tabIndex={0}
                   onClick={() => setParam('message', String(m.id))}
                   onKeyDown={(e) => {

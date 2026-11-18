@@ -7,8 +7,8 @@ import {
   Popover,
   PopoverSurface,
   PopoverTrigger,
-  Tooltip,
   makeStyles,
+  mergeClasses,
   tokens,
 } from '@fluentui/react-components';
 import { Alert20Regular } from '@fluentui/react-icons';
@@ -76,61 +76,60 @@ export function NotificationsBell() {
   };
 
   return (
-    <Popover open={open} onOpenChange={(_, d) => setOpen(d.open)} positioning="below-end">
-      <PopoverTrigger disableButtonEnhancement>
-        <span className={s.wrap}>
-          <Tooltip content="Notifications" relationship="label">
-            <Button
-              appearance="subtle"
-              icon={<Alert20Regular />}
-              aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
-            />
-          </Tooltip>
-          {unread > 0 && (
-            <Badge className={s.badge} size="small" color="danger" appearance="filled">
-              {unread > 99 ? '99+' : unread}
-            </Badge>
-          )}
-        </span>
-      </PopoverTrigger>
-      <PopoverSurface className={s.surface} aria-label="Notifications">
-        <div className={s.head}>
-          <Body1Strong>Notifications</Body1Strong>
+    <span className={s.wrap}>
+      <Popover open={open} onOpenChange={(_, d) => setOpen(d.open)} positioning="below-end">
+        <PopoverTrigger disableButtonEnhancement>
           <Button
-            size="small"
-            appearance="transparent"
-            disabled={unread === 0 || markAll.isPending}
-            onClick={() => markAll.mutate(undefined, { onError: showError })}
-          >
-            Mark all read
-          </Button>
-        </div>
-        {q.isLoading && <div className={s.empty}>Loading...</div>}
-        {q.isError && <div className={s.empty}>Could not load notifications</div>}
-        {q.data && q.data.items.length === 0 && (
-          <div className={s.empty}>
-            <Caption1>You are all caught up.</Caption1>
+            appearance="subtle"
+            icon={<Alert20Regular />}
+            title="Notifications"
+            aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
+          />
+        </PopoverTrigger>
+        <PopoverSurface className={s.surface} aria-label="Notifications">
+          <div className={s.head}>
+            <Body1Strong>Notifications</Body1Strong>
+            <Button
+              size="small"
+              appearance="transparent"
+              disabled={unread === 0 || markAll.isPending}
+              onClick={() => markAll.mutate(undefined, { onError: showError })}
+            >
+              Mark all read
+            </Button>
           </div>
-        )}
-        {q.data && q.data.items.length > 0 && (
-          <ul className={s.list}>
-            {q.data.items.map((n) => (
-              <li key={n.id}>
-                <button type="button" className={s.item} onClick={() => onClick(n)}>
-                  <span
-                    className={`${s.dot} ${n.read ? s.dotRead : ''}`}
-                    aria-label={n.read ? 'Read' : 'Unread'}
-                  />
-                  <span>
-                    <div>{n.text}</div>
-                    <Caption1>{dayjs(n.created_at).fromNow()}</Caption1>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </PopoverSurface>
-    </Popover>
+          {q.isLoading && <div className={s.empty}>Loading...</div>}
+          {q.isError && <div className={s.empty}>Could not load notifications</div>}
+          {q.data && q.data.items.length === 0 && (
+            <div className={s.empty}>
+              <Caption1>You are all caught up.</Caption1>
+            </div>
+          )}
+          {q.data && q.data.items.length > 0 && (
+            <ul className={s.list}>
+              {q.data.items.map((n) => (
+                <li key={n.id}>
+                  <button type="button" className={s.item} onClick={() => onClick(n)}>
+                    <span
+                      className={mergeClasses(s.dot, n.read && s.dotRead)}
+                      aria-label={n.read ? 'Read' : 'Unread'}
+                    />
+                    <span>
+                      <div>{n.text}</div>
+                      <Caption1>{dayjs(n.created_at).fromNow()}</Caption1>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </PopoverSurface>
+      </Popover>
+      {unread > 0 && (
+        <Badge className={s.badge} size="small" color="danger" appearance="filled" aria-hidden>
+          {unread > 99 ? '99+' : unread}
+        </Badge>
+      )}
+    </span>
   );
 }

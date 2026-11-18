@@ -70,7 +70,7 @@ export function GateSummaryBar(props: {
           style={{ borderLeftColor: lensColors[l.lens as Lens]?.border }}
         >
           <LensChip lens={l.lens as Lens} />
-          <span className={s.pct}>{l.readiness_pct}%</span>
+          <span className={s.pct}>{l.scope === 0 ? '–' : `${l.readiness_pct}%`}</span>
           <ProgressBar value={l.readiness_pct / 100} aria-label={`${l.lens} readiness`} />
           <Caption1>
             {l.done}/{l.scope} done · {l.in_progress} in progress · {l.not_started} not started

@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent } from 'react';
-import { useNavigate } from 'react-router';
+import { useMatch, useNavigate } from 'react-router';
 import {
   Avatar,
   Badge,
@@ -54,6 +54,7 @@ export function TopBar(props: { orionOpen: boolean; onToggleOrion: () => void })
   const me = useMe();
   const users = useUsers();
   const [query, setQuery] = useState('');
+  const onOrionPage = !!useMatch('/orion');
   const user = me.data?.user;
 
   const onSearchKey = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -83,10 +84,12 @@ export function TopBar(props: { orionOpen: boolean; onToggleOrion: () => void })
       <NotificationsBell />
 
       <Button
-        appearance={props.orionOpen ? 'primary' : 'secondary'}
+        appearance={props.orionOpen || onOrionPage ? 'primary' : 'secondary'}
         icon={<Sparkle20Regular />}
-        aria-pressed={props.orionOpen}
-        onClick={props.onToggleOrion}
+        aria-pressed={props.orionOpen || onOrionPage}
+        data-orion-toggle=""
+        title={onOrionPage ? 'You are on the full Orion page' : 'Open the Orion assistant'}
+        onClick={onOrionPage ? undefined : props.onToggleOrion}
       >
         Orion
       </Button>

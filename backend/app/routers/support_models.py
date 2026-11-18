@@ -7,7 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, Form, Path, Query, Request, UploadFile
 from sqlalchemy.orm import Session
 
-from app.deps import get_current_user, get_db, require
+from app.deps import IdPath, get_current_user, get_db, require
 from app.domain import support_model  # importing registers the SUPPORT_MODEL completion hook
 from app.models import User
 from app.permissions import Perm
@@ -22,9 +22,6 @@ from app.schemas.support_models import (
     SupportModelListItemOut,
     SupportModelOut,
 )
-
-# Database ids fit SQLite's 64-bit INTEGER; anything bigger is a 422, never a 500.
-PathId = Annotated[int, Path(ge=1, le=2**62)]
 
 router = APIRouter(tags=["support-models"], dependencies=[Depends(get_current_user)])
 
@@ -134,7 +131,7 @@ def generate_support_model(
     responses={**_ERR, 422: {"model": ErrorOut}},
 )
 def update_support_model(
-    support_model_id: PathId,
+    support_model_id: IdPath,
     body: PutLandscapeIn,
     db: Session = Depends(get_db),
     user: User = Depends(require(Perm.EDIT_SUPPORT_MODEL)),
@@ -156,7 +153,7 @@ def update_support_model(
     responses=_ERR,
 )
 def send_support_model_for_review(
-    support_model_id: PathId,
+    support_model_id: IdPath,
     db: Session = Depends(get_db),
     user: User = Depends(require(Perm.EDIT_SUPPORT_MODEL)),
 ) -> SupportModelOut:
@@ -178,7 +175,7 @@ def send_support_model_for_review(
     responses=_ERR,
 )
 def generate_pptx(
-    support_model_id: PathId,
+    support_model_id: IdPath,
     db: Session = Depends(get_db),
     user: User = Depends(require(Perm.EDIT_SUPPORT_MODEL)),
 ) -> PptxOut:
@@ -199,7 +196,7 @@ def generate_pptx(
     responses=_ERR,
 )
 def draft_question(
-    support_model_id: PathId,
+    support_model_id: IdPath,
     question_index: Annotated[int, Path(ge=0, le=100_000)],
     db: Session = Depends(get_db),
     user: User = Depends(require(Perm.EDIT_SUPPORT_MODEL)),

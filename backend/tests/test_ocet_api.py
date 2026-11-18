@@ -98,13 +98,13 @@ def test_create_estimate_and_permissions(client, headers, fresh_seed):
     denied = client.post(f"{API}/transitions/TR-0014/ocet", headers=headers("U12"))
     assert denied.status_code == 403 and denied.json()["reasons"]
     assert client.post(f"{API}/transitions/TR-9999/ocet", headers=headers()).status_code == 404
-    res = client.post(f"{API}/transitions/TR-0014/ocet", headers=headers("U01"))
+    res = client.post(f"{API}/transitions/TR-0014/ocet", headers=headers("U08"))
     assert res.status_code == 201, res.text
     body = res.json()
     assert body["estimate"]["horizon_years"] == 5 and body["estimate"]["currency"] == "USD"
     assert body["version"]["status"] == "Draft" and body["lines"] == []
     assert body["explanation"] is None and body["total"] == 0
-    assert client.post(f"{API}/transitions/TR-0014/ocet", headers=headers("U01")).status_code == 409
+    assert client.post(f"{API}/transitions/TR-0014/ocet", headers=headers("U08")).status_code == 409
 
 
 def test_save_validation_and_permissions(client, headers, fresh_seed):
@@ -293,7 +293,7 @@ def test_compare(client, headers):
 
 def test_compare_different_estimates(client, headers, fresh_seed):
     seeded = _view(client, headers)["version"]["id"]
-    other = client.post(f"{API}/transitions/TR-0014/ocet", headers=headers("U01")).json()
+    other = client.post(f"{API}/transitions/TR-0014/ocet", headers=headers("U08")).json()
     res = client.get(
         f"{API}/ocet/compare",
         params={"from": seeded, "to": other["version"]["id"]},

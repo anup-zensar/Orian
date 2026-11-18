@@ -11,12 +11,23 @@ import { WORKSPACE_TABS, visibleTabs } from './workspaceTabs';
 const useStyles = makeStyles({
   tabs: {
     display: 'flex',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
+    overflowX: 'auto',
+    overflowY: 'hidden',
     gap: tokens.spacingHorizontalXS,
+    scrollbarWidth: 'thin',
+    // Scroll affordance: soft edge shadows appear only on the side that has more tabs.
+    backgroundImage: `linear-gradient(to right, ${tokens.colorNeutralBackground1} 30%, transparent), linear-gradient(to left, ${tokens.colorNeutralBackground1} 30%, transparent), linear-gradient(to right, rgba(0,0,0,0.22), transparent), linear-gradient(to left, rgba(0,0,0,0.22), transparent)`,
+    backgroundRepeat: 'no-repeat',
+    backgroundSize: '32px 100%, 32px 100%, 12px 100%, 12px 100%',
+    backgroundPosition: 'left center, right center, left center, right center',
+    backgroundAttachment: 'local, local, scroll, scroll',
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
     marginBottom: tokens.spacingVerticalL,
   },
   tab: {
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
     padding: '8px 12px',
     color: tokens.colorNeutralForeground2,
     textDecorationLine: 'none',

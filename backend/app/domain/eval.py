@@ -15,11 +15,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
+from app.access import ensure_transition_role
 from app.config import get_settings
 from app.domain import audit
 from app.domain.records import get_transition
 from app.errors import BadRequest, Conflict
 from app.models import EvalResult, EvalTarget, TierAssessment, Transition, User
+from app.permissions import Perm
 from app.rules.constants import ACTOR_HUMAN, AI_PROJECT_TYPES
 from app.schemas.eval import EvalResultIn, EvalRowOut, EvalTableOut
 from app.seed.loader import eval_passes
@@ -77,15 +79,29 @@ def is_machine_checked(target: EvalTarget) -> bool:
     return target.evaluation == "auto" and target.operator is not None and target.value is not None
 
 
+def pass_state(target: EvalTarget, result: EvalResult | None) -> bool | None:
+    """THE pass/fail rule (BE#5), shared by the eval table and the readiness check.
+
+    Evaluated against the target passed in (callers use the CURRENT tier's targets), never against the
+    ``passed`` flag stored when the result was entered: machine-checked metrics compare the number with
+    the target, manual metrics use the stored toggle. None = not evaluated."""
+    if result is None:
+        return None
+    if is_machine_checked(target):
+        if result.value_number is None:
+            return None
+        return eval_passes(target.operator, target.value, result.value_number)
+    return result.passed
+
+
+def targets_for_transition(db: Session, transition: Transition) -> list[EvalTarget]:
+    """Eval targets of the transition's CURRENT tier (confirmed, else proposed)."""
+    return _targets(db, transition_tier(db, transition))
+
+
 def row_for(target: EvalTarget, result: EvalResult | None) -> EvalRowOut:
     """One table row with its computed status."""
-    passed: bool | None = None
-    if result is not None:
-        if is_machine_checked(target):
-            if result.value_number is not None:
-                passed = eval_passes(target.operator, target.value, result.value_number)
-        else:
-            passed = result.passed
+    passed = pass_state(target, result)
     status = "not evaluated" if passed is None else ("pass" if passed else "fail")
     return EvalRowOut(
         metric_id=target.metric_id,
@@ -134,6 +150,7 @@ def put_results(
     db: Session, transition_id: str, body: list[EvalResultIn], user: User
 ) -> EvalTableOut:
     transition = get_transition(db, transition_id)
+    ensure_transition_role(db, user, transition, Perm.EDIT_EVAL_RESULTS)
     ensure_ai(transition)
     tier = transition_tier(db, transition)
     targets = {t.metric_id: t for t in _targets(db, tier)}
@@ -235,6 +252,7 @@ def plausible_value(transition_id: str, target: EvalTarget) -> float:
 
 def import_results(db: Session, transition_id: str, user: User) -> EvalTableOut:
     transition = get_transition(db, transition_id)
+    ensure_transition_role(db, user, transition, Perm.EDIT_EVAL_RESULTS)
     ensure_ai(transition)
     tier = transition_tier(db, transition)
     targets = _targets(db, tier)

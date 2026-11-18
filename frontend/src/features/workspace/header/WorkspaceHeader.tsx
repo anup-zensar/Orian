@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router';
+import { useEffect } from 'react';
 import {
   Badge,
   Body1,
@@ -18,8 +18,8 @@ import { AppLink } from '../../../components/AppLink';
 import { RagChip } from '../../../components/RagChip';
 import { useApiErrorToast } from '../../../hooks/useApiErrorToast';
 import { daysLabel, formatDate, toRag } from '../../../lib/format';
-import type { TransitionDetail } from '../../transition/api';
-import { useMe } from '../../users/api';
+import { useTransitionAccess, type TransitionDetail } from '../../transition/api';
+import { useOrionPanel } from '../../orion/panelContext';
 import { useSetAutonomous } from '../api';
 import { GateStepper } from './GateStepper';
 
@@ -67,16 +67,19 @@ const useStyles = makeStyles({
 /** Workspace header (spec 8.7): identity, flavour chips, gate stepper, readiness, decision, actions. */
 export function WorkspaceHeader({ detail }: { detail: TransitionDetail }) {
   const s = useStyles();
-  const navigate = useNavigate();
-  const me = useMe();
+  const orion = useOrionPanel();
   const showError = useApiErrorToast();
   const setAutonomous = useSetAutonomous(detail.id);
 
-  const can = me.data?.permissions.includes('toggle_autonomous') ?? false;
+  useEffect(() => {
+    document.title = `${detail.name} - Orion`;
+  }, [detail.name]);
+
+  const access = useTransitionAccess(detail.id);
+  const can = access.can('toggle_autonomous');
   const reason = can
     ? 'Orion may auto-send chasers and reminders, never approval requests'
-    : (me.data?.denied_reasons['toggle_autonomous'] ??
-      'Only the OR focal can change autonomous mode');
+    : (access.reason('toggle_autonomous') ?? 'Only the OR focal can change autonomous mode');
   const tierLabel =
     detail.risk_tier != null ? `Tier ${detail.risk_tier} ${detail.tier_status ?? ''}`.trim() : null;
   const entryPath =
@@ -127,7 +130,7 @@ export function WorkspaceHeader({ detail }: { detail: TransitionDetail }) {
           </Tooltip>
           <Button
             icon={<Sparkle20Regular />}
-            onClick={() => navigate(`/orion?transition=${encodeURIComponent(detail.id)}`)}
+            onClick={() => orion.open({ transitionId: detail.id })}
           >
             Ask Orion
           </Button>
@@ -143,7 +146,15 @@ export function WorkspaceHeader({ detail }: { detail: TransitionDetail }) {
             {detail.assessment_launched ? `${detail.overall_readiness}%` : '–'}
           </span>
         </div>
-        <RagChip rag={toRag(detail.rag)} />
+        <RagChip
+          rag={
+            // A just-launched assessment is "Not started", not an alarm (nothing done or in progress).
+            detail.assessment_launched &&
+            detail.lenses.every((l) => l.done === 0 && l.in_progress === 0)
+              ? 'Grey'
+              : toRag(detail.rag)
+          }
+        />
         <div className={s.fact}>
           <Caption1>Next decision</Caption1>
           <Body1>

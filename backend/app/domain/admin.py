@@ -11,10 +11,12 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import access
 from app.domain import audit
 from app.errors import BadRequest, NotFound
 from app.models import (
     ApprovalChainConfig,
+    ApprovalRequest,
     EvalTarget,
     FlavourRule,
     PlaybookItem,
@@ -24,6 +26,8 @@ from app.models import (
 )
 from app.rules.constants import ACTOR_HUMAN, GATES, LENSES
 from app.schemas.admin import (
+    ApprovalCancelIn,
+    ApprovalCancelOut,
     ApprovalChainOut,
     ApprovalChainsIn,
     ApprovalChainsOut,
@@ -151,6 +155,7 @@ def update_playbook_item(
 ) -> PlaybookItemAdminOut:
     """Apply edit; a lens change clears ``lens_is_suggested``; audit entity "PlaybookItem" with
     before/after. 404 unknown, 422 unknown gate / tiers outside 1..4."""
+    access.ensure_admin(user, "edit the playbook")
     item = _load_item(db, item_id)
     reasons = _validate_gate_lens(body.gate, body.lens)
     if any(t not in (1, 2, 3, 4) for t in body.applicable_tiers):
@@ -186,6 +191,7 @@ def get_flavour_rules(db: Session) -> FlavourRulesOut:
 
 def put_flavour_rules(db: Session, body: FlavourRulesIn, user: User) -> FlavourRulesOut:
     """Update rules; audit entity "FlavourRule" per changed row. 422 unknown project_type."""
+    access.ensure_admin(user, "change flavour rules")
     existing = {r.project_type: r for r in db.scalars(select(FlavourRule)).all()}
     unknown = [r.project_type for r in body.rules if r.project_type not in existing]
     if unknown:
@@ -253,6 +259,7 @@ def get_golden_set(db: Session, portfolio: str) -> GoldenSetOut:
 def put_golden_set(db: Session, portfolio: str, body: GoldenSetIn, user: User) -> GoldenSetOut:
     """Replace list: new ids "<CODE>-NN" (next free number), edit existing, deactivate omitted
     ones (active=False; never delete rows). Audit entity "PlaybookItem" per change. 404/422."""
+    access.ensure_admin(user, "change golden sets")
     from app.seed.loader import ALL_PROJECT_TYPES
 
     pf = _portfolio(db, portfolio)
@@ -386,6 +393,7 @@ def get_eval_targets(db: Session) -> EvalTargetsOut:
 def put_eval_targets(db: Session, body: EvalTargetsIn, user: User) -> EvalTargetsOut:
     """Update targets per metric/tier and the confirmed flag (on all rows); audit "EvalTarget".
     422 unknown metric_id or tier."""
+    access.ensure_admin(user, "change eval targets")
     rows = {(r.metric_id, r.tier): r for r in db.scalars(select(EvalTarget)).all()}
     metric_ids = {k[0] for k in rows}
     reasons: list[str] = []
@@ -455,6 +463,7 @@ def get_approval_chains(db: Session) -> ApprovalChainsOut:
 def put_approval_chains(db: Session, body: ApprovalChainsIn, user: User) -> ApprovalChainsOut:
     """Replace steps per chain type (>=1 step, steps numbered 1..n, role in CHAIN_ROLES); audit
     "ApprovalChainConfig". Existing approval requests keep their steps."""
+    access.ensure_admin(user, "change approval chains")
     reasons: list[str] = []
     staffed = set(db.scalars(select(User.role).distinct()).all())
     for chain in body.chains:
@@ -501,6 +510,7 @@ def list_reminder_rules(db: Session) -> list[ReminderRuleOut]:
 
 def put_reminder_rules(db: Session, body: ReminderRulesIn, user: User) -> list[ReminderRuleOut]:
     """Update enabled + params per rule id; audit "ReminderRule". 422 unknown id / bad params."""
+    access.ensure_admin(user, "change reminder rules")
     rows = {r.id: r for r in db.scalars(select(ReminderRule)).all()}
     reasons: list[str] = []
     for entry in body.rules:
@@ -525,3 +535,22 @@ def put_reminder_rules(db: Session, body: ReminderRulesIn, user: User) -> list[R
             _audit(db, user, "ReminderRule", row.id, "updated", before, after)
     db.flush()
     return list_reminder_rules(db)
+
+
+# --- stuck approvals --------------------------------------------------------------------------
+
+
+def cancel_approval_request(
+    db: Session, request_id: str, body: ApprovalCancelIn, user: User
+) -> ApprovalCancelOut:
+    """Cancel a stuck Pending approval request (e.g. the approver left). Admin only; the reason is
+    required and stored on the audit event. Completion hooks do not run: the subject stays as it is
+    and its owner starts a new request. 404 unknown, 409 already finished."""
+    from app.domain import approvals
+
+    access.ensure_admin(user, "cancel an approval request")
+    request = db.get(ApprovalRequest, request_id)
+    if request is None:
+        raise NotFound(f"Approval request {request_id} not found")
+    approvals.cancel_request(db, request=request, user=user, note=f"Admin cancelled: {body.reason}")
+    return ApprovalCancelOut(request_id=request.id, status=request.status)

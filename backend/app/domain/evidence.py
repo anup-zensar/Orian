@@ -16,14 +16,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
+from app.access import ensure_transition_role, transition_denial
 from app.config import get_settings
-from app.deps import ensure
 from app.domain import audit
 from app.domain.ids import next_id
 from app.domain.records import find_item, get_transition, person, users_by_id
-from app.errors import BadRequest, Forbidden, NotFound
+from app.errors import BadRequest, NotFound
 from app.models import Evidence, Transition, TransitionItem, User
-from app.permissions import DENIAL_REASONS, Perm, has_perm
+from app.permissions import Perm
 from app.rules.constants import ACTOR_HUMAN
 from app.schemas.records import EvidenceFilters, EvidenceOut, EvidenceReviewIn
 from app.services.factory import get_document_store
@@ -58,13 +58,19 @@ def _review_perm(item: TransitionItem | None) -> Perm:
 
 
 def evidence_out(
+    db: Session,
     evidence: Evidence,
     item: TransitionItem | None,
     users: dict[str, User],
     viewer: User,
+    transition: Transition,
 ) -> EvidenceOut:
+    """DTO; ``can_review`` = role permission AND assigned on this transition (BE#1)."""
     perm = _review_perm(item)
-    allowed = has_perm(viewer.role, perm)
+    denial = transition_denial(db, viewer, transition, perm)
+    if denial is None and transition.status == "Closed":
+        denial = f"{transition.id} is closed - records can no longer be added or changed"
+    allowed = denial is None
     return EvidenceOut(
         id=evidence.id,
         transition_id=evidence.transition_id,
@@ -83,7 +89,7 @@ def evidence_out(
         review_note=evidence.review_note,
         created_at=evidence.created_at,
         can_review=allowed,
-        review_denied_reason=None if allowed else DENIAL_REASONS[perm],
+        review_denied_reason=denial,
     )
 
 
@@ -101,7 +107,7 @@ def _snapshot(evidence: Evidence, fields: tuple[str, ...]) -> dict[str, object]:
 def list_evidence(
     db: Session, transition_id: str, filters: EvidenceFilters, viewer: User
 ) -> list[EvidenceOut]:
-    get_transition(db, transition_id)
+    transition = get_transition(db, transition_id)
     items = {
         i.id: i
         for i in db.scalars(
@@ -119,7 +125,10 @@ def list_evidence(
         rows = [r for r in rows if r.transition_item_id in wanted]
     rows = sorted(rows, key=lambda r: (r.created_at, r.id), reverse=True)
     users = users_by_id(db)
-    return [evidence_out(r, items.get(r.transition_item_id or -1), users, viewer) for r in rows]
+    return [
+        evidence_out(db, r, items.get(r.transition_item_id or -1), users, viewer, transition)
+        for r in rows
+    ]
 
 
 # --- add ------------------------------------------------------------------------------------------
@@ -145,8 +154,8 @@ def add_evidence(
     content: bytes | None,
     user: User,
 ) -> EvidenceOut:
-    ensure(user, Perm.MANAGE_EVIDENCE)
     transition: Transition = get_transition(db, transition_id)
+    ensure_transition_role(db, user, transition, Perm.MANAGE_EVIDENCE)
     item = find_item(db, transition, item_id) if item_id else None
 
     title = (title or "").strip()
@@ -199,7 +208,7 @@ def add_evidence(
         transition_id=transition.id,
         after=_snapshot(evidence, EVIDENCE_FIELDS),
     )
-    return evidence_out(evidence, item, users_by_id(db), user)
+    return evidence_out(db, evidence, item, users_by_id(db), user, transition)
 
 
 # --- review ---------------------------------------------------------------------------------------
@@ -210,9 +219,8 @@ def review_evidence(
     if evidence is None:
         raise NotFound(f"Evidence {evidence_id} not found")
     item = _item_for(db, evidence)
-    perm = _review_perm(item)
-    if not has_perm(user.role, perm):
-        raise Forbidden(DENIAL_REASONS[perm])
+    transition = get_transition(db, evidence.transition_id)
+    ensure_transition_role(db, user, transition, _review_perm(item))
     if body.decision == "Reject" and not body.note.strip():
         raise BadRequest("Rejection needs a note", ["Rejection needs a note"])
 
@@ -233,7 +241,7 @@ def review_evidence(
         before=before,
         after=_snapshot(evidence, REVIEW_FIELDS),
     )
-    return evidence_out(evidence, item, users_by_id(db), user)
+    return evidence_out(db, evidence, item, users_by_id(db), user, transition)
 
 
 # --- download -------------------------------------------------------------------------------------

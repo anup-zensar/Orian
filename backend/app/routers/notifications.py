@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from app.deps import get_current_user, get_db
+from app.deps import IdPath, get_current_user, get_db
 from app.errors import NotFound
 from app.models import Notification, User
 from app.schemas.common import OkOut
@@ -59,7 +59,7 @@ def read_all_notifications(
 
 @router.post("/notifications/{notification_id}/read", response_model=OkOut)
 def read_notification(
-    notification_id: int,
+    notification_id: IdPath,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> OkOut:

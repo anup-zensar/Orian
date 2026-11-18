@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date as Date
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -34,7 +34,7 @@ class PlaybookItemAdminOut(ORMModel):
     lens_suggested: bool = False  # badge flag, == lens_is_suggested
     category: str = ""
     kind: str = ""
-    applicable_tiers: list[int] = []
+    applicable_tiers: list[int] = Field(default=[], max_length=8)
     tier_label: str = ""
     tier_unspecified: bool = False
     mandatory: bool = True
@@ -50,8 +50,8 @@ class PlaybookItemUpdateIn(BaseModel):
     """PUT body; full replacement of the editable fields."""
 
     title: str = Field(min_length=1, max_length=500)
-    description: str = ""
-    gate: str  # gate code, e.g. SG4_ATD (422 if unknown)
+    description: str = Field(default="", max_length=4000)
+    gate: str = Field(max_length=20)  # gate code, e.g. SG4_ATD (422 if unknown)
     lens: Lens
     applicable_tiers: list[int] = []  # each 1..4 (422 otherwise)
     mandatory: bool = True
@@ -66,10 +66,10 @@ class FlavourRuleOut(ORMModel):
 
 
 class FlavourRuleIn(BaseModel):
-    project_type: str
-    checklists: list[ChecklistSource]
+    project_type: str = Field(max_length=100)
+    checklists: list[ChecklistSource] = Field(max_length=8)
     requires_tiering: bool = False
-    note: str | None = None
+    note: str | None = Field(default=None, max_length=1000)
 
 
 class FlavourRulesOut(BaseModel):
@@ -80,7 +80,7 @@ class FlavourRulesOut(BaseModel):
 class FlavourRulesIn(BaseModel):
     """PUT body: one entry per existing project_type (unknown types -> 422; none created/deleted)."""
 
-    rules: list[FlavourRuleIn]
+    rules: list[FlavourRuleIn] = Field(max_length=50)
 
 
 class GoldenSetItemOut(BaseModel):
@@ -96,10 +96,10 @@ class GoldenSetItemOut(BaseModel):
 class GoldenSetItemIn(BaseModel):
     """``id`` null/empty = new item (server assigns the next "<CODE>-NN"); existing id = edit."""
 
-    id: str | None = None
+    id: str | None = Field(default=None, max_length=20)
     title: str = Field(min_length=1, max_length=500)
-    gate: str
-    owner_role_hint: str = ""
+    gate: str = Field(max_length=20)
+    owner_role_hint: str = Field(default="", max_length=100)
     lens: Lens
     mandatory: bool = True
 
@@ -112,8 +112,10 @@ class GoldenSetOut(BaseModel):
 
 
 class GoldenSetIn(BaseModel):
-    focus_areas: list[str] | None = None  # null = leave unchanged
-    items: list[GoldenSetItemIn]
+    focus_areas: list[Annotated[str, Field(max_length=200)]] | None = Field(
+        default=None, max_length=50
+    )  # null = leave unchanged
+    items: list[GoldenSetItemIn] = Field(max_length=300)
 
 
 class EvalTierTargetOut(BaseModel):
@@ -146,19 +148,19 @@ class EvalTierTargetIn(BaseModel):
 
 
 class EvalMetricIn(BaseModel):
-    metric_id: str
-    tiers: list[EvalTierTargetIn]
+    metric_id: str = Field(max_length=20)
+    tiers: list[EvalTierTargetIn] = Field(max_length=8)
 
 
 class EvalTargetsIn(BaseModel):
     confirmed: bool
-    metrics: list[EvalMetricIn]
+    metrics: list[EvalMetricIn] = Field(max_length=100)
 
 
 class ChainStep(BaseModel):
     step: int = Field(ge=1)
-    role: str  # a Role value or CISO_BISO (422 otherwise)
-    label: str
+    role: str = Field(max_length=30)  # a Role value or CISO_BISO (422 otherwise)
+    label: str = Field(max_length=100)
 
 
 class ApprovalChainOut(BaseModel):
@@ -173,7 +175,7 @@ class ApprovalChainsOut(BaseModel):
 
 
 class ApprovalChainsIn(BaseModel):
-    chains: list[ApprovalChainOut]
+    chains: list[ApprovalChainOut] = Field(max_length=10)
 
 
 class ReminderRuleOut(ORMModel):
@@ -186,13 +188,15 @@ class ReminderRuleOut(ORMModel):
 
 
 class ReminderRuleIn(BaseModel):
-    id: str
+    id: str = Field(max_length=20)
     enabled: bool
-    params: dict[str, Any] = {}  # numeric thresholds must be positive ints (422 otherwise)
+    params: dict[str, Any] = Field(
+        default={}, max_length=20
+    )  # numeric thresholds must be positive ints (422 otherwise)
 
 
 class ReminderRulesIn(BaseModel):
-    rules: list[ReminderRuleIn]
+    rules: list[ReminderRuleIn] = Field(max_length=50)
 
 
 class DemoResetOut(BaseModel):
@@ -212,6 +216,7 @@ class FastForwardOut(BaseModel):
     skipped_exception: int  # items under an exception left open
     evals_passing: int  # eval metrics re-imported as passing
     readiness: str | None = None  # verdict text if available
+    r4_drafts: int = 0  # "Ready for AtD" drafts created by rule R4 (open Orion drafts to send)
 
 
 class TodayIn(BaseModel):
@@ -222,3 +227,12 @@ class TodayOut(BaseModel):
     today: Date
     override: Date | None = None
     seed_date: Date | None = None
+
+
+class ApprovalCancelIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class ApprovalCancelOut(BaseModel):
+    request_id: str
+    status: str

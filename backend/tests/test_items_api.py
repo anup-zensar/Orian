@@ -231,10 +231,24 @@ def test_na_via_applicability_and_compliance_na_is_irm(client, headers, fresh_se
 def test_status_change_on_excluded_item_needs_restore(client, headers, fresh_seed):
     rows = _items(client, headers, applicability="excluded", all_gates=True)["items"]
     bt = next(r for r in rows if r["lens"] != "Compliance")
-    res = _patch(client, headers, bt["id"], {"status": "In progress"})
-    assert res.status_code == 409
+    assert _patch(client, headers, bt["id"], {"status": "In progress"}).status_code == 409
+    # BE#10: an item the tier excluded is only brought back by changing the tier (IRM)
     res = _patch(client, headers, bt["id"], {"status": "In progress", "applicability": "Applies"})
-    assert res.status_code == 200
+    assert res.status_code == 409
+    assert "change the tier" in " ".join(res.json()["reasons"])
+    # a human's own N/A is restored with applicability Applies
+    open_bt = next(
+        r
+        for r in _items(client, headers, all_gates=True)["items"]
+        if r["lens"] != "Compliance" and r["status"] == "Not started" and not r["linked_module"]
+    )
+    na = _patch(client, headers, open_bt["id"], {"status": "N/A", "na_reason": "Not needed"})
+    assert na.status_code == 200, na.text
+    assert _patch(client, headers, open_bt["id"], {"status": "In progress"}).status_code == 409
+    res = _patch(
+        client, headers, open_bt["id"], {"status": "In progress", "applicability": "Applies"}
+    )
+    assert res.status_code == 200, res.text
     assert res.json()["applicability"] == "Applies" and res.json()["excluded_by"] is None
 
 

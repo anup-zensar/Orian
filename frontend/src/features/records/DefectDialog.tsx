@@ -1,7 +1,7 @@
+import { ReturnFocusDialog } from '../../components/ReturnFocusDialog';
 import { useState } from 'react';
 import {
   Button,
-  Dialog,
   DialogActions,
   DialogBody,
   DialogContent,
@@ -55,7 +55,7 @@ export function DefectDialog(props: {
   };
 
   return (
-    <Dialog open onOpenChange={(_, o) => !o.open && props.onClose()}>
+    <ReturnFocusDialog open onOpenChange={(_, o) => !o.open && props.onClose()}>
       <DialogSurface>
         <DialogBody>
           <DialogTitle>{d ? `Edit defect ${d.id}` : 'Log defect'}</DialogTitle>
@@ -98,6 +98,6 @@ export function DefectDialog(props: {
           </DialogActions>
         </DialogBody>
       </DialogSurface>
-    </Dialog>
+    </ReturnFocusDialog>
   );
 }

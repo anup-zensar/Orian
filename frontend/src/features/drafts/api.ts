@@ -17,6 +17,7 @@ export interface DraftFilters {
 export function useDrafts(filters: DraftFilters) {
   return useQuery({
     queryKey: ['drafts', filters],
+    retry: 1, // surface an error quickly instead of 7-10 s of skeletons
     queryFn: ({ signal }) =>
       apiFetch<Draft[]>('/orion/drafts', {
         query: { status: filters.status, kind: filters.kind, transition_id: filters.transition_id },
@@ -81,5 +82,29 @@ export function useDraftApprovalRequest(transitionId: string) {
         body: { transition_id: transitionId, gate },
       }),
     onSuccess: () => invalidateTransitionData(qc, transitionId),
+  });
+}
+
+export type ReminderRunOut = S['ReminderRunOut'];
+export type ReminderStatus = S['ReminderStatusOut'];
+
+/** Last reminder-engine run, rule list and transitions in autonomous mode (FR-081). */
+export function useReminderStatus() {
+  return useQuery({
+    queryKey: ['reminders', 'status'],
+    queryFn: ({ signal }) => apiFetch<ReminderStatus>('/reminders/status', { signal }),
+  });
+}
+
+/** Runs every enabled reminder rule now (permission run_reminders). Creates drafts / sends. */
+export function useRunReminders() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiFetch<ReminderRunOut>('/reminders/run', { method: 'POST' }),
+    onSuccess: () => {
+      for (const prefix of ['reminders', 'drafts', 'outbox', 'notifications', 'audit']) {
+        void qc.invalidateQueries({ queryKey: [prefix] });
+      }
+    },
   });
 }

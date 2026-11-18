@@ -266,6 +266,7 @@ class CreateTransitionPayload(BaseModel):
     source_name: str | None = None  # uploaded filename
     source_excerpt: str = Field(default="", max_length=1500)
     summary: str = ""  # "Found 7 of 9 fields - 2 need your input"
+    warnings: list[str] = []  # e.g. "TR-0019 already exists for PRJ0052210"
 
 
 class UpdateTransitionPayload(BaseModel):

@@ -11,11 +11,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
+from app.access import ensure_transition_role
 from app.domain import audit
-from app.domain.conditions import create_condition
+from app.domain.conditions import close_superseded_conditions, create_condition
 from app.domain.readiness_check import latest_chain, load_gate_inputs
-from app.errors import BadRequest, Conflict
+from app.errors import BadRequest, Conflict, NotFound
 from app.models import ApprovalRequest, GateReview, OrionDraft, Transition, User
+from app.permissions import Perm
 from app.rules import gates as rules
 from app.rules.constants import (
     ACTOR_HUMAN,
@@ -84,6 +86,15 @@ def _create_conditions(
             note=f"Set at {GATE_SHORT[gate]} for {c.item_id}",
         )
         created.append(cond.id)
+        close_superseded_conditions(
+            db,
+            transition=transition,
+            item=item,
+            gate=gate,
+            new_condition=cond,
+            actor=user,
+            actor_type=ACTOR_HUMAN,
+        )
     return created
 
 
@@ -129,6 +140,10 @@ def _advance(db: Session, transition: Transition, user: User, new_gate: str, why
     if new_gate == before:
         return
     transition.current_gate = new_gate
+    # The date belonged to the gate that was just decided; the OR focal sets the next one
+    # (Orion never invents a date). A stale date would drive wrong RAG and reminders.
+    old_date = transition.next_decision_date
+    transition.next_decision_date = None
     audit.record(
         db,
         actor=user,
@@ -137,8 +152,8 @@ def _advance(db: Session, transition: Transition, user: User, new_gate: str, why
         entity_id=transition.id,
         action="gate_advanced",
         transition_id=transition.id,
-        before={"current_gate": before},
-        after={"current_gate": new_gate},
+        before={"current_gate": before, "next_decision_date": str(old_date) if old_date else None},
+        after={"current_gate": new_gate, "next_decision_date": None},
         note=why,
     )
 
@@ -167,7 +182,8 @@ def record_stage_review(
     user: User,
 ) -> tuple[GateReview, list[str], str]:
     """Record Proceed / Proceed with conditions / Hold. Returns (review, condition ids, new gate).
-    Caller commits."""
+    Caller commits. Only the transition's OR focal may record it (BE#1)."""
+    ensure_transition_role(db, user, transition, Perm.RECORD_STAGE_REVIEW)
     if GATE_TYPE[gate] != "stage_review":
         raise Conflict(
             f"{GATE_SHORT[gate]} is not a stage-review gate",
@@ -228,7 +244,11 @@ def record_decision(
     user: User,
 ) -> tuple[GateReview, list[str], str, bool]:
     """Record Approve / Approve with conditions / Return / Close. Returns (review, condition ids,
-    new gate, transition closed). Caller commits."""
+    new gate, transition closed). Caller commits. Only the transition's OR focal may record it
+    (BE#1): an Admin or another OR focal gets 403."""
+    ensure_transition_role(
+        db, user, transition, Perm.RECORD_GATE_DECISION, phrase="record this decision"
+    )
     if GATE_TYPE[gate] == "stage_review":
         raise Conflict(
             f"{GATE_SHORT[gate]} is not a decision gate",
@@ -291,6 +311,25 @@ def record_decision(
     return review, created, new_gate, closed
 
 
+APPROVAL_DRAFT_KINDS = ("Approval request", "Reminder")
+
+
+def _check_draft(draft: OrionDraft, transition: Transition, gate: str) -> None:
+    """409 unless ``draft`` is an open request-approval draft of this transition and gate (BE#6)."""
+    action = draft.action or {}
+    reasons: list[str] = []
+    if draft.transition_id != transition.id:
+        reasons.append(f"Draft {draft.id} belongs to another transition")
+    if draft.kind not in APPROVAL_DRAFT_KINDS or action.get("type") != "request_approval":
+        reasons.append(f"Draft {draft.id} is not an approval request draft ({draft.kind})")
+    elif action.get("gate") != gate:
+        reasons.append(f"Draft {draft.id} is for {action.get('gate')}, not {gate}")
+    if draft.status != "Draft":
+        reasons.append(f"Draft {draft.id} is already {draft.status}")
+    if reasons:
+        raise Conflict("This draft cannot be used for the request", reasons)
+
+
 def request_gate_approval(
     db: Session,
     *,
@@ -299,6 +338,7 @@ def request_gate_approval(
     user: User,
     note: str = "",
     via_draft_id: int | None = None,
+    approvers: dict[int, str] | None = None,
 ) -> ApprovalRequest:
     """Create the AtD (OLM -> IRM) or AtO (IRM -> OLM) approval chain for a decision gate.
 
@@ -307,9 +347,14 @@ def request_gate_approval(
     conditions (via the readiness check / rules.gates.evaluate_verdict). Then calls
     ``app.domain.approvals.create_approval_request`` (import it INSIDE this function to avoid import
     cycles) with type "AtD"/"AtO", gate, a subject_label summarising the verdict, created_by=user and
-    created_source "Human"; marks the draft ``via_draft_id`` as Sent when given (the router has already
-    checked Perm.SEND_DRAFTS). Writes the audit event; caller commits."""
-    from app.domain import approvals
+    created_source "Human"; marks the draft ``via_draft_id`` as Sent when given. Only the transition's
+    OR focal may do this (BE#1, Perm.SEND_DRAFTS). The draft must belong to the same transition, carry
+    the request_approval action for this gate and still be a Draft (409 otherwise, BE#6); marking it
+    Sent is audited and the approver gets one email (the chain notification). ``approvers`` is an
+    optional {step: user_id} override (BE#12). Writes the audit event; caller commits."""
+    from app.domain import approvals, drafts
+
+    ensure_transition_role(db, user, transition, Perm.SEND_DRAFTS, phrase="request approval")
 
     chain_type = DECISION_CHAIN_TYPE.get(gate)
     if chain_type is None:
@@ -336,6 +381,10 @@ def request_gate_approval(
     draft: OrionDraft | None = None
     if via_draft_id is not None:
         draft = db.get(OrionDraft, via_draft_id)
+        if draft is None:
+            raise NotFound(f"Draft {via_draft_id} not found")
+        _check_draft(draft, transition, gate)
+    sending = draft is not None and drafts.is_being_sent(draft.id)
 
     request = approvals.create_approval_request(
         db,
@@ -345,11 +394,12 @@ def request_gate_approval(
         created_source=ACTOR_HUMAN,
         gate=gate,
         subject_label=f"{chain_type} readiness: {result.verdict}",
+        approvers=approvers,
+        # a draft that is being sent already emails its recipients: no second approver email
+        skip_email_for=[*(draft.to or []), *(draft.cc or [])] if sending and draft else (),
     )
-    if draft is not None and draft.status == "Draft":
-        draft.status = "Sent"
-        draft.sent_by = user.id
-        draft.sent_at = clock.now()
+    if draft is not None and not sending:
+        drafts.mark_sent_via_approval(db, draft, user, request.id)
     audit.record(
         db,
         actor=user,

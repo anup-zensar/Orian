@@ -31,7 +31,18 @@ def run_reminder_engine(
     sent_autonomously, skipped_duplicates, drafts}. Disabled rules are skipped even if listed.
     Running twice in a row creates no duplicates (second run: created all 0, skipped_duplicates
     > 0)."""
-    raise NotImplementedError("M8")
+    from app.domain import reminders  # imported late: orchestration module
+
+    body = body or ReminderRunIn()
+    result = reminders.run_reminders(
+        db,
+        user=user,
+        rules=body.rules,
+        transition_id=body.transition_id,
+        triggered_by=user.id,
+    )
+    db.commit()
+    return result
 
 
 @router.get("/reminders/status", response_model=ReminderStatusOut, responses=_ERR)
@@ -41,4 +52,6 @@ def reminder_status(db: Session = Depends(get_db)) -> ReminderStatusOut:
     the ids of transitions with autonomous_mode true (drives the assistive/autonomous banner of
     screen 8.12). Any signed-in user. Read-only. Delegates to
     ``app.domain.reminders.reminder_status``."""
-    raise NotImplementedError("M8")
+    from app.domain import reminders  # imported late: orchestration module
+
+    return reminders.reminder_status(db)

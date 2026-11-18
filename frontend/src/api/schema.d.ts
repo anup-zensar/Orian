@@ -123,7 +123,10 @@ export interface paths {
          * Update Transition
          * @description Edit intake fields (only fields present in the body, via ``model_fields_set``).
          *
-         *     403 for roles without CREATE_TRANSITION; 404 unknown id; 409 "Transition is closed" when status is
+         *     403 unless the transition's own OR focal (Perm.EDIT_TRANSITION; Admin may edit and re-assign); the
+         *     OR focal / IRM can only be re-assigned by an Admin; tier inputs (audience, write actions, sensitive
+         *     data, project type) only by the OR focal and are locked (409) once the IRM confirmed the tier (before
+         *     that a change clears the tier proposal); 404 unknown id; 409 "Transition is closed" when status is
          *     Closed; 422 with the same option / role / site validations as create, evaluated on the merged
          *     result (a field explicitly set to null clears an optional field; required fields cannot be null).
          *
@@ -358,7 +361,9 @@ export interface paths {
          *     Before launch decisions are stored in Transition.scope_decisions ({item_id: {applies, reason}});
          *     after launch they are applied to TransitionItem: Yes -> Applies, No -> Not applicable with
          *     na_reason = reason (excluded_by None, lens N/A status via na_status_for), To confirm ->
-         *     To confirm; setting "No" on an item that already has progress is allowed (human decision).
+         *     To confirm. After launch "No" needs a reason (422) and is refused (409, reasons) for items that
+         *     already have evidence or a done status; one audit event per changed item (before/after).
+         *     403 unless the user is the OR focal assigned to THIS transition.
          *     Audit Human with counts; note "Accepted Orion recommendations" when source is
          *     "orion_recommendation" (the UI sends the recommended values; the server still validates each
          *     row). Returns the refreshed ScopeOut.
@@ -741,7 +746,7 @@ export interface paths {
          *     404 unknown transition. 422 when ``item_id`` is not a playbook item of this transition's
          *     scope. 409 when the item's lens is not Compliance (reason "Exceptions apply to Compliance
          *     items only") or a Pending exception already exists for the item. Creates ExceptionRecord
-         *     (ref via next_id "EX-", status "Pending CISO/BISO", requested_by user) and the EXCEPTION
+         *     (ref via next_id "EX-", status "Pending <step role>", requested_by user) and the EXCEPTION
          *     approval chain (IRM -> CISO_BISO) through ``domain.approvals.create_approval_request`` with
          *     subject_id=ref; stores approval_request_id; audits; commits. Returns 201.
          */
@@ -1012,7 +1017,7 @@ export interface paths {
          * Record Stage Review
          * @description Record a stage review (BR-040): Proceed / Proceed with conditions / Hold.
          *
-         *     403 unless OR focal (Perm.RECORD_STAGE_REVIEW). 404 unknown transition. 409 (reasons[]) when: the gate
+         *     403 unless the transition's OR focal (Perm.RECORD_STAGE_REVIEW). 404 unknown transition. 409 (reasons[]) when: the gate
          *     is not a stage-review gate (SG0, SG2, SG3, SG5_HYPERCARE), gate != the transition's current gate,
          *     the transition is Closed, or ``rules.gates.validate_stage_review`` disallows the outcome (open
          *     uncovered items, missing conditions, unconfirmed tier at SG0, Compliance rule, SG3 rule A-12).
@@ -1042,10 +1047,12 @@ export interface paths {
          * Request Approval
          * @description Request the AtD (OLM -> IRM) or AtO (IRM -> OLM) approval chain (BR-040 point 2, BR-041).
          *
-         *     403 unless OR focal (Perm.SEND_DRAFTS). 404 unknown transition or ``draft_id``. 409 (reasons[]) when
-         *     the gate is not a decision gate, is not the current gate, a Pending/Approved chain already exists,
-         *     or the readiness verdict is "Not ready" (reasons = the blockers). Delegates to
-         *     ``domain.gate_actions.request_gate_approval``; the draft (if any) is marked Sent.
+         *     403 unless the transition's OR focal (Perm.SEND_DRAFTS). 404 unknown transition or ``draft_id``.
+         *     409 (reasons[]) when the gate is not a decision gate, is not the current gate, a Pending/Approved
+         *     chain already exists, the readiness verdict is "Not ready" (reasons = the blockers), the
+         *     transition is Closed, or ``draft_id`` is not an open request-approval draft of this transition and
+         *     gate. 422 for ``approvers`` that do not match a step role. Delegates to
+         *     ``domain.gate_actions.request_gate_approval``; the draft (if any) is marked Sent (audited).
          */
         post: operations["request_approval_api_v1_transitions__transition_id__gates__gate__request_approval_post"];
         delete?: never;
@@ -1067,7 +1074,7 @@ export interface paths {
          * Record Decision
          * @description Record a decision-gate / closure outcome (BR-040 decision gates, points 3-8).
          *
-         *     403 unless OR focal (Perm.RECORD_GATE_DECISION). 404 unknown transition. 409 (reasons[]) when the gate
+         *     403 unless the transition's OR focal (Perm.RECORD_GATE_DECISION); an Admin has no override. 404 unknown transition. 409 (reasons[]) when the gate
          *     is not SG4_ATD / SG6_ATO / CLOSURE, is not the current gate, or ``rules.gates.validate_decision``
          *     disallows the outcome (chain not Approved, open uncovered items, Critical gaps, Compliance rule,
          *     failed evals at SG4_ATD, AtO extras, closure rules). Decisions per gate: Approve / Approve with
@@ -1147,7 +1154,8 @@ export interface paths {
          *
          *     404 unknown request or step. 403 when the user is not the step's approver/role (reason names
          *     the required role). 409 when the request is not Pending or the step is not the current one
-         *     (sequential). Notifies the next approver (in-app + mock email + Teams card); the last approval
+         *     (sequential), the subject transition is Closed, or the requester approves their own request while
+         *     DEMO_MODE is off. Notifies the next approver (in-app + mock email + Teams card); the last approval
          *     completes the request and runs the completion hook for its type.
          */
         post: operations["approve_approval_step_api_v1_approvals__request_id__steps__step__approve_post"];
@@ -1853,7 +1861,7 @@ export interface paths {
          * Send Draft Endpoint
          * @description Human send via ``domain.drafts.send_draft`` (BR-050): executes the draft action (e.g.
          *     request_approval -> ``domain.gate_actions.request_gate_approval``) then sends mock email +
-         *     Teams card; draft becomes Sent. 404 unknown; 409 when not Draft or the action is blocked
+         *     Teams card; draft becomes Sent. 403 unless the OR focal of the draft's transition. 404 unknown; 409 when not Draft or the action is blocked
          *     (reasons returned). Commits. ``result.approval_request_id`` set for approval-request drafts.
          */
         post: operations["send_draft_endpoint_api_v1_orion_drafts__draft_id__send_post"];
@@ -2191,6 +2199,28 @@ export interface paths {
          */
         put: operations["put_approval_chains_api_v1_admin_approval_chains_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/approvals/{request_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Approval
+         * @description Cancel a stuck Pending approval request (reason required, audited). ADMIN only (403);
+         *     404 unknown request; 409 when already decided or cancelled. Admin has no other workflow
+         *     override: decisions stay with the chain approvers.
+         */
+        post: operations["cancel_approval_api_v1_admin_approvals__request_id__cancel_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2616,6 +2646,18 @@ export interface components {
             mail_mode: string;
             /** Orion Mailbox */
             orion_mailbox: string;
+        };
+        /** ApprovalCancelIn */
+        ApprovalCancelIn: {
+            /** Reason */
+            reason: string;
+        };
+        /** ApprovalCancelOut */
+        ApprovalCancelOut: {
+            /** Request Id */
+            request_id: string;
+            /** Status */
+            status: string;
         };
         /** ApprovalChainOut */
         ApprovalChainOut: {
@@ -3336,6 +3378,20 @@ export interface components {
             } | null;
             /** Related Ids */
             related_ids: string[];
+            /**
+             * Can Send
+             * @default true
+             */
+            can_send: boolean;
+            /** Send Denied Reason */
+            send_denied_reason?: string | null;
+            /**
+             * Can Edit
+             * @default true
+             */
+            can_edit: boolean;
+            /** Edit Denied Reason */
+            edit_denied_reason?: string | null;
         };
         /** DraftPatchIn */
         DraftPatchIn: {
@@ -3659,6 +3715,10 @@ export interface components {
             item_id: string;
             /** Text */
             text: string;
+            /** Approvers */
+            approvers?: {
+                [key: string]: string;
+            } | null;
         };
         /** ExceptionOut */
         ExceptionOut: {
@@ -3856,6 +3916,10 @@ export interface components {
             note?: string | null;
             /** Draft Id */
             draft_id?: number | null;
+            /** Approvers */
+            approvers?: {
+                [key: string]: string;
+            } | null;
         };
         /** GateApprovalRequestOut */
         GateApprovalRequestOut: {
@@ -6294,7 +6358,7 @@ export interface components {
              */
             description: string;
             /** Or Focal User Id */
-            or_focal_user_id: string;
+            or_focal_user_id?: string | null;
             /** Pm User Id */
             pm_user_id?: string | null;
             /** Architect User Id */
@@ -6390,6 +6454,13 @@ export interface components {
             /** Created At */
             created_at: string | null;
             created_by: components["schemas"]["PersonRef"] | null;
+            /**
+             * Access
+             * @default {}
+             */
+            access: {
+                [key: string]: string | null;
+            };
         };
         /**
          * TransitionFilters
@@ -10963,6 +11034,70 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    cancel_approval_api_v1_admin_approvals__request_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalCancelIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalCancelOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

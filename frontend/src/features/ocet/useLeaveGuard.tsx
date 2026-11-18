@@ -1,7 +1,7 @@
+import { ReturnFocusDialog } from '../../components/ReturnFocusDialog';
 import { useEffect } from 'react';
 import {
   Button,
-  Dialog,
   DialogActions,
   DialogBody,
   DialogContent,
@@ -23,7 +23,7 @@ export function useLeaveGuard(dirty: boolean) {
   }, [dirty]);
   if (blocker.state !== 'blocked') return null;
   return (
-    <Dialog open onOpenChange={(_, d) => !d.open && blocker.reset()}>
+    <ReturnFocusDialog open onOpenChange={(_, d) => !d.open && blocker.reset()}>
       <DialogSurface>
         <DialogBody>
           <DialogTitle>Discard unsaved changes?</DialogTitle>
@@ -38,6 +38,6 @@ export function useLeaveGuard(dirty: boolean) {
           </DialogActions>
         </DialogBody>
       </DialogSurface>
-    </Dialog>
+    </ReturnFocusDialog>
   );
 }

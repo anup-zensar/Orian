@@ -60,7 +60,10 @@ export function DecisionPanel(props: {
   const s = useStyles();
   const { gate, readiness } = props;
   const isReview = gate.type === 'stage_review';
-  const perm = usePerm(isReview ? 'record_stage_review' : 'record_gate_decision');
+  const perm = usePerm(
+    isReview ? 'record_stage_review' : 'record_gate_decision',
+    props.transitionId,
+  );
   const [outcome, setOutcome] = useState<string | null>(null);
   const notCurrent = props.isCurrent ? null : 'Only the current gate can be decided';
   const suggestions = [

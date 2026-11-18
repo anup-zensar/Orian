@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -11,8 +11,10 @@ from pydantic import BaseModel, Field
 class ReminderRunIn(BaseModel):
     """Optional body of POST /reminders/run."""
 
-    rules: list[str] | None = Field(
-        default=None, description="Only evaluate these rule ids (R1..R7); None = all enabled"
+    rules: list[Literal["R1", "R2", "R3", "R4", "R5", "R6", "R7"]] | None = Field(
+        default=None,
+        max_length=7,
+        description="Only evaluate these rule ids (R1..R7); None = all enabled",
     )
     transition_id: str | None = Field(
         default=None, description="Only this transition; None = all active transitions"

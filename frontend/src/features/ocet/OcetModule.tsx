@@ -1,9 +1,9 @@
+import { ReturnFocusDialog } from '../../components/ReturnFocusDialog';
 import React, { useState } from 'react';
 import {
   Button,
   Caption1,
   Checkbox,
-  Dialog,
   DialogActions,
   DialogBody,
   DialogContent,
@@ -62,7 +62,9 @@ function RequestInputsDialog(props: { data: OcetOut; transitionId: string; onClo
   const mutation = useRequestInputs(props.transitionId, data.version.id);
   const candidates = data.lines.filter((l) => l.base_amount === null);
   const [picked, setPicked] = useState<number[]>(
-    candidates.filter((l) => l.input_status === 'Missing').map((l) => l.id),
+    candidates
+      .filter((l) => l.input_status === 'Missing' || l.input_status === 'Requested')
+      .map((l) => l.id),
   );
   const toggle = (id: number, on: boolean) =>
     setPicked((p) => (on ? [...p, id] : p.filter((x) => x !== id)));
@@ -90,7 +92,7 @@ function RequestInputsDialog(props: { data: OcetOut; transitionId: string; onClo
       onError: showError,
     });
   return (
-    <Dialog open onOpenChange={(_, d) => !d.open && props.onClose()}>
+    <ReturnFocusDialog open onOpenChange={(_, d) => !d.open && props.onClose()}>
       <DialogSurface>
         <DialogBody>
           <DialogTitle>Request inputs</DialogTitle>
@@ -123,12 +125,12 @@ function RequestInputsDialog(props: { data: OcetOut; transitionId: string; onClo
               disabled={picked.length === 0 || mutation.isPending}
               onClick={send}
             >
-              Request inputs
+              {picked.length > 0 ? `Request inputs (${picked.length})` : 'Request inputs'}
             </Button>
           </DialogActions>
         </DialogBody>
       </DialogSurface>
-    </Dialog>
+    </ReturnFocusDialog>
   );
 }
 
@@ -136,7 +138,7 @@ function OcetBody({ data, transitionId }: { data: OcetOut; transitionId: string 
   const s = useStyles();
   const showError = useApiErrorToast();
   const notify = useSuccessToast();
-  const edit = usePerm('edit_ocet');
+  const edit = usePerm('edit_ocet', transitionId);
   const save = useSaveLines(transitionId, data.version.id);
   const submit = useSubmitVersion(transitionId, data.version.id);
   const newVersion = useNewVersion(transitionId);
@@ -429,7 +431,7 @@ export function OcetModule({ transitionId }: TabProps) {
   const q = useOcet(transitionId);
   const create = useCreateOcet(transitionId);
   const showError = useApiErrorToast();
-  const edit = usePerm('edit_ocet');
+  const edit = usePerm('edit_ocet', transitionId);
 
   if (q.isLoading) return <LoadingState rows={6} />;
   if (q.isError) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;

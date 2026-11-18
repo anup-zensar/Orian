@@ -1,8 +1,8 @@
+import { ReturnFocusDialog } from '../../../components/ReturnFocusDialog';
 // Dialogs opened by the inline status select (spec 8.7 b): gap, N/A reason, condition.
 import { useState, type ReactNode } from 'react';
 import {
   Button,
-  Dialog,
   DialogActions,
   DialogBody,
   DialogContent,
@@ -28,7 +28,7 @@ interface ShellProps {
 
 function DialogShell(p: ShellProps) {
   return (
-    <Dialog open onOpenChange={(_, d) => !d.open && p.onClose()}>
+    <ReturnFocusDialog open onOpenChange={(_, d) => !d.open && p.onClose()}>
       <DialogSurface>
         <DialogBody>
           <DialogTitle>{p.title}</DialogTitle>
@@ -45,7 +45,7 @@ function DialogShell(p: ShellProps) {
           </DialogActions>
         </DialogBody>
       </DialogSurface>
-    </Dialog>
+    </ReturnFocusDialog>
   );
 }
 

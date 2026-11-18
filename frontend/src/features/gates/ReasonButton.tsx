@@ -24,6 +24,7 @@ export function ReasonButton({
   appearance,
   size,
   icon,
+  disabled,
 }: {
   reasons?: Array<string | null | undefined> | null;
   children?: ReactNode;
@@ -31,6 +32,8 @@ export function ReasonButton({
   appearance?: ButtonProps['appearance'];
   size?: ButtonProps['size'];
   icon?: ButtonProps['icon'];
+  /** Hard-disable (e.g. while busy) in addition to the reasons. */
+  disabled?: boolean;
 }) {
   const list = (reasons ?? []).filter((r): r is string => !!r);
   const blocked = list.length > 0;
@@ -39,6 +42,7 @@ export function ReasonButton({
       appearance={appearance}
       size={size}
       icon={icon}
+      disabled={disabled}
       disabledFocusable={blocked}
       onClick={() => {
         if (!blocked) onClick?.();

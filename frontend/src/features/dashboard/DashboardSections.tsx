@@ -31,6 +31,8 @@ import type { ActorType } from '../../theme/tokens';
 dayjs.extend(relativeTime);
 
 const useStyles = makeStyles({
+  titleCell: { minWidth: '220px', overflowWrap: 'anywhere', whiteSpace: 'normal' },
+  transitionCell: { minWidth: '140px', overflowWrap: 'anywhere' },
   kind: { display: 'inline-flex', alignItems: 'center', gap: tokens.spacingHorizontalXS },
   tiles: {
     display: 'grid',
@@ -83,7 +85,7 @@ export function MyWorkCard({ rows, total }: { rows: WorkItem[]; total: number })
       ) : (
         <>
           <div style={{ overflowX: 'auto' }}>
-            <Table aria-label="My work" size="small">
+            <Table aria-label="My work" size="small" style={{ minWidth: 760 }}>
               <TableHeader>
                 <TableRow>
                   <TableHeaderCell>Type</TableHeaderCell>
@@ -107,10 +109,10 @@ export function MyWorkCard({ rows, total }: { rows: WorkItem[]; total: number })
                           {k.label}
                         </span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className={s.titleCell}>
                         <strong>{r.id}</strong> {r.title}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className={s.transitionCell}>
                         <AppLink to={`/transitions/${r.transition_id}/overview`}>
                           {r.transition_name}
                         </AppLink>
@@ -195,7 +197,7 @@ export function RecentActivityCard({ events, today }: { events: AuditEvent[]; to
           {events.map((e) => (
             <li key={e.id} className={s.event}>
               <div className={s.line}>
-                <strong>{e.actor_name ?? e.actor_type}</strong>
+                {e.actor_name && e.actor_name !== e.actor_type && <strong>{e.actor_name}</strong>}
                 <ActorBadge actor={e.actor_type as ActorType} />
                 <Caption1 title={dayjs(e.at).format('D MMM YYYY HH:mm')}>
                   {dayjs(e.at).from(now)}

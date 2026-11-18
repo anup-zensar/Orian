@@ -10,8 +10,8 @@ from app.schemas.common import LensValues, PersonRef
 
 
 class SiteIn(BaseModel):
-    site_id: str = ""
-    site_key: str = ""
+    site_id: str = Field(default="", max_length=100)
+    site_key: str = Field(default="", max_length=100)
 
 
 class ServiceNowProjectOut(BaseModel):
@@ -31,25 +31,30 @@ class ServiceNowProjectOut(BaseModel):
 
 
 class TransitionCreateIn(BaseModel):
+    confirm_duplicate: bool = Field(
+        default=False,
+        description="Create even though an active transition already has this ServiceNow project id",
+    )
     name: str = Field(min_length=1, max_length=200)
-    servicenow_project_id: str | None = None
-    project_type: str
-    portfolio: str
-    region: str
-    market: str = ""
-    sites: list[SiteIn] = Field(default_factory=list)
-    audience: str | None = None
-    write_actions: str | None = None
-    sensitive_data: str | None = None
-    target_gate: str | None = None
-    investment_type: str | None = None
-    delivery_method: str | None = None
-    description: str = ""
-    or_focal_user_id: str
-    pm_user_id: str | None = None
-    architect_user_id: str | None = None
-    olm_user_id: str | None = None
-    irm_user_id: str | None = None
+    servicenow_project_id: str | None = Field(default=None, max_length=50)
+    project_type: str = Field(max_length=100)
+    portfolio: str = Field(max_length=100)
+    region: str = Field(max_length=100)
+    market: str = Field(default="", max_length=200)
+    sites: list[SiteIn] = Field(default_factory=list, max_length=500)
+    audience: str | None = Field(default=None, max_length=100)
+    write_actions: str | None = Field(default=None, max_length=100)
+    sensitive_data: str | None = Field(default=None, max_length=100)
+    target_gate: str | None = Field(default=None, max_length=50)
+    investment_type: str | None = Field(default=None, max_length=100)
+    delivery_method: str | None = Field(default=None, max_length=100)
+    description: str = Field(default="", max_length=4000)
+    # Optional for an OR focal (defaults to themselves); PM / Admin must pick one (validated in the domain).
+    or_focal_user_id: str | None = Field(default=None, max_length=20)
+    pm_user_id: str | None = Field(default=None, max_length=20)
+    architect_user_id: str | None = Field(default=None, max_length=20)
+    olm_user_id: str | None = Field(default=None, max_length=20)
+    irm_user_id: str | None = Field(default=None, max_length=20)
     next_decision_date: date | None = None
 
 
@@ -57,26 +62,26 @@ class TransitionUpdateIn(BaseModel):
     """PATCH: every field optional; only fields sent are changed (``model_fields_set``)."""
 
     name: str | None = Field(default=None, min_length=1, max_length=200)
-    servicenow_project_id: str | None = None
-    project_type: str | None = None
-    portfolio: str | None = None
-    region: str | None = None
-    market: str | None = None
-    sites: list[SiteIn] | None = None
-    audience: str | None = None
-    write_actions: str | None = None
-    sensitive_data: str | None = None
-    target_gate: str | None = None
-    investment_type: str | None = None
-    delivery_method: str | None = None
-    description: str | None = None
-    or_focal_user_id: str | None = None
-    pm_user_id: str | None = None
-    architect_user_id: str | None = None
-    olm_user_id: str | None = None
-    irm_user_id: str | None = None
+    servicenow_project_id: str | None = Field(default=None, max_length=50)
+    project_type: str | None = Field(default=None, max_length=100)
+    portfolio: str | None = Field(default=None, max_length=100)
+    region: str | None = Field(default=None, max_length=100)
+    market: str | None = Field(default=None, max_length=200)
+    sites: list[SiteIn] | None = Field(default=None, max_length=500)
+    audience: str | None = Field(default=None, max_length=100)
+    write_actions: str | None = Field(default=None, max_length=100)
+    sensitive_data: str | None = Field(default=None, max_length=100)
+    target_gate: str | None = Field(default=None, max_length=50)
+    investment_type: str | None = Field(default=None, max_length=100)
+    delivery_method: str | None = Field(default=None, max_length=100)
+    description: str | None = Field(default=None, max_length=4000)
+    or_focal_user_id: str | None = Field(default=None, max_length=20)
+    pm_user_id: str | None = Field(default=None, max_length=20)
+    architect_user_id: str | None = Field(default=None, max_length=20)
+    olm_user_id: str | None = Field(default=None, max_length=20)
+    irm_user_id: str | None = Field(default=None, max_length=20)
     next_decision_date: date | None = None
-    blocker_note: str | None = None
+    blocker_note: str | None = Field(default=None, max_length=4000)
 
 
 class AutonomousModeIn(BaseModel):
@@ -189,3 +194,7 @@ class TransitionDetailOut(BaseModel):
     hypercare_no_defects_confirmed: bool
     created_at: datetime | None
     created_by: PersonRef | None
+    # What the CURRENT user may do on this transition (BE#1, spec 12): permission code (e.g.
+    # "record_gate_decision") -> None when allowed, else the reason to show on the disabled control.
+    # Covers every transition-scoped permission (app.access.TRANSITION_PERMS).
+    access: dict[str, str | None] = {}

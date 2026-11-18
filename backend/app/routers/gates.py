@@ -167,7 +167,7 @@ def record_stage_review(
 ) -> GateReviewOut:
     """Record a stage review (BR-040): Proceed / Proceed with conditions / Hold.
 
-    403 unless OR focal (Perm.RECORD_STAGE_REVIEW). 404 unknown transition. 409 (reasons[]) when: the gate
+    403 unless the transition's OR focal (Perm.RECORD_STAGE_REVIEW). 404 unknown transition. 409 (reasons[]) when: the gate
     is not a stage-review gate (SG0, SG2, SG3, SG5_HYPERCARE), gate != the transition's current gate,
     the transition is Closed, or ``rules.gates.validate_stage_review`` disallows the outcome (open
     uncovered items, missing conditions, unconfirmed tier at SG0, Compliance rule, SG3 rule A-12).
@@ -208,14 +208,17 @@ def request_approval(
 ) -> GateApprovalRequestOut:
     """Request the AtD (OLM -> IRM) or AtO (IRM -> OLM) approval chain (BR-040 point 2, BR-041).
 
-    403 unless OR focal (Perm.SEND_DRAFTS). 404 unknown transition or ``draft_id``. 409 (reasons[]) when
-    the gate is not a decision gate, is not the current gate, a Pending/Approved chain already exists,
-    or the readiness verdict is "Not ready" (reasons = the blockers). Delegates to
-    ``domain.gate_actions.request_gate_approval``; the draft (if any) is marked Sent."""
+    403 unless the transition's OR focal (Perm.SEND_DRAFTS). 404 unknown transition or ``draft_id``.
+    409 (reasons[]) when the gate is not a decision gate, is not the current gate, a Pending/Approved
+    chain already exists, the readiness verdict is "Not ready" (reasons = the blockers), the
+    transition is Closed, or ``draft_id`` is not an open request-approval draft of this transition and
+    gate. 422 for ``approvers`` that do not match a step role. Delegates to
+    ``domain.gate_actions.request_gate_approval``; the draft (if any) is marked Sent (audited)."""
     transition = _transition(db, transition_id)
     _valid_gate(gate)
     if body.draft_id is not None and db.get(OrionDraft, body.draft_id) is None:
         raise NotFound(f"Draft {body.draft_id} not found")
+    approvers = body.approvers  # validated against the step roles when the chain is created
     request = gate_actions.request_gate_approval(
         db,
         transition=transition,
@@ -223,6 +226,7 @@ def request_approval(
         user=user,
         note=body.note or "",
         via_draft_id=body.draft_id,
+        approvers=approvers,
     )
     db.commit()
     db.refresh(request)
@@ -246,7 +250,7 @@ def record_decision(
 ) -> GateReviewOut:
     """Record a decision-gate / closure outcome (BR-040 decision gates, points 3-8).
 
-    403 unless OR focal (Perm.RECORD_GATE_DECISION). 404 unknown transition. 409 (reasons[]) when the gate
+    403 unless the transition's OR focal (Perm.RECORD_GATE_DECISION); an Admin has no override. 404 unknown transition. 409 (reasons[]) when the gate
     is not SG4_ATD / SG6_ATO / CLOSURE, is not the current gate, or ``rules.gates.validate_decision``
     disallows the outcome (chain not Approved, open uncovered items, Critical gaps, Compliance rule,
     failed evals at SG4_ATD, AtO extras, closure rules). Decisions per gate: Approve / Approve with

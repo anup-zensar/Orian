@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
-from app.deps import get_current_user, get_db
+from app.deps import IdPath, get_current_user, get_db
 from app.domain import approvals as domain
 from app.errors import Forbidden, NotFound
 from app.models import ApprovalRequest, ApprovalStep, Transition, User
@@ -166,7 +166,7 @@ def get_approval(
 @router.post("/approvals/{request_id}/steps/{step}/approve", response_model=ApprovalRequestOut)
 def approve_approval_step(
     request_id: str,
-    step: int,
+    step: IdPath,
     body: ApprovalDecisionIn | None = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -175,7 +175,8 @@ def approve_approval_step(
 
     404 unknown request or step. 403 when the user is not the step's approver/role (reason names
     the required role). 409 when the request is not Pending or the step is not the current one
-    (sequential). Notifies the next approver (in-app + mock email + Teams card); the last approval
+    (sequential), the subject transition is Closed, or the requester approves their own request while
+    DEMO_MODE is off. Notifies the next approver (in-app + mock email + Teams card); the last approval
     completes the request and runs the completion hook for its type.
     """
     request = _load(db, request_id)
@@ -189,7 +190,7 @@ def approve_approval_step(
 @router.post("/approvals/{request_id}/steps/{step}/reject", response_model=ApprovalRequestOut)
 def reject_approval_step(
     request_id: str,
-    step: int,
+    step: IdPath,
     body: ApprovalRejectIn,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

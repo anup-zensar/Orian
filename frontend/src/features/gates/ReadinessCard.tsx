@@ -15,6 +15,7 @@ import { AppLink } from '../../components/AppLink';
 import { LensChip } from '../../components/LensChip';
 import { useApiErrorToast } from '../../hooks/useApiErrorToast';
 import { ApprovalDraftDialog } from './ApprovalDraftDialog';
+import { useTransitionAccess } from '../transition/api';
 import { ReasonButton } from './ReasonButton';
 import { roleLabel } from './useSuccessToast';
 import type { Readiness, RecommendedAction } from './api';
@@ -88,6 +89,14 @@ const stepColor = (st: string) =>
         ? 'warning'
         : 'subtle';
 
+/** Permission that the form behind a recommended action needs (checked per transition). */
+const ACTION_PERM: Record<string, string> = {
+  create_action: 'manage_actions',
+  request_exception: 'request_exception',
+  request_inputs: 'edit_ocet',
+  create_support_model: 'edit_support_model',
+};
+
 /** Readiness check card (FR-050, spec 8.9): verdict, why, Orion narrative and recommended actions. */
 export function ReadinessCard(props: {
   transitionId: string;
@@ -101,6 +110,7 @@ export function ReadinessCard(props: {
   const base = `/transitions/${props.transitionId}`;
   const chaser = useDraftChaser(props.transitionId);
   const approvalDraft = useDraftApprovalRequest(props.transitionId);
+  const access = useTransitionAccess(props.transitionId);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [showAll, setShowAll] = useState(false);
 
@@ -147,10 +157,19 @@ export function ReadinessCard(props: {
     (a.kind === 'draft_chaser' && chaser.isPending) ||
     (a.kind === 'request_approval' && approvalDraft.isPending);
 
-  const reasonsFor = (a: RecommendedAction) =>
-    a.kind === 'request_approval' && !r.can_request_approval
-      ? [r.request_denied_reason ?? 'Approval cannot be requested yet']
-      : [];
+  const sendDraftsReason = access.reason('send_drafts');
+  const reasonsFor = (a: RecommendedAction) => {
+    if (a.kind === 'request_approval')
+      return [
+        sendDraftsReason,
+        r.can_request_approval
+          ? null
+          : (r.request_denied_reason ?? 'Approval cannot be requested yet'),
+      ];
+    if (a.kind === 'draft_chaser') return [sendDraftsReason];
+    const perm = ACTION_PERM[a.kind];
+    return perm ? [access.reason(perm)] : [];
+  };
 
   const criticalIds = new Set(
     [...r.blocking.flatMap((g) => g.items), ...r.critical_gaps]
@@ -160,7 +179,8 @@ export function ReadinessCard(props: {
   const rank = (a: RecommendedAction) => {
     const k = KIND_ORDER.indexOf(a.kind);
     const crit = a.item_ids.some((id) => criticalIds.has(id)) ? 0 : 1;
-    return k * 2 + crit;
+    // actions that cover a Critical / Non-compliant item come first, whatever their kind
+    return crit * 100 + k;
   };
   const sorted = r.recommended_actions
     .map((a, idx) => ({ a, idx }))
@@ -173,9 +193,10 @@ export function ReadinessCard(props: {
     .map((x) => x.a);
   const visible = showAll ? [] : sorted.slice(0, MAX_ACTIONS);
   const hidden = sorted.slice(MAX_ACTIONS);
-  const hiddenGroups = KIND_ORDER.map((k) => ({ k, list: hidden.filter((a) => a.kind === k) })).filter(
-    (g) => g.list.length > 0,
-  );
+  const hiddenGroups = KIND_ORDER.map((k) => ({
+    k,
+    list: hidden.filter((a) => a.kind === k),
+  })).filter((g) => g.list.length > 0);
   const renderAction = (a: RecommendedAction) => (
     <ReasonButton
       key={a.key}
@@ -375,7 +396,10 @@ export function ReadinessCard(props: {
               {needsDisabledApproval && (
                 <ReasonButton
                   appearance="primary"
-                  reasons={[r.request_denied_reason ?? 'Approval cannot be requested yet']}
+                  reasons={[
+                    sendDraftsReason,
+                    r.request_denied_reason ?? 'Approval cannot be requested yet',
+                  ]}
                 >
                   Request approval
                 </ReasonButton>
@@ -411,9 +435,10 @@ export function ReadinessCard(props: {
         <ApprovalDraftDialog
           draft={draft}
           sendReason={
-            r.can_request_approval
+            sendDraftsReason ??
+            (r.can_request_approval
               ? null
-              : (r.request_denied_reason ?? 'Approval cannot be requested yet')
+              : (r.request_denied_reason ?? 'Approval cannot be requested yet'))
           }
           onClose={() => setDraft(null)}
         />

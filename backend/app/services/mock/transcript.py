@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import re
 import zipfile
+import zlib
 from pathlib import Path
 
 from lxml import etree
@@ -49,7 +50,17 @@ def _docx_text(content: bytes) -> str:
             resolve_entities=False, no_network=True, load_dtd=False, huge_tree=False
         )
         root = etree.fromstring(raw, parser)
-    except (zipfile.BadZipFile, KeyError, ValueError, etree.XMLSyntaxError):
+    except (
+        zipfile.BadZipFile,
+        zipfile.LargeZipFile,
+        RuntimeError,  # encrypted member
+        NotImplementedError,  # unsupported compression
+        EOFError,
+        zlib.error,  # corrupt deflate stream
+        KeyError,
+        ValueError,
+        etree.XMLSyntaxError,
+    ):
         return ""
     paragraphs = []
     for para in root.iter(f"{_W}p"):

@@ -33,13 +33,17 @@ class DraftOut(BaseModel):
         dict[str, Any] | None
     )  # executed on Send, e.g. {"type": "request_approval", "gate": ...}
     related_ids: list[str]
+    can_send: bool = True  # the current user may send this draft (per-transition access)
+    send_denied_reason: str | None = None
+    can_edit: bool = True
+    edit_denied_reason: str | None = None
 
 
 class DraftPatchIn(BaseModel):
-    to: list[str]
-    cc: list[str] = []
+    to: list[str] = Field(max_length=100)
+    cc: list[str] = Field(default=[], max_length=100)
     subject: str = Field(min_length=1, max_length=300)
-    body_html: str = Field(min_length=1)
+    body_html: str = Field(min_length=1, max_length=50000)
 
 
 class DraftSendResult(BaseModel):
@@ -53,13 +57,17 @@ class DraftSendOut(BaseModel):
 
 
 class ApprovalRequestDraftIn(BaseModel):
-    transition_id: str
-    gate: str = Field(description="SG4_ATD or the ATO gate code (see rules/constants.py)")
+    transition_id: str = Field(max_length=40)
+    gate: str = Field(
+        max_length=40, description="SG4_ATD or the ATO gate code (see rules/constants.py)"
+    )
 
 
 class ChaserDraftIn(BaseModel):
-    transition_id: str
-    item_ids: list[str] = Field(min_length=1, description="Playbook item ids to chase")
+    transition_id: str = Field(max_length=40)
+    item_ids: list[str] = Field(
+        min_length=1, max_length=200, description="Playbook item ids to chase"
+    )
 
 
 class OutboxMessageOut(BaseModel):

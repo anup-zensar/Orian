@@ -1,10 +1,10 @@
+import { ReturnFocusDialog } from '../../components/ReturnFocusDialog';
 import { useEffect, useRef, useState } from 'react';
 import {
   Badge,
   Body1,
   Button,
   Caption1,
-  Dialog,
   DialogActions,
   DialogBody,
   DialogContent,
@@ -15,7 +15,10 @@ import {
   Tab,
   TabList,
   Textarea,
+  MessageBar,
+  MessageBarBody,
   makeStyles,
+  mergeClasses,
   tokens,
 } from '@fluentui/react-components';
 import { useSearchParams } from 'react-router';
@@ -30,6 +33,7 @@ import { roleLabel, useSuccessToast } from '../gates/useSuccessToast';
 import { useMe } from '../users/api';
 import {
   useActOnApproval,
+  useApproval,
   useApprovals,
   type ApprovalRequest,
   type ApprovalScope,
@@ -143,7 +147,7 @@ function ActDialog(props: {
   };
 
   return (
-    <Dialog open onOpenChange={(_, d) => !d.open && props.onClose()}>
+    <ReturnFocusDialog open onOpenChange={(_, d) => !d.open && props.onClose()}>
       <DialogSurface>
         <DialogBody>
           <DialogTitle>
@@ -172,7 +176,7 @@ function ActDialog(props: {
           </DialogActions>
         </DialogBody>
       </DialogSurface>
-    </Dialog>
+    </ReturnFocusDialog>
   );
 }
 
@@ -192,7 +196,7 @@ function ApprovalCard(props: { request: ApprovalRequest; highlighted: boolean })
   return (
     <div
       ref={ref}
-      className={`${s.card} ${props.highlighted ? s.highlight : ''}`}
+      className={mergeClasses(s.card, props.highlighted && s.highlight)}
       aria-label={`${r.type_label} approval ${r.id}`}
     >
       <div className={s.head}>
@@ -220,7 +224,10 @@ function ApprovalCard(props: { request: ApprovalRequest; highlighted: boolean })
           {r.created_by ? ` by ${r.created_by.name}` : ''} ({r.created_source})
         </Caption1>
       </div>
-      <Subtitle2>{r.subject_label}</Subtitle2>
+      <div className={s.head}>
+        <Subtitle2>{r.subject_label}</Subtitle2>
+        {r.link && r.link.startsWith('/') && <AppLink to={r.link}>Open subject</AppLink>}
+      </div>
       <StepChain steps={r.steps} />
       {pending && (
         <div className={s.actions}>
@@ -256,7 +263,11 @@ export function ApprovalsPage() {
   const requestId = params.get('request');
   const raw = params.get('scope');
   const scope: ApprovalScope = raw === 'requested' || (raw === 'all' && canSeeAll) ? raw : 'mine';
+  const scopeDenied = raw === 'all' && !canSeeAll && !!me.data;
   const q = useApprovals(scope, !!me.data);
+  // Deep link: fetch the single request so it is found in any tab, then show it above the list.
+  const linked = useApproval(requestId);
+  const listed = q.data?.some((r) => r.id === requestId) ?? false;
 
   return (
     <div className={s.page}>
@@ -277,6 +288,33 @@ export function ApprovalsPage() {
         <Tab value="requested">Requested by me</Tab>
         {canSeeAll && <Tab value="all">All</Tab>}
       </TabList>
+
+      {scopeDenied && (
+        <MessageBar intent="warning">
+          <MessageBarBody>
+            The All view is only available to OR focals and Admins, so Waiting for me is shown
+            instead.
+          </MessageBarBody>
+        </MessageBar>
+      )}
+      {requestId && linked.isError && (
+        <MessageBar intent="error">
+          <MessageBarBody>
+            Request {requestId} could not be opened: it does not exist or you cannot see it.
+          </MessageBarBody>
+        </MessageBar>
+      )}
+      {requestId && linked.data && (
+        <>
+          <MessageBar intent="info">
+            <MessageBarBody>
+              Opened from a link: request {linked.data.id} ({linked.data.status})
+              {listed ? ' is highlighted below.' : ' is shown here and is not part of this tab.'}
+            </MessageBarBody>
+          </MessageBar>
+          {!listed && <ApprovalCard request={linked.data} highlighted />}
+        </>
+      )}
 
       {q.isLoading && <LoadingState rows={4} />}
       {q.isError && <ErrorState error={q.error} />}

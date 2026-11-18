@@ -50,7 +50,7 @@ def create_transition(
 
     t = intake_domain.create_transition(db, user, body)
     db.commit()
-    return build_transition_detail(db, t)
+    return build_transition_detail(db, t, user)
 
 
 @router.get("/transitions/{transition_id}", response_model=TransitionDetailOut)
@@ -67,19 +67,22 @@ def get_transition(
     from app.domain import intake as intake_domain
     from app.domain.transition_detail import build_transition_detail
 
-    return build_transition_detail(db, intake_domain.get_transition(db, transition_id))
+    return build_transition_detail(db, intake_domain.get_transition(db, transition_id), user)
 
 
 @router.patch("/transitions/{transition_id}", response_model=TransitionDetailOut)
 def update_transition(
     transition_id: str,
     body: TransitionUpdateIn,
-    user: User = Depends(require(Perm.CREATE_TRANSITION)),
+    user: User = Depends(require(Perm.EDIT_TRANSITION)),
     db: Session = Depends(get_db),
 ) -> TransitionDetailOut:
     """Edit intake fields (only fields present in the body, via ``model_fields_set``).
 
-    403 for roles without CREATE_TRANSITION; 404 unknown id; 409 "Transition is closed" when status is
+    403 unless the transition's own OR focal (Perm.EDIT_TRANSITION; Admin may edit and re-assign); the
+    OR focal / IRM can only be re-assigned by an Admin; tier inputs (audience, write actions, sensitive
+    data, project type) only by the OR focal and are locked (409) once the IRM confirmed the tier (before
+    that a change clears the tier proposal); 404 unknown id; 409 "Transition is closed" when status is
     Closed; 422 with the same option / role / site validations as create, evaluated on the merged
     result (a field explicitly set to null clears an optional field; required fields cannot be null).
 
@@ -100,7 +103,7 @@ def update_transition(
     t = intake_domain.get_transition(db, transition_id)
     intake_domain.update_transition(db, user, t, body)
     db.commit()
-    return build_transition_detail(db, t)
+    return build_transition_detail(db, t, user)
 
 
 @router.post("/transitions/{transition_id}/autonomous-mode", response_model=TransitionDetailOut)
@@ -122,4 +125,4 @@ def set_autonomous_mode(
     t = intake_domain.get_transition(db, transition_id)
     intake_domain.set_autonomous_mode(db, user, t, body.enabled)
     db.commit()
-    return build_transition_detail(db, t)
+    return build_transition_detail(db, t, user)

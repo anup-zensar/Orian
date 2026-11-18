@@ -10,17 +10,19 @@ import { LoginPage } from './pages/LoginPage';
 const named = <T extends Record<string, ComponentType>>(load: () => Promise<T>, key: keyof T) =>
   lazy(async () => ({ default: (await load())[key] }));
 
-const placeholders = () => import('./pages/placeholders');
 const AdminPage = named(() => import('./features/admin/AdminPage'), 'AdminPage');
 const ApprovalsPage = named(() => import('./features/approvals/ApprovalsPage'), 'ApprovalsPage');
 const AuditPage = named(() => import('./features/audit/AuditPage'), 'AuditPage');
 const DraftsPage = named(() => import('./features/drafts/DraftsPage'), 'DraftsPage');
-const LeadershipUpdatesPage = named(placeholders, 'LeadershipUpdatesPage');
+const LeadershipUpdatesPage = named(
+  () => import('./features/leadership/LeadershipUpdatesPage'),
+  'LeadershipUpdatesPage',
+);
 const NewTransitionPage = named(
   () => import('./features/intake/NewTransitionPage'),
   'NewTransitionPage',
 );
-const OrionFullPage = named(placeholders, 'OrionFullPage');
+const OrionPage = named(() => import('./features/orion/OrionPage'), 'OrionPage');
 const OutboxPage = named(() => import('./features/outbox/OutboxPage'), 'OutboxPage');
 const ScopePage = named(() => import('./features/intake/ScopePage'), 'ScopePage');
 const SupportModelsPage = named(
@@ -75,7 +77,7 @@ export const router = createBrowserRouter([
             children: [{ path: '*', element: <AdminPage /> }],
           },
           { path: '/audit', element: <AuditPage /> },
-          { path: '/orion', element: <OrionFullPage /> },
+          { path: '/orion', element: <OrionPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

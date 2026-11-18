@@ -6,9 +6,15 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.access import ensure_transition_role
 from app.deps import get_current_user, get_db, require
 from app.domain import audit
-from app.domain.approvals import create_approval_request
+from app.domain.approvals import (
+    create_approval_request,
+    exception_status,
+    pending_status_label,
+    validate_approvers,
+)
 from app.domain.ids import next_id
 from app.errors import BadRequest, Conflict, NotFound
 from app.models import ExceptionRecord, Transition, TransitionItem, User
@@ -17,8 +23,6 @@ from app.schemas.common import PersonRef
 from app.schemas.exceptions import ExceptionCreateIn, ExceptionOut
 
 router = APIRouter(tags=["exceptions"], dependencies=[Depends(get_current_user)])
-
-PENDING_STATUS = "Pending CISO/BISO"
 
 
 def _transition(db: Session, transition_id: str) -> Transition:
@@ -37,7 +41,7 @@ def exception_out(db: Session, record: ExceptionRecord) -> ExceptionOut:
         item_id=item.playbook_item_id if item else None,
         item_title=item.playbook_item.title if item else None,
         text=record.text,
-        status=record.status,
+        status=exception_status(db, record),  # derived from the current approval step
         approval_request_id=record.approval_request_id,
         requested_by=PersonRef(id=requester.id, name=requester.name) if requester else None,
         created_at=record.created_at,
@@ -74,11 +78,13 @@ def create_exception(
     404 unknown transition. 422 when ``item_id`` is not a playbook item of this transition's
     scope. 409 when the item's lens is not Compliance (reason "Exceptions apply to Compliance
     items only") or a Pending exception already exists for the item. Creates ExceptionRecord
-    (ref via next_id "EX-", status "Pending CISO/BISO", requested_by user) and the EXCEPTION
+    (ref via next_id "EX-", status "Pending <step role>", requested_by user) and the EXCEPTION
     approval chain (IRM -> CISO_BISO) through ``domain.approvals.create_approval_request`` with
     subject_id=ref; stores approval_request_id; audits; commits. Returns 201.
     """
     transition = _transition(db, transition_id)
+    ensure_transition_role(db, user, transition, Perm.REQUEST_EXCEPTION)
+    validate_approvers(db, "EXCEPTION", body.approvers)
     item = db.scalars(
         select(TransitionItem).where(
             TransitionItem.transition_id == transition_id,
@@ -94,7 +100,7 @@ def create_exception(
     existing = db.scalars(
         select(ExceptionRecord).where(
             ExceptionRecord.transition_item_id == item.id,
-            ExceptionRecord.status == PENDING_STATUS,
+            ExceptionRecord.status.like("Pending%"),
         )
     ).first()
     if existing is not None:
@@ -108,7 +114,7 @@ def create_exception(
         transition_id=transition_id,
         transition_item_id=item.id,
         text=body.text.strip(),
-        status=PENDING_STATUS,
+        status="Pending",  # replaced by the label of the first step once the chain exists
         requested_by=user.id,
     )
     db.add(record)
@@ -121,8 +127,12 @@ def create_exception(
         created_source="Human",
         subject_id=record.ref,
         subject_label=f"{record.ref}: {record.text}",
+        approvers=body.approvers,
     )
     record.approval_request_id = request.id
+    first = next((s for s in request.steps if s.status == "Pending"), None)
+    if first is not None:
+        record.status = pending_status_label(first)[:24]
     audit.record(
         db,
         actor=user,

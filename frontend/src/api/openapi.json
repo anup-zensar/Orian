@@ -473,7 +473,7 @@
           "intake"
         ],
         "summary": "Update Transition",
-        "description": "Edit intake fields (only fields present in the body, via ``model_fields_set``).\n\n403 for roles without CREATE_TRANSITION; 404 unknown id; 409 \"Transition is closed\" when status is\nClosed; 422 with the same option / role / site validations as create, evaluated on the merged\nresult (a field explicitly set to null clears an optional field; required fields cannot be null).\n\nBR-010 re-assembly: if the assessment is launched and project_type or portfolio changes, rebuild\nthe plan with ``rules.checklist.assemble_checklist`` (library = active PlaybookItems, flavour\nchecklists from FlavourRule of the new type, tier = confirmed or proposed tier, roles of the\ntransition) and persist ``rules.checklist.reassemble(existing, planned, library)`` (added items are\ncreated, excluded ones become Not applicable with excluded_by, existing statuses/evidence/notes of\nitems that still apply are kept, a human's own N/A is never overridden). Switching to a type that\nrequires tiering without a tier assessment keeps tier None (all AI items apply, A-35). Audit event\nwith the re-assembly counts {added, excluded, restored}. A change of pm/architect/olm/irm does not\nreassign existing item owners. Before launch only the fields change. Audit Human for every edit with\nthe changed field names in the note.",
+        "description": "Edit intake fields (only fields present in the body, via ``model_fields_set``).\n\n403 unless the transition's own OR focal (Perm.EDIT_TRANSITION; Admin may edit and re-assign); the\nOR focal / IRM can only be re-assigned by an Admin; tier inputs (audience, write actions, sensitive\ndata, project type) only by the OR focal and are locked (409) once the IRM confirmed the tier (before\nthat a change clears the tier proposal); 404 unknown id; 409 \"Transition is closed\" when status is\nClosed; 422 with the same option / role / site validations as create, evaluated on the merged\nresult (a field explicitly set to null clears an optional field; required fields cannot be null).\n\nBR-010 re-assembly: if the assessment is launched and project_type or portfolio changes, rebuild\nthe plan with ``rules.checklist.assemble_checklist`` (library = active PlaybookItems, flavour\nchecklists from FlavourRule of the new type, tier = confirmed or proposed tier, roles of the\ntransition) and persist ``rules.checklist.reassemble(existing, planned, library)`` (added items are\ncreated, excluded ones become Not applicable with excluded_by, existing statuses/evidence/notes of\nitems that still apply are kept, a human's own N/A is never overridden). Switching to a type that\nrequires tiering without a tier assessment keeps tier None (all AI items apply, A-35). Audit event\nwith the re-assembly counts {added, excluded, restored}. A change of pm/architect/olm/irm does not\nreassign existing item owners. Before launch only the fields change. Audit Human for every edit with\nthe changed field names in the note.",
         "operationId": "update_transition_api_v1_transitions__transition_id__patch",
         "parameters": [
           {
@@ -1289,7 +1289,7 @@
           "scope"
         ],
         "summary": "Update Scope",
-        "description": "Record applicability decisions (OR focal). 403 without CONFIRM_SCOPE; 404 unknown id.\n\n422 when an item_id is not a golden-set / common row of this transition's portfolio. 409 (with a\nreason per row) when a decision sets a locked (mandatory / always) row to \"No\" or \"To confirm\".\nBefore launch decisions are stored in Transition.scope_decisions ({item_id: {applies, reason}});\nafter launch they are applied to TransitionItem: Yes -> Applies, No -> Not applicable with\nna_reason = reason (excluded_by None, lens N/A status via na_status_for), To confirm ->\nTo confirm; setting \"No\" on an item that already has progress is allowed (human decision).\nAudit Human with counts; note \"Accepted Orion recommendations\" when source is\n\"orion_recommendation\" (the UI sends the recommended values; the server still validates each\nrow). Returns the refreshed ScopeOut.",
+        "description": "Record applicability decisions (OR focal). 403 without CONFIRM_SCOPE; 404 unknown id.\n\n422 when an item_id is not a golden-set / common row of this transition's portfolio. 409 (with a\nreason per row) when a decision sets a locked (mandatory / always) row to \"No\" or \"To confirm\".\nBefore launch decisions are stored in Transition.scope_decisions ({item_id: {applies, reason}});\nafter launch they are applied to TransitionItem: Yes -> Applies, No -> Not applicable with\nna_reason = reason (excluded_by None, lens N/A status via na_status_for), To confirm ->\nTo confirm. After launch \"No\" needs a reason (422) and is refused (409, reasons) for items that\nalready have evidence or a done status; one audit event per changed item (before/after).\n403 unless the user is the OR focal assigned to THIS transition.\nAudit Human with counts; note \"Accepted Orion recommendations\" when source is\n\"orion_recommendation\" (the UI sends the recommended values; the server still validates each\nrow). Returns the refreshed ScopeOut.",
         "operationId": "update_scope_api_v1_transitions__transition_id__scope_put",
         "parameters": [
           {
@@ -1509,7 +1509,8 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 100
                 },
                 {
                   "type": "null"
@@ -1527,7 +1528,8 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 20
                 },
                 {
                   "type": "null"
@@ -1575,7 +1577,8 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 200
                 },
                 {
                   "type": "null"
@@ -1642,6 +1645,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 2147483647,
+              "minimum": 1,
               "title": "Item Id"
             }
           },
@@ -2539,7 +2544,7 @@
           "exceptions"
         ],
         "summary": "Create Exception",
-        "description": "Request an exception for a Compliance item (BR-041, FR-035).\n\n404 unknown transition. 422 when ``item_id`` is not a playbook item of this transition's\nscope. 409 when the item's lens is not Compliance (reason \"Exceptions apply to Compliance\nitems only\") or a Pending exception already exists for the item. Creates ExceptionRecord\n(ref via next_id \"EX-\", status \"Pending CISO/BISO\", requested_by user) and the EXCEPTION\napproval chain (IRM -> CISO_BISO) through ``domain.approvals.create_approval_request`` with\nsubject_id=ref; stores approval_request_id; audits; commits. Returns 201.",
+        "description": "Request an exception for a Compliance item (BR-041, FR-035).\n\n404 unknown transition. 422 when ``item_id`` is not a playbook item of this transition's\nscope. 409 when the item's lens is not Compliance (reason \"Exceptions apply to Compliance\nitems only\") or a Pending exception already exists for the item. Creates ExceptionRecord\n(ref via next_id \"EX-\", status \"Pending <step role>\", requested_by user) and the EXCEPTION\napproval chain (IRM -> CISO_BISO) through ``domain.approvals.create_approval_request`` with\nsubject_id=ref; stores approval_request_id; audits; commits. Returns 201.",
         "operationId": "create_exception_api_v1_transitions__transition_id__exceptions_post",
         "parameters": [
           {
@@ -3099,6 +3104,7 @@
                 "items": {
                   "$ref": "#/components/schemas/EvalResultIn"
                 },
+                "maxItems": 200,
                 "title": "Body"
               }
             }
@@ -3349,7 +3355,7 @@
           "gates"
         ],
         "summary": "Record Stage Review",
-        "description": "Record a stage review (BR-040): Proceed / Proceed with conditions / Hold.\n\n403 unless OR focal (Perm.RECORD_STAGE_REVIEW). 404 unknown transition. 409 (reasons[]) when: the gate\nis not a stage-review gate (SG0, SG2, SG3, SG5_HYPERCARE), gate != the transition's current gate,\nthe transition is Closed, or ``rules.gates.validate_stage_review`` disallows the outcome (open\nuncovered items, missing conditions, unconfirmed tier at SG0, Compliance rule, SG3 rule A-12).\n422 for unknown outcome, Hold without note, condition with unknown due gate / not later than the gate /\nmissing owner or text. On success: creates the GateReview, creates one Condition per ``conditions``\nentry via ``domain.conditions.create_condition`` (set_at_gate = gate, actor Human), advances\n``current_gate`` to the next gate after Proceed* (unchanged after Hold), writes audit events (Human)\nand returns the review, ``new_current_gate`` and created condition ids.",
+        "description": "Record a stage review (BR-040): Proceed / Proceed with conditions / Hold.\n\n403 unless the transition's OR focal (Perm.RECORD_STAGE_REVIEW). 404 unknown transition. 409 (reasons[]) when: the gate\nis not a stage-review gate (SG0, SG2, SG3, SG5_HYPERCARE), gate != the transition's current gate,\nthe transition is Closed, or ``rules.gates.validate_stage_review`` disallows the outcome (open\nuncovered items, missing conditions, unconfirmed tier at SG0, Compliance rule, SG3 rule A-12).\n422 for unknown outcome, Hold without note, condition with unknown due gate / not later than the gate /\nmissing owner or text. On success: creates the GateReview, creates one Condition per ``conditions``\nentry via ``domain.conditions.create_condition`` (set_at_gate = gate, actor Human), advances\n``current_gate`` to the next gate after Proceed* (unchanged after Hold), writes audit events (Human)\nand returns the review, ``new_current_gate`` and created condition ids.",
         "operationId": "record_stage_review_api_v1_transitions__transition_id__gates__gate__review_post",
         "parameters": [
           {
@@ -3457,7 +3463,7 @@
           "gates"
         ],
         "summary": "Request Approval",
-        "description": "Request the AtD (OLM -> IRM) or AtO (IRM -> OLM) approval chain (BR-040 point 2, BR-041).\n\n403 unless OR focal (Perm.SEND_DRAFTS). 404 unknown transition or ``draft_id``. 409 (reasons[]) when\nthe gate is not a decision gate, is not the current gate, a Pending/Approved chain already exists,\nor the readiness verdict is \"Not ready\" (reasons = the blockers). Delegates to\n``domain.gate_actions.request_gate_approval``; the draft (if any) is marked Sent.",
+        "description": "Request the AtD (OLM -> IRM) or AtO (IRM -> OLM) approval chain (BR-040 point 2, BR-041).\n\n403 unless the transition's OR focal (Perm.SEND_DRAFTS). 404 unknown transition or ``draft_id``.\n409 (reasons[]) when the gate is not a decision gate, is not the current gate, a Pending/Approved\nchain already exists, the readiness verdict is \"Not ready\" (reasons = the blockers), the\ntransition is Closed, or ``draft_id`` is not an open request-approval draft of this transition and\ngate. 422 for ``approvers`` that do not match a step role. Delegates to\n``domain.gate_actions.request_gate_approval``; the draft (if any) is marked Sent (audited).",
         "operationId": "request_approval_api_v1_transitions__transition_id__gates__gate__request_approval_post",
         "parameters": [
           {
@@ -3565,7 +3571,7 @@
           "gates"
         ],
         "summary": "Record Decision",
-        "description": "Record a decision-gate / closure outcome (BR-040 decision gates, points 3-8).\n\n403 unless OR focal (Perm.RECORD_GATE_DECISION). 404 unknown transition. 409 (reasons[]) when the gate\nis not SG4_ATD / SG6_ATO / CLOSURE, is not the current gate, or ``rules.gates.validate_decision``\ndisallows the outcome (chain not Approved, open uncovered items, Critical gaps, Compliance rule,\nfailed evals at SG4_ATD, AtO extras, closure rules). Decisions per gate: Approve / Approve with\nconditions / Return (AtD, AtO) and Close / Return (CLOSURE; conditions not allowed). 422 for an\nunknown decision, Return without a note, or invalid conditions (due gate must be later than the gate).\nReturn cancels the open approval chain (steps Cancelled) and keeps the gate. Approve* creates the\nconditions (Human) and advances the gate (AtD -> Hypercare, AtO -> Closure); Close sets the\ntransition status to Closed. Audit events (Human). Returns the GateReview record.",
+        "description": "Record a decision-gate / closure outcome (BR-040 decision gates, points 3-8).\n\n403 unless the transition's OR focal (Perm.RECORD_GATE_DECISION); an Admin has no override. 404 unknown transition. 409 (reasons[]) when the gate\nis not SG4_ATD / SG6_ATO / CLOSURE, is not the current gate, or ``rules.gates.validate_decision``\ndisallows the outcome (chain not Approved, open uncovered items, Critical gaps, Compliance rule,\nfailed evals at SG4_ATD, AtO extras, closure rules). Decisions per gate: Approve / Approve with\nconditions / Return (AtD, AtO) and Close / Return (CLOSURE; conditions not allowed). 422 for an\nunknown decision, Return without a note, or invalid conditions (due gate must be later than the gate).\nReturn cancels the open approval chain (steps Cancelled) and keeps the gate. Approve* creates the\nconditions (Human) and advances the gate (AtD -> Hypercare, AtO -> Closure); Close sets the\ntransition status to Closed. Audit events (Human). Returns the GateReview record.",
         "operationId": "record_decision_api_v1_transitions__transition_id__gates__gate__decision_post",
         "parameters": [
           {
@@ -3819,7 +3825,7 @@
           "approvals"
         ],
         "summary": "Approve Approval Step",
-        "description": "Approve a step via ``domain.approvals.approve_step`` and commit (BR-041).\n\n404 unknown request or step. 403 when the user is not the step's approver/role (reason names\nthe required role). 409 when the request is not Pending or the step is not the current one\n(sequential). Notifies the next approver (in-app + mock email + Teams card); the last approval\ncompletes the request and runs the completion hook for its type.",
+        "description": "Approve a step via ``domain.approvals.approve_step`` and commit (BR-041).\n\n404 unknown request or step. 403 when the user is not the step's approver/role (reason names\nthe required role). 409 when the request is not Pending or the step is not the current one\n(sequential), the subject transition is Closed, or the requester approves their own request while\nDEMO_MODE is off. Notifies the next approver (in-app + mock email + Teams card); the last approval\ncompletes the request and runs the completion hook for its type.",
         "operationId": "approve_approval_step_api_v1_approvals__request_id__steps__step__approve_post",
         "parameters": [
           {
@@ -3837,6 +3843,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 2147483647,
+              "minimum": 1,
               "title": "Step"
             }
           },
@@ -3922,6 +3930,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 2147483647,
+              "minimum": 1,
               "title": "Step"
             }
           },
@@ -4167,7 +4177,7 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "maximum": 4611686018427387904,
+              "maximum": 2147483647,
               "minimum": 1,
               "title": "Version Id"
             }
@@ -4268,7 +4278,7 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "maximum": 4611686018427387904,
+              "maximum": 2147483647,
               "minimum": 1,
               "title": "Version Id"
             }
@@ -4448,7 +4458,7 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "maximum": 4611686018427387904,
+              "maximum": 2147483647,
               "minimum": 1,
               "title": "Version Id"
             }
@@ -4549,7 +4559,7 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "maximum": 4611686018427387904,
+              "maximum": 2147483647,
               "minimum": 1,
               "description": "OcetVersion id (older)",
               "title": "From"
@@ -4562,7 +4572,7 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "maximum": 4611686018427387904,
+              "maximum": 2147483647,
               "minimum": 1,
               "description": "OcetVersion id (newer)",
               "title": "To"
@@ -4971,7 +4981,7 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "maximum": 4611686018427387904,
+              "maximum": 2147483647,
               "minimum": 1,
               "title": "Support Model Id"
             }
@@ -5072,7 +5082,7 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "maximum": 4611686018427387904,
+              "maximum": 2147483647,
               "minimum": 1,
               "title": "Support Model Id"
             }
@@ -5163,7 +5173,7 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "maximum": 4611686018427387904,
+              "maximum": 2147483647,
               "minimum": 1,
               "title": "Support Model Id"
             }
@@ -5254,7 +5264,7 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "maximum": 4611686018427387904,
+              "maximum": 2147483647,
               "minimum": 1,
               "title": "Support Model Id"
             }
@@ -5876,6 +5886,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 2147483647,
+              "minimum": 1,
               "title": "Proposal Id"
             }
           },
@@ -6026,6 +6038,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 2147483647,
+              "minimum": 1,
               "title": "Proposal Id"
             }
           },
@@ -6085,6 +6099,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 2147483647,
+              "minimum": 1,
               "title": "Proposal Id"
             }
           },
@@ -6433,6 +6449,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 2147483647,
+              "minimum": 1,
               "title": "Draft Id"
             }
           },
@@ -6490,6 +6508,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 2147483647,
+              "minimum": 1,
               "title": "Draft Id"
             }
           },
@@ -6550,7 +6570,7 @@
           "drafts"
         ],
         "summary": "Send Draft Endpoint",
-        "description": "Human send via ``domain.drafts.send_draft`` (BR-050): executes the draft action (e.g.\nrequest_approval -> ``domain.gate_actions.request_gate_approval``) then sends mock email +\nTeams card; draft becomes Sent. 404 unknown; 409 when not Draft or the action is blocked\n(reasons returned). Commits. ``result.approval_request_id`` set for approval-request drafts.",
+        "description": "Human send via ``domain.drafts.send_draft`` (BR-050): executes the draft action (e.g.\nrequest_approval -> ``domain.gate_actions.request_gate_approval``) then sends mock email +\nTeams card; draft becomes Sent. 403 unless the OR focal of the draft's transition. 404 unknown; 409 when not Draft or the action is blocked\n(reasons returned). Commits. ``result.approval_request_id`` set for approval-request drafts.",
         "operationId": "send_draft_endpoint_api_v1_orion_drafts__draft_id__send_post",
         "parameters": [
           {
@@ -6559,6 +6579,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 2147483647,
+              "minimum": 1,
               "title": "Draft Id"
             }
           },
@@ -6618,6 +6640,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 2147483647,
+              "minimum": 1,
               "title": "Draft Id"
             }
           },
@@ -7026,6 +7050,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 2147483647,
+              "minimum": 1,
               "title": "Notification Id"
             }
           },
@@ -8063,6 +8089,105 @@
         }
       }
     },
+    "/api/v1/admin/approvals/{request_id}/cancel": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Cancel Approval",
+        "description": "Cancel a stuck Pending approval request (reason required, audited). ADMIN only (403);\n404 unknown request; 409 when already decided or cancelled. Admin has no other workflow\noverride: decisions stay with the chain approvers.",
+        "operationId": "cancel_approval_api_v1_admin_approvals__request_id__cancel_post",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Request Id"
+            }
+          },
+          {
+            "name": "X-Demo-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalCancelIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovalCancelOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        }
+      }
+    },
     "/api/v1/admin/reminder-rules": {
       "get": {
         "tags": [
@@ -8845,6 +8970,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 2147483647,
+              "minimum": 1,
               "title": "Update Id"
             }
           },
@@ -8904,6 +9031,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 2147483647,
+              "minimum": 1,
               "title": "Update Id"
             }
           },
@@ -8990,11 +9119,13 @@
         "properties": {
           "infrastructure_solution": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Infrastructure Solution",
             "default": ""
           },
           "agentic_framework": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Agentic Framework",
             "default": ""
           },
@@ -9005,31 +9136,37 @@
           },
           "number_of_users": {
             "type": "string",
+            "maxLength": 200,
             "title": "Number Of Users",
             "default": ""
           },
           "agentic_workflows": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Agentic Workflows",
             "default": ""
           },
           "models_used": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Models Used",
             "default": ""
           },
           "data_sources": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Data Sources",
             "default": ""
           },
           "hosting": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Hosting",
             "default": ""
           },
           "write_actions_detail": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Write Actions Detail",
             "default": ""
           }
@@ -9042,11 +9179,13 @@
         "properties": {
           "infrastructure_solution": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Infrastructure Solution",
             "default": ""
           },
           "agentic_framework": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Agentic Framework",
             "default": ""
           },
@@ -9057,31 +9196,37 @@
           },
           "number_of_users": {
             "type": "string",
+            "maxLength": 200,
             "title": "Number Of Users",
             "default": ""
           },
           "agentic_workflows": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Agentic Workflows",
             "default": ""
           },
           "models_used": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Models Used",
             "default": ""
           },
           "data_sources": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Data Sources",
             "default": ""
           },
           "hosting": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Hosting",
             "default": ""
           },
           "write_actions_detail": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Write Actions Detail",
             "default": ""
           },
@@ -9150,11 +9295,13 @@
               "type": "string"
             },
             "type": "array",
+            "maxItems": 200,
             "title": "Item Ids",
             "default": []
           },
           "owner_user_id": {
             "type": "string",
+            "maxLength": 40,
             "title": "Owner User Id"
           },
           "due_date": {
@@ -9309,7 +9456,8 @@
           "owner_user_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 40
               },
               {
                 "type": "null"
@@ -9394,6 +9542,39 @@
         ],
         "title": "AppInfoOut"
       },
+      "ApprovalCancelIn": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "ApprovalCancelIn"
+      },
+      "ApprovalCancelOut": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_id",
+          "status"
+        ],
+        "title": "ApprovalCancelOut"
+      },
       "ApprovalChainOut": {
         "properties": {
           "type": {
@@ -9452,6 +9633,7 @@
               "$ref": "#/components/schemas/ApprovalChainOut"
             },
             "type": "array",
+            "maxItems": 10,
             "title": "Chains"
           }
         },
@@ -9527,10 +9709,12 @@
         "properties": {
           "transition_id": {
             "type": "string",
+            "maxLength": 40,
             "title": "Transition Id"
           },
           "gate": {
             "type": "string",
+            "maxLength": 40,
             "title": "Gate",
             "description": "SG4_ATD or the ATO gate code (see rules/constants.py)"
           }
@@ -9904,7 +10088,8 @@
           "item_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 50
               },
               {
                 "type": "null"
@@ -9916,7 +10101,8 @@
           "url": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 2000
               },
               {
                 "type": "null"
@@ -9927,7 +10113,8 @@
           "text": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 4000
               },
               {
                 "type": "null"
@@ -10041,16 +10228,20 @@
         "properties": {
           "item_ids": {
             "items": {
-              "type": "integer"
+              "type": "integer",
+              "maximum": 2147483647.0,
+              "minimum": 1.0
             },
             "type": "array",
+            "maxItems": 500,
             "minItems": 1,
             "title": "Item Ids"
           },
           "owner_user_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20
               },
               {
                 "type": "null"
@@ -10079,6 +10270,7 @@
         "properties": {
           "reason": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Reason"
           }
         },
@@ -10278,10 +10470,12 @@
           },
           "role": {
             "type": "string",
+            "maxLength": 30,
             "title": "Role"
           },
           "label": {
             "type": "string",
+            "maxLength": 100,
             "title": "Label"
           }
         },
@@ -10297,6 +10491,7 @@
         "properties": {
           "transition_id": {
             "type": "string",
+            "maxLength": 40,
             "title": "Transition Id"
           },
           "item_ids": {
@@ -10304,6 +10499,7 @@
               "type": "string"
             },
             "type": "array",
+            "maxItems": 200,
             "minItems": 1,
             "title": "Item Ids",
             "description": "Playbook item ids to chase"
@@ -10632,13 +10828,15 @@
           },
           "relation": {
             "type": "string",
+            "maxLength": 200,
             "title": "Relation",
             "default": "bidirectional"
           },
           "target": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 120
               },
               {
                 "type": "null"
@@ -10661,7 +10859,8 @@
           "item_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 40
               },
               {
                 "type": "null"
@@ -10672,14 +10871,17 @@
           },
           "owner_user_id": {
             "type": "string",
+            "maxLength": 40,
             "title": "Owner User Id"
           },
           "due_gate": {
             "type": "string",
+            "maxLength": 40,
             "title": "Due Gate"
           },
           "text": {
             "type": "string",
+            "maxLength": 4000,
             "minLength": 1,
             "title": "Text"
           }
@@ -10696,18 +10898,22 @@
         "properties": {
           "item_id": {
             "type": "string",
+            "maxLength": 40,
             "title": "Item Id"
           },
           "owner_user_id": {
             "type": "string",
+            "maxLength": 40,
             "title": "Owner User Id"
           },
           "due_gate": {
             "type": "string",
+            "maxLength": 40,
             "title": "Due Gate"
           },
           "text": {
             "type": "string",
+            "maxLength": 4000,
             "minLength": 1,
             "title": "Text"
           }
@@ -10874,7 +11080,8 @@
           "close_note": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 4000
               },
               {
                 "type": "null"
@@ -10885,7 +11092,8 @@
           "owner_user_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 40
               },
               {
                 "type": "null"
@@ -10896,7 +11104,8 @@
           "due_gate": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 40
               },
               {
                 "type": "null"
@@ -10908,6 +11117,7 @@
             "anyOf": [
               {
                 "type": "string",
+                "maxLength": 4000,
                 "minLength": 1
               },
               {
@@ -11209,7 +11419,8 @@
           "owner_user_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 40
               },
               {
                 "type": "null"
@@ -11324,7 +11535,8 @@
           "owner_user_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 40
               },
               {
                 "type": "null"
@@ -11486,6 +11698,38 @@
             },
             "type": "array",
             "title": "Related Ids"
+          },
+          "can_send": {
+            "type": "boolean",
+            "title": "Can Send",
+            "default": true
+          },
+          "send_denied_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Send Denied Reason"
+          },
+          "can_edit": {
+            "type": "boolean",
+            "title": "Can Edit",
+            "default": true
+          },
+          "edit_denied_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edit Denied Reason"
           }
         },
         "type": "object",
@@ -11517,6 +11761,7 @@
               "type": "string"
             },
             "type": "array",
+            "maxItems": 100,
             "title": "To"
           },
           "cc": {
@@ -11524,6 +11769,7 @@
               "type": "string"
             },
             "type": "array",
+            "maxItems": 100,
             "title": "Cc",
             "default": []
           },
@@ -11535,6 +11781,7 @@
           },
           "body_html": {
             "type": "string",
+            "maxLength": 50000,
             "minLength": 1,
             "title": "Body Html"
           }
@@ -11889,6 +12136,7 @@
         "properties": {
           "metric_id": {
             "type": "string",
+            "maxLength": 20,
             "title": "Metric Id"
           },
           "tiers": {
@@ -11896,6 +12144,7 @@
               "$ref": "#/components/schemas/EvalTierTargetIn"
             },
             "type": "array",
+            "maxItems": 8,
             "title": "Tiers"
           }
         },
@@ -11941,6 +12190,7 @@
         "properties": {
           "metric_id": {
             "type": "string",
+            "maxLength": 50,
             "title": "Metric Id"
           },
           "value_number": {
@@ -11957,7 +12207,8 @@
           "value_text": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 4000
               },
               {
                 "type": "null"
@@ -12181,6 +12432,7 @@
               "$ref": "#/components/schemas/EvalMetricIn"
             },
             "type": "array",
+            "maxItems": 100,
             "title": "Metrics"
           }
         },
@@ -12510,6 +12762,7 @@
           },
           "note": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Note",
             "default": ""
           }
@@ -12524,6 +12777,7 @@
         "properties": {
           "item_id": {
             "type": "string",
+            "maxLength": 40,
             "minLength": 1,
             "title": "Item Id",
             "description": "Playbook item id of a Compliance item"
@@ -12533,6 +12787,21 @@
             "maxLength": 4000,
             "minLength": 1,
             "title": "Text"
+          },
+          "approvers": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object",
+                "maxProperties": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approvers"
           }
         },
         "type": "object",
@@ -12805,6 +13074,7 @@
         "properties": {
           "project_type": {
             "type": "string",
+            "maxLength": 100,
             "title": "Project Type"
           },
           "checklists": {
@@ -12818,6 +13088,7 @@
               ]
             },
             "type": "array",
+            "maxItems": 8,
             "title": "Checklists"
           },
           "requires_tiering": {
@@ -12828,7 +13099,8 @@
           "note": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 1000
               },
               {
                 "type": "null"
@@ -12888,6 +13160,7 @@
               "$ref": "#/components/schemas/FlavourRuleIn"
             },
             "type": "array",
+            "maxItems": 50,
             "title": "Rules"
           }
         },
@@ -13085,7 +13358,8 @@
           "note": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 4000
               },
               {
                 "type": "null"
@@ -13096,13 +13370,30 @@
           "draft_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "maximum": 2147483647.0,
+                "minimum": 1.0
               },
               {
                 "type": "null"
               }
             ],
             "title": "Draft Id"
+          },
+          "approvers": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object",
+                "maxProperties": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approvers"
           }
         },
         "type": "object",
@@ -13138,10 +13429,12 @@
         "properties": {
           "decision": {
             "type": "string",
+            "maxLength": 60,
             "title": "Decision"
           },
           "note": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Note",
             "default": ""
           },
@@ -13150,6 +13443,7 @@
               "$ref": "#/components/schemas/ConditionIn"
             },
             "type": "array",
+            "maxItems": 100,
             "title": "Conditions",
             "default": []
           }
@@ -13395,10 +13689,12 @@
         "properties": {
           "outcome": {
             "type": "string",
+            "maxLength": 60,
             "title": "Outcome"
           },
           "note": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Note",
             "default": ""
           },
@@ -13407,6 +13703,7 @@
               "$ref": "#/components/schemas/ConditionIn"
             },
             "type": "array",
+            "maxItems": 100,
             "title": "Conditions",
             "default": []
           }
@@ -13603,9 +13900,11 @@
             "anyOf": [
               {
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 200
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 50
               },
               {
                 "type": "null"
@@ -13618,6 +13917,7 @@
               "$ref": "#/components/schemas/GoldenSetItemIn"
             },
             "type": "array",
+            "maxItems": 300,
             "title": "Items"
           }
         },
@@ -13632,7 +13932,8 @@
           "id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20
               },
               {
                 "type": "null"
@@ -13648,10 +13949,12 @@
           },
           "gate": {
             "type": "string",
+            "maxLength": 20,
             "title": "Gate"
           },
           "owner_role_hint": {
             "type": "string",
+            "maxLength": 100,
             "title": "Owner Role Hint",
             "default": ""
           },
@@ -14264,14 +14567,17 @@
         "properties": {
           "owner_user_id": {
             "type": "string",
+            "maxLength": 20,
             "title": "Owner User Id"
           },
           "due_gate": {
             "type": "string",
+            "maxLength": 50,
             "title": "Due Gate"
           },
           "text": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Text"
           }
         },
@@ -14670,7 +14976,8 @@
           "status": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 100
               },
               {
                 "type": "null"
@@ -14697,7 +15004,8 @@
           "note": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 4000
               },
               {
                 "type": "null"
@@ -14708,7 +15016,8 @@
           "owner_user_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20
               },
               {
                 "type": "null"
@@ -14752,7 +15061,8 @@
           "na_reason": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 4000
               },
               {
                 "type": "null"
@@ -16170,6 +16480,7 @@
               "$ref": "#/components/schemas/OcetLineIn"
             },
             "type": "array",
+            "maxItems": 500,
             "title": "Lines"
           },
           "deleted_line_ids": {
@@ -16177,6 +16488,7 @@
               "type": "integer"
             },
             "type": "array",
+            "maxItems": 500,
             "title": "Deleted Line Ids"
           }
         },
@@ -16584,6 +16896,7 @@
               "type": "integer"
             },
             "type": "array",
+            "maxItems": 8,
             "title": "Applicable Tiers",
             "default": []
           },
@@ -16669,11 +16982,13 @@
           },
           "description": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Description",
             "default": ""
           },
           "gate": {
             "type": "string",
+            "maxLength": 20,
             "title": "Gate"
           },
           "lens": {
@@ -17604,6 +17919,7 @@
         "properties": {
           "id": {
             "type": "string",
+            "maxLength": 20,
             "title": "Id"
           },
           "enabled": {
@@ -17613,6 +17929,7 @@
           "params": {
             "additionalProperties": true,
             "type": "object",
+            "maxProperties": 20,
             "title": "Params",
             "default": {}
           }
@@ -17631,6 +17948,7 @@
               "$ref": "#/components/schemas/ReminderRuleIn"
             },
             "type": "array",
+            "maxItems": 50,
             "title": "Rules"
           }
         },
@@ -17761,6 +18079,7 @@
               "type": "integer"
             },
             "type": "array",
+            "maxItems": 500,
             "minItems": 1,
             "title": "Line Ids"
           }
@@ -17799,6 +18118,7 @@
         "properties": {
           "title": {
             "type": "string",
+            "maxLength": 300,
             "minLength": 1,
             "title": "Title"
           },
@@ -17813,6 +18133,7 @@
           },
           "decision": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Decision",
             "default": ""
           },
@@ -17821,6 +18142,7 @@
               "type": "string"
             },
             "type": "array",
+            "maxItems": 200,
             "title": "Item Ids",
             "default": []
           }
@@ -18001,6 +18323,7 @@
         "properties": {
           "item_id": {
             "type": "string",
+            "maxLength": 50,
             "title": "Item Id"
           },
           "applies": {
@@ -18015,7 +18338,8 @@
           "reason": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 4000
               },
               {
                 "type": "null"
@@ -18187,6 +18511,7 @@
               "$ref": "#/components/schemas/ScopeDecisionIn"
             },
             "type": "array",
+            "maxItems": 2000,
             "title": "Decisions"
           },
           "source": {
@@ -18321,11 +18646,13 @@
         "properties": {
           "site_id": {
             "type": "string",
+            "maxLength": 100,
             "title": "Site Id",
             "default": ""
           },
           "site_key": {
             "type": "string",
+            "maxLength": 100,
             "title": "Site Key",
             "default": ""
           }
@@ -18971,7 +19298,8 @@
           "reason": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 4000
               },
               {
                 "type": "null"
@@ -19175,7 +19503,8 @@
           "audience": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 100
               },
               {
                 "type": "null"
@@ -19186,7 +19515,8 @@
           "write_actions": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 100
               },
               {
                 "type": "null"
@@ -19197,7 +19527,8 @@
           "sensitive_data": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 100
               },
               {
                 "type": "null"
@@ -19210,6 +19541,7 @@
               "type": "boolean"
             },
             "type": "object",
+            "maxProperties": 20,
             "title": "Answers"
           }
         },
@@ -19247,6 +19579,7 @@
               "type": "boolean"
             },
             "type": "object",
+            "maxProperties": 20,
             "title": "Answers"
           }
         },
@@ -19321,7 +19654,8 @@
           "servicenow_project_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 50
               },
               {
                 "type": "null"
@@ -19331,18 +19665,22 @@
           },
           "project_type": {
             "type": "string",
+            "maxLength": 100,
             "title": "Project Type"
           },
           "portfolio": {
             "type": "string",
+            "maxLength": 100,
             "title": "Portfolio"
           },
           "region": {
             "type": "string",
+            "maxLength": 100,
             "title": "Region"
           },
           "market": {
             "type": "string",
+            "maxLength": 200,
             "title": "Market",
             "default": ""
           },
@@ -19351,12 +19689,14 @@
               "$ref": "#/components/schemas/SiteIn"
             },
             "type": "array",
+            "maxItems": 500,
             "title": "Sites"
           },
           "audience": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 100
               },
               {
                 "type": "null"
@@ -19367,7 +19707,8 @@
           "write_actions": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 100
               },
               {
                 "type": "null"
@@ -19378,7 +19719,8 @@
           "sensitive_data": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 100
               },
               {
                 "type": "null"
@@ -19389,7 +19731,8 @@
           "target_gate": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 50
               },
               {
                 "type": "null"
@@ -19400,7 +19743,8 @@
           "investment_type": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 100
               },
               {
                 "type": "null"
@@ -19411,7 +19755,8 @@
           "delivery_method": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 100
               },
               {
                 "type": "null"
@@ -19421,17 +19766,27 @@
           },
           "description": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Description",
             "default": ""
           },
           "or_focal_user_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Or Focal User Id"
           },
           "pm_user_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20
               },
               {
                 "type": "null"
@@ -19442,7 +19797,8 @@
           "architect_user_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20
               },
               {
                 "type": "null"
@@ -19453,7 +19809,8 @@
           "olm_user_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20
               },
               {
                 "type": "null"
@@ -19464,7 +19821,8 @@
           "irm_user_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20
               },
               {
                 "type": "null"
@@ -19490,8 +19848,7 @@
           "name",
           "project_type",
           "portfolio",
-          "region",
-          "or_focal_user_id"
+          "region"
         ],
         "title": "TransitionCreateIn"
       },
@@ -19796,6 +20153,21 @@
                 "type": "null"
               }
             ]
+          },
+          "access": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Access",
+            "default": {}
           }
         },
         "type": "object",
@@ -20168,7 +20540,8 @@
           "servicenow_project_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 50
               },
               {
                 "type": "null"
@@ -20179,7 +20552,8 @@
           "project_type": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 100
               },
               {
                 "type": "null"
@@ -20190,7 +20564,8 @@
           "portfolio": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 100
               },
               {
                 "type": "null"
@@ -20201,7 +20576,8 @@
           "region": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 100
               },
               {
                 "type": "null"
@@ -20212,7 +20588,8 @@
           "market": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 200
               },
               {
                 "type": "null"
@@ -20226,7 +20603,8 @@
                 "items": {
                   "$ref": "#/components/schemas/SiteIn"
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 500
               },
               {
                 "type": "null"
@@ -20237,7 +20615,8 @@
           "audience": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 100
               },
               {
                 "type": "null"
@@ -20248,7 +20627,8 @@
           "write_actions": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 100
               },
               {
                 "type": "null"
@@ -20259,7 +20639,8 @@
           "sensitive_data": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 100
               },
               {
                 "type": "null"
@@ -20270,7 +20651,8 @@
           "target_gate": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 50
               },
               {
                 "type": "null"
@@ -20281,7 +20663,8 @@
           "investment_type": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 100
               },
               {
                 "type": "null"
@@ -20292,7 +20675,8 @@
           "delivery_method": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 100
               },
               {
                 "type": "null"
@@ -20303,7 +20687,8 @@
           "description": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 4000
               },
               {
                 "type": "null"
@@ -20314,7 +20699,8 @@
           "or_focal_user_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20
               },
               {
                 "type": "null"
@@ -20325,7 +20711,8 @@
           "pm_user_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20
               },
               {
                 "type": "null"
@@ -20336,7 +20723,8 @@
           "architect_user_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20
               },
               {
                 "type": "null"
@@ -20347,7 +20735,8 @@
           "olm_user_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20
               },
               {
                 "type": "null"
@@ -20358,7 +20747,8 @@
           "irm_user_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20
               },
               {
                 "type": "null"
@@ -20381,7 +20771,8 @@
           "blocker_note": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 4000
               },
               {
                 "type": "null"

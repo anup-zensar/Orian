@@ -53,6 +53,7 @@ from app.routers import (
     transitions,
     users,
 )
+from app.scheduler import start_scheduler, stop_scheduler
 from app.seed.loader import seed_if_empty
 
 API_PREFIX = "/api/v1"
@@ -106,14 +107,19 @@ def restore_today_override() -> None:
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app_: FastAPI) -> AsyncIterator[None]:
     configure_engine()
     create_all()
     with SessionLocal() as db:
         if seed_if_empty(db):
             logger.info("Database was empty - demo data seeded")
     restore_today_override()
-    yield
+    if get_settings().reminder_job_enabled:
+        start_scheduler(app_)
+    try:
+        yield
+    finally:
+        stop_scheduler()
 
 
 app = FastAPI(

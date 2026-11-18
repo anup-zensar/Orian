@@ -17,7 +17,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import clock
+from app import access, clock
 from app.domain import approvals, audit, drafts
 from app.domain.html_sanitize import escape_text
 from app.errors import BadRequest, Conflict, NotFound
@@ -30,7 +30,7 @@ from app.models import (
     TransitionItem,
     User,
 )
-from app.permissions import DENIAL_REASONS, Perm, has_perm
+from app.permissions import Perm
 from app.rules import ocet as rules
 from app.rules.constants import done_status_for, is_open_status
 from app.schemas.common import PersonRef
@@ -277,14 +277,14 @@ def build_version_out(db: Session, version: OcetVersion, user: User) -> OcetOut:
     status = effective_status(db, version)
     now = clock.now()
 
-    perm_ok = has_perm(user.role, Perm.EDIT_OCET)
+    trn = _transition(db, est.transition_id)
     editable = status in EDITABLE_STATUSES
-    can_edit = perm_ok and editable
-    denied: str | None = None
-    if not perm_ok:
-        denied = DENIAL_REASONS[Perm.EDIT_OCET]
-    elif not editable:
+    denied: str | None = access.transition_denial(db, user, trn, Perm.EDIT_OCET)
+    if denied is None and trn.status == "Closed":
+        denied = f"{est.transition_id} is closed - records can no longer be added or changed"
+    if denied is None and not editable:
         denied = f"v{version.version} is {status} - create a new version to change it"
+    can_edit = denied is None
     submit_reasons: list[str] = []
     if not can_edit:
         submit_reasons = [denied] if denied else []
@@ -387,6 +387,7 @@ def get_ocet_view(db: Session, transition_id: str, user: User) -> OcetOut:
 
 def create_estimate(db: Session, transition: Transition, user: User) -> OcetEstimate:
     """Create the empty estimate (v1 Draft, no lines). 409 if one already exists."""
+    access.ensure_transition_role(db, user, transition, Perm.EDIT_OCET)
     existing = db.scalars(
         select(OcetEstimate).where(OcetEstimate.transition_id == transition.id)
     ).first()
@@ -467,6 +468,9 @@ def _default_owner(transition: Transition, role: str) -> str | None:
 
 def save_lines(db: Session, version: OcetVersion, payload: OcetSaveIn, user: User) -> OcetVersion:
     """Bulk save (spec 9)."""
+    access.ensure_transition_role(
+        db, user, _transition(db, version.estimate.transition_id), Perm.EDIT_OCET
+    )
     if version.status not in EDITABLE_STATUSES:
         raise Conflict(
             f"v{version.version} cannot be edited",
@@ -570,6 +574,9 @@ def save_lines(db: Session, version: OcetVersion, payload: OcetSaveIn, user: Use
 
 def submit_version(db: Session, version: OcetVersion, user: User) -> OcetVersion:
     """Submit for approval: chain Planner -> OLM; previous version becomes Superseded."""
+    access.ensure_transition_role(
+        db, user, _transition(db, version.estimate.transition_id), Perm.EDIT_OCET
+    )
     reasons: list[str] = []
     if version.status == "Inputs pending":
         reasons.append(f"v{version.version} still has missing inputs")
@@ -634,6 +641,7 @@ def submit_version(db: Session, version: OcetVersion, user: User) -> OcetVersion
 def create_new_version(db: Session, transition_id: str, user: User) -> OcetVersion:
     """Copy the current version's lines into vN+1 (Draft / Inputs pending)."""
     estimate = _estimate(db, transition_id)
+    access.ensure_transition_role(db, user, _transition(db, transition_id), Perm.EDIT_OCET)
     current = next((v for v in estimate.versions if v.version == estimate.current_version), None)
     if current is None:
         raise NotFound(f"Transition {transition_id} has no OCET yet")
@@ -699,6 +707,9 @@ def request_inputs(
     db: Session, version: OcetVersion, line_ids: list[int], user: User
 ) -> tuple[list[int], list[int]]:
     """Mark lines Requested and create one Orion draft per input owner (nothing is sent)."""
+    access.ensure_transition_role(
+        db, user, _transition(db, version.estimate.transition_id), Perm.EDIT_OCET
+    )
     if version.status not in EDITABLE_STATUSES:
         raise Conflict(
             f"v{version.version} cannot be edited",

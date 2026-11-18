@@ -1,3 +1,4 @@
+import { itemCountsText } from '../workspace/itemCounts';
 import { Link, useNavigate, useParams } from 'react-router';
 import {
   Badge,
@@ -30,11 +31,9 @@ import { ErrorState } from '../../components/ErrorState';
 import { EmptyState } from '../../components/EmptyState';
 import { LensChip } from '../../components/LensChip';
 import { ActorBadge } from '../../components/ActorBadge';
-import type { Me } from '../../api/types';
 import type { Lens } from '../../theme/tokens';
 import { TOASTER_ID, useApiErrorToast } from '../../hooks/useApiErrorToast';
-import { useMe } from '../users/api';
-import { useTransition } from '../transition/api';
+import { useTransition, type TransitionDetail } from '../transition/api';
 import {
   useLaunchAssessment,
   useScope,
@@ -183,11 +182,11 @@ function ScopeTable(props: {
 function ScopeContent(props: {
   id: string;
   scope: Scope;
-  me: Me;
+  access: TransitionDetail['access'];
   requiresTiering: boolean;
   tierProposed: boolean;
 }) {
-  const { id, scope, me } = props;
+  const { id, scope, access } = props;
   const s = useStyles();
   const navigate = useNavigate();
   const showError = useApiErrorToast();
@@ -195,8 +194,8 @@ function ScopeContent(props: {
   const update = useUpdateScope(id);
   const launch = useLaunchAssessment(id);
 
-  const canEdit = me.permissions.includes('confirm_scope');
-  const denied = me.denied_reasons['confirm_scope'] ?? 'You cannot confirm scope';
+  const canEdit = access['confirm_scope'] === null;
+  const denied = access['confirm_scope'] ?? 'You cannot confirm scope';
   const all = [...scope.golden_set, ...scope.common];
   const reqName = (itemId: string) => all.find((r) => r.id === itemId)?.requirement ?? itemId;
 
@@ -234,11 +233,7 @@ function ScopeContent(props: {
         dispatchToast(
           <Toast>
             <ToastTitle>Readiness assessment launched</ToastTitle>
-            <ToastBody>
-              {Object.entries(r.counts)
-                .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`)
-                .join(' · ')}
-            </ToastBody>
+            <ToastBody>{itemCountsText(r.counts)}</ToastBody>
           </Toast>,
           { intent: 'success', timeout: 8000 },
         );
@@ -385,8 +380,7 @@ export function ScopePage() {
   const { id } = useParams();
   const tq = useTransition(id);
   const sq = useScope(id ?? '');
-  const me = useMe();
-  const err = tq.error ?? sq.error ?? me.error;
+  const err = tq.error ?? sq.error;
   const t = tq.data;
   return (
     <>
@@ -400,7 +394,7 @@ export function ScopePage() {
       />
       {err ? (
         <ErrorState error={err} />
-      ) : !t || !sq.data || !me.data || !id ? (
+      ) : !t || !sq.data || !id ? (
         <LoadingState rows={6} />
       ) : (
         <>
@@ -410,7 +404,7 @@ export function ScopePage() {
           <ScopeContent
             id={id}
             scope={sq.data}
-            me={me.data}
+            access={t.access}
             requiresTiering={t.requires_tiering}
             tierProposed={t.tier?.proposed_tier != null}
           />

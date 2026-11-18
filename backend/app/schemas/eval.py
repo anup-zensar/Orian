@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class EvalRowOut(BaseModel):
@@ -36,7 +36,7 @@ class EvalTableOut(BaseModel):
 
 
 class EvalResultIn(BaseModel):
-    metric_id: str
+    metric_id: str = Field(max_length=50)
     value_number: float | None = None
-    value_text: str | None = None
+    value_text: str | None = Field(default=None, max_length=4000)
     passed: bool | None = None  # manual metrics only; ignored for evaluation == auto

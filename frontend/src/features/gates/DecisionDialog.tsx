@@ -1,8 +1,8 @@
+import { ReturnFocusDialog } from '../../components/ReturnFocusDialog';
 import { useState } from 'react';
 import {
   Button,
   Caption1,
-  Dialog,
   DialogActions,
   DialogBody,
   DialogContent,
@@ -56,7 +56,7 @@ export function DecisionDialog(props: {
     );
 
   return (
-    <Dialog open onOpenChange={(_, d) => !d.open && props.onClose()}>
+    <ReturnFocusDialog open onOpenChange={(_, d) => !d.open && props.onClose()}>
       <DialogSurface style={{ maxWidth: 980, width: '95vw' }}>
         <DialogBody>
           <DialogTitle>
@@ -95,6 +95,6 @@ export function DecisionDialog(props: {
           </DialogActions>
         </DialogBody>
       </DialogSurface>
-    </Dialog>
+    </ReturnFocusDialog>
   );
 }

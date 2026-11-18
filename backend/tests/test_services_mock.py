@@ -200,7 +200,7 @@ def test_factory_selection(db, monkeypatch, caplog):
     assert "SHOULD" in caplog.text
 
 
-def test_ai_service_methods_implemented_and_later_milestones_pending():
+def test_ai_service_methods_implemented():
     ai = MockAIService()
     for call in (
         lambda: ai.readiness_narrative({}),
@@ -208,8 +208,12 @@ def test_ai_service_methods_implemented_and_later_milestones_pending():
         lambda: ai.recommend_applicability([], {}),
         lambda: ai.draft_message("Chaser", {}),
         lambda: ai.explain_ocet_change({}),
+        lambda: ai.leadership_update({}),
+        lambda: ai.chat("what is OCET?", {}),
+        lambda: ai.extract_intake("", {}),
+        lambda: ai.parse_command("", [], {}, {}),
     ):
         assert call() is not None
-    for call in (lambda: ai.leadership_update({}),):
-        with pytest.raises(NotImplementedError, match=r"is implemented in M\d"):
-            call()
+    assert ai.chat("what is OCET?", {})["intent"] == "glossary"
+    assert ai.chat("zzz", {})["intent"] == "fallback"
+    assert ai.leadership_update({"title": "T"}).startswith("# T")

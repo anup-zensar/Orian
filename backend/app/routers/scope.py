@@ -58,7 +58,9 @@ def update_scope(
     Before launch decisions are stored in Transition.scope_decisions ({item_id: {applies, reason}});
     after launch they are applied to TransitionItem: Yes -> Applies, No -> Not applicable with
     na_reason = reason (excluded_by None, lens N/A status via na_status_for), To confirm ->
-    To confirm; setting "No" on an item that already has progress is allowed (human decision).
+    To confirm. After launch "No" needs a reason (422) and is refused (409, reasons) for items that
+    already have evidence or a done status; one audit event per changed item (before/after).
+    403 unless the user is the OR focal assigned to THIS transition.
     Audit Human with counts; note "Accepted Orion recommendations" when source is
     "orion_recommendation" (the UI sends the recommended values; the server still validates each
     row). Returns the refreshed ScopeOut.

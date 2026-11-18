@@ -7,7 +7,7 @@ caller in a later milestone (PLAN.md):
 * ``recommend_applicability``  - M3
 * ``readiness_narrative``, ``recommend_actions``, ``draft_message`` - M5
 * ``explain_ocet_change``      - M6
-* ``chat``, ``leadership_update`` - M8
+* ``chat``, ``leadership_update``, ``extract_intake``, ``parse_command`` - M8 (``ai_chat``)
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from app.services.interfaces import DraftText
+from app.services.interfaces import DraftText, IntakeExtraction, ParsedCommand
 from app.services.mock._common import log_mock, simulate_latency
 
 MAX_INSIGHTS = 5
@@ -294,7 +294,11 @@ class MockAIService:
         return ai_messages.draft_message(kind, ctx)
 
     def leadership_update(self, scope_data: Mapping[str, Any]) -> str:
-        raise NotImplementedError("leadership_update is implemented in M8")
+        from app.services.mock import ai_chat  # M8 Orion chat module
+
+        simulate_latency()
+        log_mock("AIService", "leadership_update", scope=scope_data.get("scope"))
+        return ai_chat.leadership_update(scope_data)
 
     def explain_ocet_change(self, diff: Mapping[str, Any]) -> str:
         from app.services.mock import ai_ocet  # M6 OCET module
@@ -302,7 +306,31 @@ class MockAIService:
         return ai_ocet.explain_ocet_change(diff)
 
     def chat(self, message: str, context: Mapping[str, Any]) -> dict[str, Any]:
-        raise NotImplementedError("chat is implemented in M8")
+        from app.services.mock import ai_chat
+
+        return ai_chat.chat(message, context)
+
+    def extract_intake(
+        self, text: str, vocab: Mapping[str, Any], servicenow: Mapping[str, Any] | None = None
+    ) -> IntakeExtraction:
+        from app.services.mock import ai_chat
+
+        simulate_latency()
+        log_mock("AIService", "extract_intake", characters=len(text or ""))
+        return ai_chat.extract_intake(text, vocab, servicenow)
+
+    def parse_command(
+        self,
+        message: str,
+        catalog: Sequence[Mapping[str, Any]],
+        vocab: Mapping[str, Any],
+        context: Mapping[str, Any],
+    ) -> list[ParsedCommand]:
+        from app.services.mock import ai_chat
+
+        simulate_latency()
+        log_mock("AIService", "parse_command", characters=len(message or ""))
+        return ai_chat.parse_command(message, catalog, vocab, context)
 
     def insights(self, scope_data: Mapping[str, Any]) -> list[dict[str, Any]]:
         """Fixed templates over facts gathered by ``domain.insights`` (deterministic, FR-010/011).

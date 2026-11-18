@@ -5,6 +5,7 @@ import { download } from '../../../api/client';
 import { SectionCard } from '../../../components/SectionCard';
 import { useSuccessToast } from '../../admin/useSavedToast';
 import { useApiErrorToast } from '../../../hooks/useApiErrorToast';
+import { usePerm } from '../../gates/usePerm';
 import { useGeneratePptx, type SupportModel } from '../api';
 
 const useStyles = makeStyles({
@@ -25,6 +26,8 @@ export function ExportStep(props: { transitionId: string; model: SupportModel })
   const notify = useSuccessToast();
   const { model } = props;
   const gen = useGeneratePptx(props.transitionId);
+  // Exporting is allowed after the model is agreed (read-only for editing), so gate on the role only.
+  const perm = usePerm('edit_support_model', props.transitionId);
   const pptx = model.pptx;
 
   return (
@@ -33,7 +36,7 @@ export function ExportStep(props: { transitionId: string; model: SupportModel })
         <div className={s.row}>
           <Button
             appearance="primary"
-            disabled={model.id === null || gen.isPending || !model.can_edit}
+            disabled={model.id === null || gen.isPending || !perm.allowed}
             onClick={() =>
               model.id !== null &&
               gen.mutate(model.id, {
@@ -58,9 +61,9 @@ export function ExportStep(props: { transitionId: string; model: SupportModel })
             </Button>
           )}
         </div>
-        {!model.can_edit && (
+        {!perm.allowed && (
           <Caption1>
-            Generate PPT is disabled: {model.edit_denied_reason ?? 'You do not have permission'}
+            Generate PPT is disabled: {perm.reason ?? 'You do not have permission'}
           </Caption1>
         )}
         {pptx ? (

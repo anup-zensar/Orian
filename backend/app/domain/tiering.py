@@ -8,10 +8,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
+from app.access import ensure_transition_role
 from app.domain import audit
 from app.domain import scope as scope_domain
 from app.errors import BadRequest, Conflict
 from app.models import AIProfile, ReferenceData, TierAssessment, Transition, User
+from app.permissions import Perm
 from app.rules.constants import ACTOR_HUMAN
 from app.rules.tiering import propose_tier, unknown_question_ids
 from app.schemas.common import PersonRef
@@ -174,6 +176,7 @@ def set_proposal(
     db: Session, user: User, t: Transition, answers: dict[str, bool]
 ) -> TierAssessmentOut:
     """OR focal proposes the tier; the server computes it (caller commits)."""
+    ensure_transition_role(db, user, t, Perm.PROPOSE_TIER)
     require_ai_flavour(db, t, "Tiering applies to AI project types only")
     assessment = scope_domain.get_assessment(db, t.id)
     if assessment is not None and assessment.confirmed_tier is not None:
@@ -218,6 +221,7 @@ def set_proposal(
 
 def confirm(db: Session, user: User, t: Transition, body: TierConfirmIn) -> TierAssessmentOut:
     """IRM confirms or changes the tier (caller commits)."""
+    ensure_transition_role(db, user, t, Perm.CONFIRM_TIER)
     assessment = scope_domain.get_assessment(db, t.id)
     if assessment is None or assessment.proposed_tier is None:
         raise Conflict("No tier proposed yet")
@@ -283,6 +287,7 @@ def profile_out(db: Session, t: Transition) -> AIProfileOut:
 
 
 def save_profile(db: Session, user: User, t: Transition, body: AIProfileIn) -> AIProfileOut:
+    ensure_transition_role(db, user, t, Perm.EDIT_AI_PROFILE)
     require_ai_flavour(db, t, "AI profile applies to AI project types only")
     profile = _profile(db, t.id)
     before = audit.snapshot(profile, AI_PROFILE_FIELDS) if profile is not None else None

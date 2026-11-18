@@ -109,14 +109,14 @@ def project_line(line: OcetLineInput, start_year: int, horizon_years: int) -> Li
         if index > 0:
             growth = overrides.get(year, line.growth_pct)
             amount = amount * (1 + growth / 100.0)
-        yearly[year] = amount
+        yearly[year] = round(amount, 6)  # drop float noise so .5 values round the same everywhere
     return LineProjection(
         line_key=line.line_key,
         category=line.category,
         description=line.description,
         base_missing=False,
         yearly=yearly,
-        total=sum(yearly.values()),
+        total=round(sum(yearly.values()), 6),
     )
 
 
@@ -133,16 +133,16 @@ def project_version(
     for proj in projected:
         bucket = category_totals.setdefault(proj.category, {y: 0.0 for y in years})
         for year, amount in proj.yearly.items():
-            bucket[year] += amount
-    category_grand = {c: sum(v.values()) for c, v in category_totals.items()}
-    grand_by_year = {y: sum(v[y] for v in category_totals.values()) for y in years}
+            bucket[year] = round(bucket[year] + amount, 6)
+    category_grand = {c: round(sum(v.values()), 6) for c, v in category_totals.items()}
+    grand_by_year = {y: round(sum(v[y] for v in category_totals.values()), 6) for y in years}
     return Projection(
         years=years,
         lines=projected,
         category_totals=category_totals,
         category_grand=category_grand,
         grand_total_by_year=grand_by_year,
-        total=sum(grand_by_year.values()),
+        total=round(sum(grand_by_year.values()), 6),
         inputs_pending=any(p.base_missing for p in projected),
     )
 

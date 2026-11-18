@@ -163,7 +163,7 @@ def test_create_exception_flow(client, headers, db, fresh_seed):
     res = client.post(url, json=body, headers=headers("U01"))
     assert res.status_code == 201, res.text
     created = res.json()
-    assert created["ref"] == "EX-02" and created["status"] == "Pending CISO/BISO"
+    assert created["ref"] == "EX-02" and created["status"] == "Pending IRM"
     assert created["approval_request_id"] == "APR-0002"
     assert client.post(url, json=body, headers=headers("U01")).status_code == 409
     rows = db.scalars(select(TransitionItem).where(TransitionItem.transition_id == "TR-0001")).all()

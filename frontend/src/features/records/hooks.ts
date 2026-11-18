@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { useSearchParams } from 'react-router';
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { useMe } from '../users/api';
+import { useTransitionAccess } from '../transition/api';
 
 export const useRecordStyles = makeStyles({
   stack: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
@@ -55,10 +56,34 @@ export function useUrlParams() {
   return { params, set };
 }
 
-/** Permission check with the spec-12 reason (reason is empty when allowed). */
-export function usePerm(perm: string): { allowed: boolean; reason: string } {
+/**
+ * Permission check with the spec-12 reason (reason is empty when allowed). With a transitionId the
+ * per-transition access map decides (role AND assigned on that transition); without it the
+ * role-level permission does.
+ */
+export function usePerm(perm: string, transitionId?: string): { allowed: boolean; reason: string } {
   const me = useMe();
+  const access = useTransitionAccess(transitionId);
+  if (transitionId) {
+    const reason = access.reason(perm);
+    return { allowed: reason === null, reason: reason ?? '' };
+  }
   if (!me.data) return { allowed: false, reason: 'Loading your permissions' };
   const allowed = me.data.permissions.includes(perm);
   return { allowed, reason: allowed ? '' : (me.data.denied_reasons[perm] ?? 'Not permitted') };
+}
+
+/**
+ * Item-level owner exception (BE#1): the backend lets the owner of an action or item act on it when
+ * their ROLE holds the permission, even if they are not assigned to the transition. Returns the
+ * reason to show ('' when allowed) for a row owned by `ownerId`.
+ */
+export function useOwnerException(perm: string, transitionReason: string) {
+  const me = useMe();
+  return (ownerId: string | null | undefined): string => {
+    if (!transitionReason) return '';
+    if (me.data && ownerId && ownerId === me.data.user.id && me.data.permissions.includes(perm))
+      return '';
+    return transitionReason;
+  };
 }

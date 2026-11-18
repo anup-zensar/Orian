@@ -142,7 +142,12 @@ def test_gates_overview_flagship(client, headers):
 # --- stage reviews (AC-08) -----------------------------------------------------------------------
 
 
-def _review(client, headers, tid, gate, body, user="U01"):
+# OR focal of each seeded transition used below (per-transition access, BE#1)
+FOCALS = {"TR-0001": "U01", "TR-0003": "U01", "TR-0015": "U08", "TR-0017": "U09", "TR-0018": "U04"}
+
+
+def _review(client, headers, tid, gate, body, user=None):
+    user = user or FOCALS.get(tid, "U01")
     return client.post(
         f"{API}/transitions/{tid}/gates/{gate}/review", json=body, headers=headers(user)
     )
@@ -297,8 +302,7 @@ def test_sg0_ai_flavour_needs_confirmed_tier(client, headers, fresh_seed, db):
     data = _readiness(client, headers, "TR-0003")
     proceed = [o for o in data["decision_options"] if o["outcome"] == "Proceed"][0]
     assert "Tier must be confirmed by IRM before SG0 can proceed" in proceed["reasons"]
-    res = _review(client, headers, "TR-0003", "SG0", {"outcome": "Proceed"}, user="U03")
-    # U03 may not be an OR focal of this transition but the role is what the permission checks
+    res = _review(client, headers, "TR-0003", "SG0", {"outcome": "Proceed"})
     assert res.status_code == 409
     assert "Tier must be confirmed by IRM before SG0 can proceed" in res.json()["reasons"]
 
@@ -364,12 +368,12 @@ def test_atd_full_flow_ready_request_approve_and_return(client, headers, fresh_s
     early = client.post(
         f"{API}/transitions/{tid}/gates/SG4_ATD/decision",
         json={"decision": "Approve"},
-        headers=headers(),
+        headers=headers("U04"),
     )
     assert early.status_code == 409
 
     req = client.post(
-        f"{API}/transitions/{tid}/gates/SG4_ATD/request-approval", json={}, headers=headers()
+        f"{API}/transitions/{tid}/gates/SG4_ATD/request-approval", json={}, headers=headers("U04")
     )
     assert req.status_code == 200, req.text
     chain = req.json()
@@ -377,7 +381,7 @@ def test_atd_full_flow_ready_request_approve_and_return(client, headers, fresh_s
 
     # duplicate request is a 409
     dup = client.post(
-        f"{API}/transitions/{tid}/gates/SG4_ATD/request-approval", json={}, headers=headers()
+        f"{API}/transitions/{tid}/gates/SG4_ATD/request-approval", json={}, headers=headers("U04")
     )
     assert dup.status_code == 409
 
@@ -391,13 +395,13 @@ def test_atd_full_flow_ready_request_approve_and_return(client, headers, fresh_s
     no_note = client.post(
         f"{API}/transitions/{tid}/gates/SG4_ATD/decision",
         json={"decision": "Return"},
-        headers=headers(),
+        headers=headers("U04"),
     )
     assert no_note.status_code == 422
     back = client.post(
         f"{API}/transitions/{tid}/gates/SG4_ATD/decision",
         json={"decision": "Return", "note": "Need updated evidence"},
-        headers=headers(),
+        headers=headers("U04"),
     )
     assert back.status_code == 200, back.text
     assert back.json()["new_current_gate"] == "SG4_ATD"
@@ -409,7 +413,7 @@ def test_atd_full_flow_ready_request_approve_and_return(client, headers, fresh_s
 
     # request again, approve both steps, then Approve advances to Hypercare
     req2 = client.post(
-        f"{API}/transitions/{tid}/gates/SG4_ATD/request-approval", json={}, headers=headers()
+        f"{API}/transitions/{tid}/gates/SG4_ATD/request-approval", json={}, headers=headers("U04")
     )
     assert req2.status_code == 200
     request = db.get(ApprovalRequest, req2.json()["request_id"])
@@ -420,12 +424,12 @@ def test_atd_full_flow_ready_request_approve_and_return(client, headers, fresh_s
     res = client.post(
         f"{API}/transitions/{tid}/gates/SG4_ATD/decision",
         json={"decision": "Approve", "note": "Go"},
-        headers=headers(),
+        headers=headers("U04"),
     )
     assert res.status_code == 200, res.text
     assert res.json()["new_current_gate"] == "SG5_HYPERCARE"
     assert res.json()["review"]["outcome"] == "Approve"
-    after = client.get(f"{API}/transitions/{tid}", headers=headers()).json()
+    after = client.get(f"{API}/transitions/{tid}", headers=headers("U04")).json()
     assert after["current_gate"] == "SG5_HYPERCARE"
     reviews = db.scalars(
         select(GateReview).where(GateReview.transition_id == tid, GateReview.gate == "SG4_ATD")
@@ -475,7 +479,7 @@ def test_closure_close_requires_everything_done(client, headers, fresh_seed, db)
     res = client.post(
         f"{API}/transitions/{tid}/gates/CLOSURE/decision",
         json={"decision": "Close"},
-        headers=headers(),
+        headers=headers("U04"),
     )
     assert res.status_code == 409
     # finish every item, close conditions / actions / defects
@@ -502,13 +506,13 @@ def test_closure_close_requires_everything_done(client, headers, fresh_seed, db)
                 {"item_id": "FW-001", "owner_user_id": "U01", "due_gate": "CLOSURE", "text": "x"}
             ],
         },
-        headers=headers(),
+        headers=headers("U04"),
     )
     assert with_cond.status_code in (409, 422)
     ok = client.post(
         f"{API}/transitions/{tid}/gates/CLOSURE/decision",
         json={"decision": "Close"},
-        headers=headers(),
+        headers=headers("U04"),
     )
     assert ok.status_code == 200, ok.text
     assert ok.json()["transition_closed"] is True
@@ -517,6 +521,6 @@ def test_closure_close_requires_everything_done(client, headers, fresh_seed, db)
     again = client.post(
         f"{API}/transitions/{tid}/gates/CLOSURE/decision",
         json={"decision": "Close"},
-        headers=headers(),
+        headers=headers("U04"),
     )
     assert again.status_code == 409

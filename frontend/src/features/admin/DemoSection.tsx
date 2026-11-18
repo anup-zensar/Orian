@@ -1,9 +1,8 @@
+import { ReturnFocusDialog } from '../../components/ReturnFocusDialog';
 import { useState, type ReactNode } from 'react';
 import {
   Body1,
   Button,
-  Caption1,
-  Dialog,
   DialogActions,
   DialogBody,
   DialogContent,
@@ -13,7 +12,6 @@ import {
   Input,
   MessageBar,
   MessageBarBody,
-  Tooltip,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
@@ -22,6 +20,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { SectionCard } from '../../components/SectionCard';
 import { useApiErrorToast } from '../../hooks/useApiErrorToast';
+import { RunRemindersControl } from '../drafts/RunReminders';
 import { useReference } from '../reference/api';
 import {
   useDemoReset,
@@ -52,7 +51,7 @@ function Confirm(props: {
   return (
     <>
       {props.trigger(() => setOpen(true))}
-      <Dialog open={open} onOpenChange={(_, d) => !props.busy && setOpen(d.open)}>
+      <ReturnFocusDialog open={open} onOpenChange={(_, d) => !props.busy && setOpen(d.open)}>
         <DialogSurface>
           <DialogBody>
             <DialogTitle>{props.title}</DialogTitle>
@@ -71,7 +70,7 @@ function Confirm(props: {
             </DialogActions>
           </DialogBody>
         </DialogSurface>
-      </Dialog>
+      </ReturnFocusDialog>
     </>
   );
 }
@@ -185,8 +184,8 @@ export function DemoSection() {
           <Body1>
             Effective today: <strong>{today.data.today}</strong>
             {today.data.override
-              ? ` (override set; seed date ${today.data.seed_date ?? 'none'})`
-              : ` (no override; seed date ${today.data.seed_date ?? 'none'})`}
+              ? ` (override set${today.data.seed_date ? `; seed date ${today.data.seed_date}` : ''})`
+              : ' (no override; using the real date)'}
           </Body1>
         ) : null}
         <div className={s.row}>
@@ -227,12 +226,11 @@ export function DemoSection() {
       </SectionCard>
 
       <SectionCard title="Run reminder engine">
-        <div className={s.row}>
-          <Tooltip content="Reminder engine arrives in M8" relationship="description">
-            <Button disabledFocusable>Run reminder engine</Button>
-          </Tooltip>
-          <Caption1>Not available yet: the reminder engine arrives with a later release.</Caption1>
-        </div>
+        <Body1>
+          Evaluates reminder rules R1-R7 now: assistive transitions get drafts, autonomous ones may
+          send on their own. Duplicates of open drafts are skipped.
+        </Body1>
+        <RunRemindersControl buttonLabel="Run reminder engine" />
       </SectionCard>
     </div>
   );

@@ -19,7 +19,6 @@ from app.models import (
     ApprovalRequest,
     Condition,
     EvalResult,
-    EvalTarget,
     ExceptionRecord,
     HypercareDefect,
     OcetEstimate,
@@ -80,19 +79,6 @@ class GateInputs:
     lens_pct: dict[str, int] = field(default_factory=dict)
 
 
-def _passes(operator: str | None, target: float | None, value: float) -> bool | None:
-    if operator is None or target is None:
-        return None
-    return {
-        ">=": value >= target,
-        "<=": value <= target,
-        "<": value < target,
-        ">": value > target,
-        "==": value == target,
-        "abs<=": abs(value) <= target,
-    }.get(operator)
-
-
 def _result_text(result: EvalResult, unit: str | None) -> str:
     if result.value_number is not None:
         return f"{result.value_number:g}{unit or ''}"
@@ -117,13 +103,13 @@ def latest_chain(db: Session, transition_id: str, gate: str) -> ApprovalRequest 
 
 def _evals(db: Session, transition: Transition, gate: str) -> tuple[list[rules.FailedEval], int]:
     """(failed evals, unevaluated metric count) for AI flavours; failed only listed at AtD."""
+    from app.domain import eval as eval_domain  # local import: eval imports records/access
+
     if transition.project_type not in AI_PROJECT_TYPES or transition.risk_tier is None:
         return [], 0
-    targets = db.scalars(
-        select(EvalTarget)
-        .where(EvalTarget.tier == transition.risk_tier)
-        .order_by(EvalTarget.sort_order, EvalTarget.metric_id)
-    ).all()
+    # Always the CURRENT tier's targets and the shared pass rule (BE#5): a tier change or an Admin
+    # edit of the targets changes the blockers without re-importing results.
+    targets = eval_domain.targets_for_transition(db, transition)
     results: dict[str, EvalResult] = {}
     for r in db.scalars(
         select(EvalResult).where(EvalResult.transition_id == transition.id).order_by(EvalResult.id)
@@ -133,13 +119,8 @@ def _evals(db: Session, transition: Transition, gate: str) -> tuple[list[rules.F
     unevaluated = 0
     for t in targets:
         r = results.get(t.metric_id)
-        if r is None or (r.value_number is None and not r.value_text and r.passed is None):
-            unevaluated += 1
-            continue
-        passed = r.passed
-        if passed is None and r.value_number is not None:
-            passed = _passes(t.operator, t.value, r.value_number)
-        if passed is None:
+        passed = eval_domain.pass_state(t, r)
+        if r is None or passed is None:
             unevaluated += 1
         elif passed is False and gate == "SG4_ATD":
             failed.append(

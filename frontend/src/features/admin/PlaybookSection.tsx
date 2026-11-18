@@ -1,9 +1,9 @@
+import { ReturnFocusDialog } from '../../components/ReturnFocusDialog';
 import { useState } from 'react';
 import {
   Badge,
   Button,
   Checkbox,
-  Dialog,
   DialogActions,
   DialogBody,
   DialogContent,
@@ -87,7 +87,7 @@ function EditDialog({ item, onClose }: { item: PlaybookItem; onClose: () => void
     );
 
   return (
-    <Dialog open onOpenChange={(_, d) => !d.open && onClose()}>
+    <ReturnFocusDialog open onOpenChange={(_, d) => !d.open && onClose()}>
       <DialogSurface>
         <DialogBody>
           <DialogTitle>Edit {item.id}</DialogTitle>
@@ -155,7 +155,7 @@ function EditDialog({ item, onClose }: { item: PlaybookItem; onClose: () => void
           </DialogActions>
         </DialogBody>
       </DialogSurface>
-    </Dialog>
+    </ReturnFocusDialog>
   );
 }
 

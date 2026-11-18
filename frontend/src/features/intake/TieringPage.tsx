@@ -191,8 +191,10 @@ function ProposalStep(props: {
   const p = proposal.data;
   const tier = t.tier;
   const confirmed = tier?.status === 'Confirmed';
-  const can = (perm: string) => me.permissions.includes(perm);
-  const reasonFor = (perm: string) => me.denied_reasons[perm] ?? 'You are not allowed to do this';
+  // Per-transition access (BE#1): role permission AND assigned on this transition.
+  const can = (perm: string) => t.access[perm] === null;
+  const reasonFor = (perm: string) =>
+    t.access[perm] ?? me.denied_reasons[perm] ?? 'You are not allowed to do this';
 
   const toast = (title: string, a?: TierAssessment) => {
     const r = a?.reassembly;
@@ -297,7 +299,7 @@ function ProposalStep(props: {
             ) : (
               proposeBtn
             )}
-            {(can('confirm_tier') || me.user.role === 'IRM') && (
+            {(me.permissions.includes('confirm_tier') || me.user.role === 'IRM') && (
               <>
                 {confirmReason ? (
                   <Tooltip content={confirmReason} relationship="description">
@@ -331,9 +333,10 @@ function ProposalStep(props: {
               </>
             )}
           </div>
-          {!can('confirm_tier') && (
-            <Caption1>Confirm / change tier: {reasonFor('confirm_tier')}</Caption1>
-          )}
+          {!can('confirm_tier') &&
+            (me.permissions.includes('confirm_tier') || me.user.role === 'IRM') && (
+              <Caption1>Confirm / change tier: {reasonFor('confirm_tier')}</Caption1>
+            )}
           {changing && canConfirmNow && (
             <div className={s.stack}>
               <Field label="New tier" required>
@@ -377,14 +380,18 @@ const PROFILE_FIELDS: { key: keyof AIProfileIn; label: string; area?: boolean }[
   { key: 'write_actions_detail', label: 'Write actions detail', area: true },
 ];
 
-function ProfileForm(props: { transitionId: string; initial: AIProfile; me: Me }) {
+function ProfileForm(props: {
+  transitionId: string;
+  initial: AIProfile;
+  access: TransitionDetail['access'];
+}) {
   const s = useStyles();
   const [v, setV] = useState<AIProfileIn>({ ...props.initial });
   const save = useSaveAiProfile(props.transitionId);
   const showError = useApiErrorToast();
   const { dispatchToast } = useToastController(TOASTER_ID);
-  const allowed = props.me.permissions.includes('edit_ai_profile');
-  const why = props.me.denied_reasons['edit_ai_profile'] ?? 'You cannot edit the AI profile';
+  const allowed = props.access['edit_ai_profile'] === null;
+  const why = props.access['edit_ai_profile'] ?? 'You cannot edit the AI profile';
   const btn = (
     <Button
       appearance="primary"
@@ -451,11 +458,11 @@ function ProfileForm(props: { transitionId: string; initial: AIProfile; me: Me }
   );
 }
 
-function ProfileStep(props: { t: TransitionDetail; me: Me }) {
+function ProfileStep(props: { t: TransitionDetail }) {
   const q = useAiProfile(props.t.id, true);
   if (q.error) return <ErrorState error={q.error} />;
   if (!q.data) return <LoadingState rows={5} />;
-  return <ProfileForm transitionId={props.t.id} initial={q.data} me={props.me} />;
+  return <ProfileForm transitionId={props.t.id} initial={q.data} access={props.t.access} />;
 }
 
 const STEP_TITLES = ['1. Questions', '2. Proposed tier', '3. AI profile'];
@@ -473,6 +480,7 @@ export function TieringPage() {
 
   const err = tq.error ?? ref.error ?? me.error;
   const t = tq.data;
+  const noTierYet = !!t?.requires_tiering && !t.tier?.proposed_tier && !t.tier?.confirmed_tier;
   const answers: Answers = edited ?? (t?.tier?.answers as Answers | undefined) ?? {};
   return (
     <>
@@ -480,9 +488,14 @@ export function TieringPage() {
         title="AI tiering"
         subtitle={t ? `${t.id} · ${t.name} · ${t.flavour_label}` : undefined}
         actions={
-          <Button appearance="primary" onClick={() => navigate(`/transitions/${id}/scope`)}>
-            Continue to scope
-          </Button>
+          <Tooltip
+            content={noTierYet ? 'No tier has been proposed yet' : 'Go to scope and applicability'}
+            relationship="description"
+          >
+            <Button appearance="primary" onClick={() => navigate(`/transitions/${id}/scope`)}>
+              Continue to scope
+            </Button>
+          </Tooltip>
         }
       />
       {err ? (
@@ -509,6 +522,14 @@ export function TieringPage() {
               </Button>
             ))}
           </div>
+          {noTierYet && (
+            <MessageBar intent="warning">
+              <MessageBarBody>
+                No tier has been proposed yet. You can continue to scope, but the checklist will not
+                be adjusted for a tier until the OR focal proposes one and the IRM confirms it.
+              </MessageBarBody>
+            </MessageBar>
+          )}
           {t.tier?.status === 'Proposed' && (
             <MessageBar intent="info">
               <MessageBarBody>
@@ -520,7 +541,7 @@ export function TieringPage() {
             <QuestionsStep t={t} reference={ref.data} answers={answers} set={setAnswers} />
           )}
           {step === 1 && <ProposalStep t={t} reference={ref.data} me={me.data} answers={answers} />}
-          {step === 2 && <ProfileStep t={t} me={me.data} />}
+          {step === 2 && <ProfileStep t={t} />}
           <div className={s.actions}>
             <Button disabled={step === 0} onClick={() => setStep(step - 1)}>
               Back

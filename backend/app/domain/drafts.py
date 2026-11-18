@@ -14,11 +14,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
+from app.access import ensure_transition_role
 from app.config import get_settings
 from app.domain import audit
 from app.domain.approvals import default_approver
 from app.domain.html_sanitize import sanitize_html
-from app.errors import BadRequest, Conflict
+from app.errors import BadRequest, Conflict, Forbidden
 from app.models import (
     ApprovalChainConfig,
     ApprovalRequest,
@@ -28,6 +29,7 @@ from app.models import (
     TransitionItem,
     User,
 )
+from app.permissions import DENIAL_REASONS, Perm, has_perm
 from app.rules.constants import DECISION_GATES, DONE_STATUSES, GATE_SHORT, NA_STATUSES
 from app.services.factory import get_ai_service, get_mail_service, get_notification_service
 
@@ -37,6 +39,55 @@ _SEND_ACTIONS: dict[str, SendAction] = {}
 _EMAIL = re.compile(r"^[^@\s<>,;]+@[^@\s<>,;]+\.[^@\s<>,;]+$")
 _HREF = re.compile(r'href="([^"]+)"')
 _TAG = re.compile(r"<[^>]+>")
+
+
+_SENDING: set[int] = set()  # drafts whose Send is in progress (the send helper marks them Sent)
+
+
+def is_being_sent(draft_id: int) -> bool:
+    """True while ``send_draft`` executes the draft's action (so the action does not mark it Sent)."""
+    return draft_id in _SENDING
+
+
+def ensure_can_use_draft(
+    db: Session,
+    user: User,
+    transition_id: str | None,
+    *,
+    allow_closed: bool = False,
+) -> None:
+    """Who may create / edit / send / discard a draft (BE#1): the OR focal of the draft's
+    transition. A draft without a transition needs the role-level Perm.SEND_DRAFTS only."""
+    transition = db.get(Transition, transition_id) if transition_id else None
+    if transition is None:
+        if not has_perm(user.role, Perm.SEND_DRAFTS):
+            raise Forbidden(DENIAL_REASONS[Perm.SEND_DRAFTS])
+        return
+    ensure_transition_role(db, user, transition, Perm.SEND_DRAFTS, allow_closed=allow_closed)
+
+
+def mark_sent_via_approval(
+    db: Session, draft: OrionDraft, user: User, request_id: str
+) -> OrionDraft:
+    """Mark a draft Sent because its approval request was created (no email of its own: the chain
+    notification reaches the approver, so there is exactly one approver email). Audited (Human)."""
+    before = _snap(draft)
+    draft.status = "Sent"
+    draft.sent_by = user.id
+    draft.sent_at = clock.now()
+    audit.record(
+        db,
+        actor=user,
+        actor_type="Human",
+        entity="OrionDraft",
+        entity_id=draft.id,
+        action="sent",
+        transition_id=draft.transition_id,
+        before=before,
+        after={**_snap(draft), "approval_request_id": request_id},
+        note=f"Draft sent via approval request {request_id}",
+    )
+    return draft
 
 
 def register_send_action(type: str, fn: SendAction) -> None:
@@ -117,7 +168,9 @@ def edit_draft(
     subject: str,
     body_html: str,
 ) -> OrionDraft:
-    """Edit a Draft before sending (409 otherwise); the body is sanitised. Audited as Human."""
+    """Edit a Draft before sending (409 otherwise); the body is sanitised. Audited as Human.
+    Only the OR focal of the draft's transition may edit it (BE#1)."""
+    ensure_can_use_draft(db, user, draft.transition_id)
     if draft.status != "Draft":
         raise Conflict(
             f"Draft is {draft.status}", [f"Only a Draft can be edited (this one is {draft.status})"]
@@ -144,7 +197,9 @@ def edit_draft(
 
 
 def discard_draft(db: Session, *, draft: OrionDraft, user: User) -> OrionDraft:
-    """Discard a Draft (never sent). 409 unless Draft. Audited as Human."""
+    """Discard a Draft (never sent). 409 unless Draft. Audited as Human. Only the OR focal of the
+    draft's transition may discard it (BE#1); a closed transition's drafts can still be cleared."""
+    ensure_can_use_draft(db, user, draft.transition_id, allow_closed=True)
     if draft.status != "Draft":
         raise Conflict(
             f"Draft is {draft.status}",
@@ -206,7 +261,9 @@ def send_draft(
     A failing action (409) aborts the send. Then sends the mock email via MailService and a Teams
     card to the recipients, sets status Sent, sent_by, sent_at, links OutboxMessage.draft_id,
     audits (actor Human). Returns (draft, outbox_message_ids, result). Does not commit.
+    Only the OR focal of the draft's transition may send it (BE#1).
     """
+    ensure_can_use_draft(db, user, draft.transition_id)
     if draft.status != "Draft":
         raise Conflict(
             f"Draft is {draft.status}", [f"Only a Draft can be sent (this one is {draft.status})"]
@@ -224,14 +281,18 @@ def send_draft(
         transition = db.get(Transition, draft.transition_id) if draft.transition_id else None
         if transition is None or not action.get("gate"):
             raise BadRequest("Draft action is incomplete", ["The draft has no transition or gate"])
-        request = gate_actions.request_gate_approval(
-            db,
-            transition=transition,
-            gate=str(action["gate"]),
-            user=user,
-            note=f"Sent Orion draft {draft.id}",
-            via_draft_id=draft.id,
-        )
+        _SENDING.add(draft.id)
+        try:
+            request = gate_actions.request_gate_approval(
+                db,
+                transition=transition,
+                gate=str(action["gate"]),
+                user=user,
+                note=f"Sent Orion draft {draft.id}",
+                via_draft_id=draft.id,
+            )
+        finally:
+            _SENDING.discard(draft.id)
         result["approval_request_id"] = request.id
     elif kind in _SEND_ACTIONS:
         result.update(_SEND_ACTIONS[kind](db, draft, user) or {})
@@ -286,8 +347,17 @@ def _days_to_decision(transition: Transition) -> int | None:
     return (transition.next_decision_date - clock.today()).days
 
 
-def draft_chaser(db: Session, *, transition: Transition, item_ids: Sequence[str]) -> OrionDraft:
-    """Orion drafts a chaser for open items (spec 10.1). 422 for unknown or Done items."""
+def draft_chaser(
+    db: Session,
+    *,
+    transition: Transition,
+    item_ids: Sequence[str],
+    user: User | None = None,
+) -> OrionDraft:
+    """Orion drafts a chaser for open items (spec 10.1). 422 for unknown or Done items.
+    When ``user`` (the human who asked) is given, only the transition's OR focal may ask (BE#1)."""
+    if user is not None:
+        ensure_can_use_draft(db, user, transition.id)
     wanted = list(dict.fromkeys(item_ids))
     db.flush()
     rows = {
@@ -364,7 +434,9 @@ def draft_chaser(db: Session, *, transition: Transition, item_ids: Sequence[str]
 def draft_approval_request(
     db: Session, *, transition: Transition, gate: str, user: User
 ) -> OrionDraft:
-    """Orion drafts the AtD/AtO request email for the first approver (BR-050: nothing is sent)."""
+    """Orion drafts the AtD/AtO request email for the first approver (BR-050: nothing is sent).
+    Only the transition's OR focal may ask for it (BE#1)."""
+    ensure_can_use_draft(db, user, transition.id)
     if gate not in DECISION_GATES:
         raise BadRequest("Not an approval gate", [f"{gate} is not an approval gate (AtD or AtO)"])
     from app.domain.readiness_check import compute_readiness_check  # another area; imported late

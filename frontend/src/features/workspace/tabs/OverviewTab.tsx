@@ -26,6 +26,7 @@ import {
   useOverviewExceptions,
   useOverviewRisks,
 } from '../api';
+import { itemCountsParts } from '../itemCounts';
 import type { TabProps } from '../types';
 
 const useStyles = makeStyles({
@@ -93,7 +94,7 @@ function LensCards({ detail }: { detail: TransitionDetail }) {
               <LensChip lens={l.lens as Lens} />
               <Caption1>{l.owner_label}</Caption1>
             </div>
-            <span className={s.pct}>{l.readiness_pct}%</span>
+            <span className={s.pct}>{l.scope === 0 ? '–' : `${l.readiness_pct}%`}</span>
             <ProgressBar value={l.readiness_pct / 100} aria-label={`${l.lens} readiness`} />
             <div className={s.counts}>
               <Badge appearance="outline">{l.done} done</Badge>
@@ -330,6 +331,16 @@ export function OverviewTab({ transitionId }: TabProps) {
         <>
           <Subtitle2 as="h2">Readiness by lens at {detail.current_gate_short}</Subtitle2>
           <LensCards detail={detail} />
+          {detail.item_counts && (
+            <Body1
+              as="p"
+              style={{ margin: `${tokens.spacingVerticalS} 0 ${tokens.spacingVerticalL}` }}
+            >
+              <strong>Items in scope:</strong>{' '}
+              {itemCountsParts(detail.item_counts, detail.risk_tier).join(' · ')} ·{' '}
+              <strong>{detail.item_counts.total} applicable</strong>
+            </Body1>
+          )}
         </>
       ) : (
         <EmptyState message="Lens readiness appears once the assessment is launched." />

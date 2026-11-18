@@ -14,6 +14,8 @@ from app.deps import get_current_user, get_db, require, require_demo_mode
 from app.models import User
 from app.permissions import Perm
 from app.schemas.admin import (
+    ApprovalCancelIn,
+    ApprovalCancelOut,
     ApprovalChainsIn,
     ApprovalChainsOut,
     DemoResetOut,
@@ -208,6 +210,27 @@ def put_approval_chains(
     from app.domain import admin as domain
 
     result = domain.put_approval_chains(db, body, user)
+    db.commit()
+    return result
+
+
+@router.post(
+    "/admin/approvals/{request_id}/cancel",
+    response_model=ApprovalCancelOut,
+    responses={**_E, 409: {"model": ErrorOut}},
+)
+def cancel_approval(
+    request_id: str,
+    body: ApprovalCancelIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(require(Perm.ADMIN)),
+) -> ApprovalCancelOut:
+    """Cancel a stuck Pending approval request (reason required, audited). ADMIN only (403);
+    404 unknown request; 409 when already decided or cancelled. Admin has no other workflow
+    override: decisions stay with the chain approvers."""
+    from app.domain import admin as domain
+
+    result = domain.cancel_approval_request(db, request_id, body, user)
     db.commit()
     return result
 

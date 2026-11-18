@@ -70,7 +70,7 @@ export function TierCard({ transition }: { transition: TransitionDetail }) {
           <span className={s.muted}>
             {t.proposed_by ? `Proposed by ${t.proposed_by.name}. ` : ''}
             {t.confirmed_by_or_focal
-              ? `Confirmed by ${t.confirmed_by_or_focal.name} (OR focal). `
+              ? `Acknowledged by ${t.confirmed_by_or_focal.name} (OR focal). `
               : ''}
             {t.confirmed_by_irm ? `Confirmed by ${t.confirmed_by_irm.name} (IRM). ` : ''}
             {t.confirmed_at ? formatDate(t.confirmed_at) : ''}
@@ -98,7 +98,7 @@ function ProfileForm({ transitionId, profile }: { transitionId: string; profile:
   const s = useRecordStyles();
   const save = useSaveAiProfile(transitionId);
   const showError = useApiErrorToast();
-  const perm = usePerm('edit_ai_profile');
+  const perm = usePerm('edit_ai_profile', transitionId);
   const [form, setForm] = useState<AiProfileIn>({
     infrastructure_solution: profile.infrastructure_solution ?? '',
     agentic_framework: profile.agentic_framework ?? '',
@@ -204,7 +204,7 @@ export function EvalCard({ transitionId }: { transitionId: string }) {
   const save = useSaveEvalResults(transitionId);
   const imp = useImportEvalResults(transitionId);
   const showError = useApiErrorToast();
-  const perm = usePerm('edit_eval_results');
+  const perm = usePerm('edit_eval_results', transitionId);
   const [edits, setEdits] = useState<Record<string, Edit>>({});
   const patch = (id: string, e: Edit) =>
     setEdits((all) => ({ ...all, [id]: { ...all[id], ...e } }));

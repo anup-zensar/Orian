@@ -7,6 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.deps import MAX_BULK
 from app.schemas.common import PersonRef
 
 OcetStatus = Literal[
@@ -150,12 +151,12 @@ class OcetLineIn(BaseModel):
 
 
 class OcetSaveIn(BaseModel):
-    lines: list[OcetLineIn]
-    deleted_line_ids: list[int] = Field(default_factory=list)
+    lines: list[OcetLineIn] = Field(max_length=MAX_BULK)
+    deleted_line_ids: list[int] = Field(default_factory=list, max_length=MAX_BULK)
 
 
 class RequestInputsIn(BaseModel):
-    line_ids: list[int] = Field(min_length=1)
+    line_ids: list[int] = Field(min_length=1, max_length=MAX_BULK)
 
 
 class RequestInputsOut(BaseModel):

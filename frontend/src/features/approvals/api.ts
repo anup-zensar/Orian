@@ -17,6 +17,17 @@ export function useApprovals(scope: ApprovalScope, enabled = true) {
   });
 }
 
+/** One request by id (deep link ?request=<id>: finds it in any tab and scope). */
+export function useApproval(requestId: string | null) {
+  return useQuery({
+    queryKey: ['approvals', 'one', requestId],
+    queryFn: ({ signal }) =>
+      apiFetch<ApprovalRequest>(`/approvals/${encodeURIComponent(requestId ?? '')}`, { signal }),
+    enabled: !!requestId,
+    retry: false,
+  });
+}
+
 /** Approve or reject one step. Reject needs a comment (422 otherwise). */
 export function useActOnApproval() {
   const qc = useQueryClient();

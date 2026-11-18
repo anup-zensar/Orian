@@ -58,13 +58,13 @@ class ScopeOut(BaseModel):
 
 
 class ScopeDecisionIn(BaseModel):
-    item_id: str
+    item_id: str = Field(max_length=50)
     applies: Literal["Yes", "No", "To confirm"]
-    reason: str | None = None
+    reason: str | None = Field(default=None, max_length=4000)
 
 
 class ScopeUpdateIn(BaseModel):
-    decisions: list[ScopeDecisionIn]
+    decisions: list[ScopeDecisionIn] = Field(max_length=2000)
     source: Literal["human", "orion_recommendation"] = "human"
 
 

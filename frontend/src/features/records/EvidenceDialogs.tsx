@@ -1,7 +1,7 @@
+import { ReturnFocusDialog } from '../../components/ReturnFocusDialog';
 import { useState } from 'react';
 import {
   Button,
-  Dialog,
   DialogActions,
   DialogBody,
   DialogContent,
@@ -65,7 +65,7 @@ export function AddEvidenceDialog(props: {
   };
 
   return (
-    <Dialog open={props.open} onOpenChange={(_, d) => !d.open && props.onClose()}>
+    <ReturnFocusDialog open={props.open} onOpenChange={(_, d) => !d.open && props.onClose()}>
       <DialogSurface>
         <DialogBody>
           <DialogTitle>Add evidence</DialogTitle>
@@ -119,7 +119,7 @@ export function AddEvidenceDialog(props: {
           </DialogActions>
         </DialogBody>
       </DialogSurface>
-    </Dialog>
+    </ReturnFocusDialog>
   );
 }
 
@@ -138,7 +138,7 @@ export function ReviewEvidenceDialog(props: {
   const needsNote = props.decision === 'Reject';
 
   return (
-    <Dialog open={!!ev} onOpenChange={(_, d) => !d.open && props.onClose()}>
+    <ReturnFocusDialog open={!!ev} onOpenChange={(_, d) => !d.open && props.onClose()}>
       <DialogSurface>
         <DialogBody>
           <DialogTitle>
@@ -176,6 +176,6 @@ export function ReviewEvidenceDialog(props: {
           </DialogActions>
         </DialogBody>
       </DialogSurface>
-    </Dialog>
+    </ReturnFocusDialog>
   );
 }

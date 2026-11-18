@@ -47,7 +47,7 @@ class EvidenceOut(BaseModel):
 
 class EvidenceReviewIn(BaseModel):
     decision: Literal["Accept", "Reject"]
-    note: str = ""
+    note: str = Field(default="", max_length=4000)
 
 
 # --- actions ------------------------------------------------------------------------------------
@@ -68,15 +68,15 @@ class ActionOut(BaseModel):
 
 class ActionCreateIn(BaseModel):
     title: str = Field(min_length=1, max_length=300)
-    item_ids: list[str] = []
-    owner_user_id: str
+    item_ids: list[str] = Field(default=[], max_length=200)
+    owner_user_id: str = Field(max_length=40)
     due_date: date
     priority: Priority3 = "Medium"
 
 
 class ActionPatchIn(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=300)
-    owner_user_id: str | None = None
+    owner_user_id: str | None = Field(default=None, max_length=40)
     due_date: date | None = None
     status: ActionStatus | None = None
     priority: Priority3 | None = None
@@ -102,20 +102,22 @@ class ConditionOut(BaseModel):
 
 
 class ConditionCreateIn(BaseModel):
-    item_id: str | None = Field(default=None, description="Playbook item id the condition covers")
-    owner_user_id: str
-    due_gate: str
-    text: str = Field(min_length=1)
+    item_id: str | None = Field(
+        default=None, max_length=40, description="Playbook item id the condition covers"
+    )
+    owner_user_id: str = Field(max_length=40)
+    due_gate: str = Field(max_length=40)
+    text: str = Field(min_length=1, max_length=4000)
 
 
 class ConditionPatchIn(BaseModel):
     """Either close (status "Closed" + close_note) or edit owner / due_gate / text of an Open condition."""
 
     status: Literal["Closed"] | None = None
-    close_note: str | None = None
-    owner_user_id: str | None = None
-    due_gate: str | None = None
-    text: str | None = Field(default=None, min_length=1)
+    close_note: str | None = Field(default=None, max_length=4000)
+    owner_user_id: str | None = Field(default=None, max_length=40)
+    due_gate: str | None = Field(default=None, max_length=40)
+    text: str | None = Field(default=None, min_length=1, max_length=4000)
 
 
 # --- risks --------------------------------------------------------------------------------------
@@ -128,10 +130,10 @@ class RiskOut(BaseModel):
 
 
 class RiskCreateIn(BaseModel):
-    title: str = Field(min_length=1)
+    title: str = Field(min_length=1, max_length=300)
     rating: Priority3
-    decision: str = ""
-    item_ids: list[str] = []
+    decision: str = Field(default="", max_length=4000)
+    item_ids: list[str] = Field(default=[], max_length=200)
 
 
 # --- hypercare defects --------------------------------------------------------------------------
@@ -146,14 +148,14 @@ class DefectOut(BaseModel):
 class DefectCreateIn(BaseModel):
     title: str = Field(min_length=1, max_length=300)
     priority: DefectPriority
-    owner_user_id: str | None = None
+    owner_user_id: str | None = Field(default=None, max_length=40)
 
 
 class DefectPatchIn(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=300)
     priority: DefectPriority | None = None
     status: DefectStatus | None = None
-    owner_user_id: str | None = None
+    owner_user_id: str | None = Field(default=None, max_length=40)
 
 
 class ConfirmNoDefectsIn(BaseModel):

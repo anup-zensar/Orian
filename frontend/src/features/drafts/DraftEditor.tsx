@@ -4,6 +4,8 @@ import {
   Caption1,
   Field,
   Input,
+  MessageBar,
+  MessageBarBody,
   Textarea,
   makeStyles,
   tokens,
@@ -15,6 +17,7 @@ import { AppLink } from '../../components/AppLink';
 import { usePerm } from '../gates/usePerm';
 import { useDiscardDraft, usePatchDraft, useSendDraft, type Draft } from './api';
 import { SourceLabel } from './SourceLabel';
+import { htmlToMarkdown, markdownToHtml, splitAddresses, validateRecipients } from './richText';
 
 const useStyles = makeStyles({
   root: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
@@ -25,6 +28,7 @@ const useStyles = makeStyles({
     gap: tokens.spacingHorizontalL,
   },
   body: { fontFamily: tokens.fontFamilyMonospace, minHeight: '200px' },
+  text: { minHeight: '200px' },
   preview: {
     width: '100%',
     height: '280px',
@@ -34,12 +38,6 @@ const useStyles = makeStyles({
   },
   actions: { display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap' },
 });
-
-const splitAddresses = (v: string) =>
-  v
-    .split(/[,;\s]+/)
-    .map((a) => a.trim())
-    .filter(Boolean);
 
 /** Sandboxed preview of an email body: never injected into the page DOM (spec 5.5). */
 export function EmailPreview({
@@ -77,7 +75,8 @@ function DraftEditorInner(props: {
   const { draft } = props;
   const showError = useApiErrorToast();
   const showSuccess = useSuccessToast();
-  const [editHtml, setEditHtml] = useState(false);
+  const [mode, setMode] = useState<'preview' | 'text' | 'html'>('preview');
+  const [md, setMd] = useState('');
   const perm = usePerm('send_drafts');
   const patch = usePatchDraft();
   const send = useSendDraft();
@@ -87,12 +86,19 @@ function DraftEditorInner(props: {
   const [subject, setSubject] = useState(draft.subject);
   const [body, setBody] = useState(draft.body_html);
 
-  const editable = draft.status === 'Draft';
+  const canEdit = draft.can_edit !== false;
+  const editable = draft.status === 'Draft' && canEdit;
+  const editReason = draft.edit_denied_reason ?? 'You cannot edit this draft';
   const dirty =
     to !== draft.to.join(', ') ||
     cc !== draft.cc.join(', ') ||
     subject !== draft.subject ||
     body !== draft.body_html;
+  const toError = validateRecipients(to, true);
+  const ccError = validateRecipients(cc, false);
+  const invalid = [toError, ccError, subject.trim() ? null : 'Add a subject'].filter(
+    (r): r is string => !!r,
+  );
   const busy = patch.isPending || send.isPending || discard.isPending;
 
   const save = () =>
@@ -109,7 +115,7 @@ function DraftEditorInner(props: {
     try {
       if (dirty) await save();
       const r = await send.mutateAsync(draft.id);
-      showSuccess('Sent – see Outbox', <AppLink to="/outbox">Open Outbox</AppLink>);
+      showSuccess('Sent via email and Teams', <AppLink to="/outbox">View in Outbox</AppLink>);
       props.onSent?.(r.draft);
     } catch (e) {
       showError(e);
@@ -133,17 +139,48 @@ function DraftEditorInner(props: {
           {draft.transition_name ? ` · ${draft.transition_name}` : ''}
         </Caption1>
       </div>
-      <Field label="To (comma separated)" required>
+      {draft.status === 'Draft' && !canEdit && (
+        <MessageBar intent="info">
+          <MessageBarBody>You can view but not edit this draft: {editReason}</MessageBarBody>
+        </MessageBar>
+      )}
+      <Field
+        label="To (comma separated)"
+        required
+        validationState={toError && to !== draft.to.join(', ') ? 'error' : 'none'}
+        validationMessage={to !== draft.to.join(', ') ? toError : null}
+      >
         <Input value={to} disabled={!editable} onChange={(_, d) => setTo(d.value)} />
       </Field>
-      <Field label="Cc (comma separated)">
+      <Field
+        label="Cc (comma separated)"
+        validationState={ccError ? 'error' : 'none'}
+        validationMessage={ccError}
+      >
         <Input value={cc} disabled={!editable} onChange={(_, d) => setCc(d.value)} />
       </Field>
       <Field label="Subject" required>
         <Input value={subject} disabled={!editable} onChange={(_, d) => setSubject(d.value)} />
       </Field>
       <div className={s.split}>
-        {editHtml && (
+        {mode === 'text' && (
+          <Field
+            label="Body (text)"
+            hint="Blank line = new paragraph, '- ' = bullet, **bold**, *italic*, [text](https://link)"
+          >
+            <Textarea
+              textarea={{ className: s.text }}
+              value={md}
+              disabled={!editable}
+              resize="vertical"
+              onChange={(_, d) => {
+                setMd(d.value);
+                setBody(markdownToHtml(d.value));
+              }}
+            />
+          </Field>
+        )}
+        {mode === 'html' && (
           <Field label="Body (HTML source)">
             <Textarea
               textarea={{ className: s.body }}
@@ -158,24 +195,55 @@ function DraftEditorInner(props: {
           <EmailPreview html={body} title="Draft preview" />
         </Field>
       </div>
-      {editable && (
+      {draft.status === 'Draft' && (
         <div className={s.actions}>
-          <Button onClick={() => setEditHtml((v) => !v)}>
-            {editHtml ? 'Hide HTML' : 'Edit HTML'}
+          <Button
+            disabled={!editable}
+            appearance={mode === 'text' ? 'primary' : 'secondary'}
+            onClick={() => {
+              if (mode === 'text') return setMode('preview');
+              setMd(htmlToMarkdown(body));
+              setMode('text');
+            }}
+          >
+            Edit as text
+          </Button>
+          <Button
+            disabled={!editable}
+            appearance={mode === 'html' ? 'primary' : 'secondary'}
+            onClick={() => setMode(mode === 'html' ? 'preview' : 'html')}
+          >
+            Edit HTML
           </Button>
           <ReasonButton
             appearance="primary"
-            reasons={[perm.reason, ...(props.sendReasons ?? [])]}
+            reasons={[
+              perm.reason,
+              draft.can_send === false
+                ? (draft.send_denied_reason ?? 'You cannot send this draft')
+                : null,
+              ...invalid,
+              ...(props.sendReasons ?? []),
+            ]}
             onClick={onSend}
           >
             {send.isPending ? 'Sending...' : 'Send'}
           </ReasonButton>
-          <Button disabled={!dirty || busy} onClick={onSave}>
+          <ReasonButton
+            reasons={[canEdit ? null : editReason, dirty ? null : 'No changes to save', ...invalid]}
+            disabled={busy}
+            onClick={onSave}
+          >
             Save changes
-          </Button>
-          <Button appearance="subtle" disabled={busy} onClick={onDiscard}>
+          </ReasonButton>
+          <ReasonButton
+            appearance="subtle"
+            reasons={[canEdit ? null : editReason]}
+            disabled={busy}
+            onClick={onDiscard}
+          >
             Discard
-          </Button>
+          </ReasonButton>
         </div>
       )}
     </div>
