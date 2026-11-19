@@ -19,6 +19,8 @@ The rules (for the *resulting* state of the item):
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from app.rules.constants import (
     DESIGN_EFFECTIVENESS,
     GAP_STATUSES,
@@ -46,14 +48,23 @@ def is_gap_status(status: str) -> bool:
     return status in GAP_STATUSES
 
 
+def _or_list(values: Sequence[str]) -> str:
+    """'Critical, Major or Minor'."""
+    return " or ".join([", ".join(values[:-1]), values[-1]]) if len(values) > 1 else "".join(values)
+
+
 def input_errors(
     *,
     lens: str,
     status: str | None = None,
     gap_severity: str | None = None,
     design_effectiveness: str | None = None,
+    severities: Sequence[str] = SEVERITIES,
+    design_options: Sequence[str] = DESIGN_EFFECTIVENESS,
 ) -> list[str]:
-    """Malformed input (422). ``None`` values are 'not given' and never an error."""
+    """Malformed input (422). ``None`` values are 'not given' and never an error. ``severities`` and
+    ``design_options`` are the values on offer (the Admin's dropdown lists); the defaults are the
+    standard lists."""
     reasons: list[str] = []
     if lens not in LENSES:
         reasons.append(f"Unknown lens '{lens}'")
@@ -62,10 +73,10 @@ def input_errors(
             f"Status '{status}' is not allowed for the {lens} lens "
             f"(allowed: {', '.join(allowed_statuses(lens))})"
         )
-    if gap_severity is not None and gap_severity not in SEVERITIES:
-        reasons.append(f"Gap severity must be one of {', '.join(SEVERITIES)}")
-    if design_effectiveness is not None and design_effectiveness not in DESIGN_EFFECTIVENESS:
-        reasons.append(f"Design effectiveness must be one of {', '.join(DESIGN_EFFECTIVENESS)}")
+    if gap_severity is not None and gap_severity not in severities:
+        reasons.append(f"Gap severity must be one of {', '.join(severities)}")
+    if design_effectiveness is not None and design_effectiveness not in design_options:
+        reasons.append(f"Design effectiveness must be one of {', '.join(design_options)}")
     return reasons
 
 
@@ -82,6 +93,7 @@ def rule_violations(
     check_design: bool = True,
     check_na: bool = True,
     check_condition: bool = True,
+    severities: Sequence[str] = SEVERITIES,
 ) -> list[str]:
     """BR-030 violations (409) for the RESULTING state of an item.
 
@@ -91,7 +103,7 @@ def rule_violations(
     reasons: list[str] = []
     if check_gap and status in GAP_STATUSES:
         if not gap_severity:
-            reasons.append(f"'{status}' needs a gap severity (Critical, Major or Minor)")
+            reasons.append(f"'{status}' needs a gap severity ({_or_list(severities)})")
         if not (note or "").strip():
             reasons.append(f"'{status}' needs a note explaining the gap")
     if check_na and status in NA_STATUSES and not (na_reason or "").strip():

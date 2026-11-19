@@ -1,14 +1,19 @@
 import dayjs from 'dayjs';
+import { useState } from 'react';
 import {
   Badge,
   Body1,
+  Button,
   Caption1,
   MessageBar,
   MessageBarBody,
   ProgressBar,
   Subtitle2,
+  Toast,
+  ToastTitle,
   makeStyles,
   tokens,
+  useToastController,
 } from '@fluentui/react-components';
 import { ActorBadge } from '../../../components/ActorBadge';
 import { AppLink } from '../../../components/AppLink';
@@ -18,6 +23,18 @@ import { LensChip } from '../../../components/LensChip';
 import { LoadingState } from '../../../components/LoadingState';
 import { SectionCard } from '../../../components/SectionCard';
 import { lensColors, type ActorType, type Lens } from '../../../theme/tokens';
+import { TOASTER_ID, useApiErrorToast } from '../../../hooks/useApiErrorToast';
+import { DynamicField } from '../../intake/DynamicField';
+import { useUpdateTransition } from '../../intake/api';
+import {
+  displayValue,
+  emptyValue,
+  fromApiValue,
+  toApiValue,
+  type FieldValue,
+} from '../../intake/fieldValues';
+import { fieldState, useIntakeFields, useOptionLabel } from '../../reference/options';
+import { useUsers } from '../../users/api';
 import { useTransition, type TransitionDetail } from '../../transition/api';
 import {
   useAudit,
@@ -73,6 +90,11 @@ const useStyles = makeStyles({
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   line: { display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'center', flexWrap: 'wrap' },
+  fieldGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: tokens.spacingHorizontalM,
+  },
   timeline: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
 });
 
@@ -100,10 +122,10 @@ function LensCards({ detail }: { detail: TransitionDetail }) {
               <Badge appearance="outline">{l.done} done</Badge>
               <Badge appearance="outline">{l.in_progress} in progress</Badge>
               <Badge appearance="outline">{l.not_started} not started</Badge>
-              <Badge appearance="outline" color={l.open_gaps ? 'danger' : 'subtle'}>
+              <Badge appearance="outline" color={l.open_gaps ? 'danger' : 'informative'}>
                 {l.open_gaps} gaps
               </Badge>
-              <Badge appearance="outline" color={l.critical_gaps ? 'danger' : 'subtle'}>
+              <Badge appearance="outline" color={l.critical_gaps ? 'danger' : 'informative'}>
                 {l.critical_gaps} critical
               </Badge>
             </div>
@@ -154,6 +176,7 @@ function ConditionsCard({ id }: { id: string }) {
 
 function ExceptionsCard({ id }: { id: string }) {
   const s = useStyles();
+  const optionLabel = useOptionLabel();
   const q = useOverviewExceptions(id);
   const pending = (q.data ?? []).filter(
     (e) => e.status.startsWith('Pending') || e.status === 'Draft',
@@ -174,7 +197,7 @@ function ExceptionsCard({ id }: { id: string }) {
                 <strong>{e.ref}</strong>
                 {e.item_id && <Caption1>{e.item_id}</Caption1>}
                 <Badge appearance="tint" color="warning">
-                  {e.status}
+                  {optionLabel('exception_statuses', e.status)}
                 </Badge>
               </div>
               <Body1>{e.text}</Body1>
@@ -191,6 +214,7 @@ function ExceptionsCard({ id }: { id: string }) {
 
 function RisksCard({ id }: { id: string }) {
   const s = useStyles();
+  const optionLabel = useOptionLabel();
   const q = useOverviewRisks(id);
   return (
     <SectionCard title="Risks">
@@ -212,7 +236,7 @@ function RisksCard({ id }: { id: string }) {
                     r.rating === 'High' ? 'danger' : r.rating === 'Medium' ? 'warning' : 'subtle'
                   }
                 >
-                  {r.rating}
+                  {optionLabel('risk_ratings', r.rating)}
                 </Badge>
               </div>
               <Body1>{r.title}</Body1>
@@ -312,6 +336,133 @@ function GateHistory({ id }: { id: string }) {
   );
 }
 
+/** The custom fields of this transition (set in Admin): those marked "show on overview", editable by
+ * whoever may edit the transition, plus read-only "Retired fields" that still hold a value. */
+function CustomFieldsCard({ detail }: { detail: TransitionDetail }) {
+  const s = useStyles();
+  const fields = useIntakeFields({ includeInactive: true, includeHidden: true });
+  const optionLabel = useOptionLabel();
+  const users = useUsers();
+  const update = useUpdateTransition(detail.id);
+  const showError = useApiErrorToast();
+  const { dispatchToast } = useToastController(TOASTER_ID);
+  const [draft, setDraft] = useState<Record<string, FieldValue> | null>(null);
+
+  const stored = (detail as { custom_fields?: Record<string, unknown> | null }).custom_fields ?? {};
+  const custom = fields.filter((f) => !f.builtin);
+  const current = custom.filter(
+    (f) =>
+      f.active &&
+      f.show_on_overview &&
+      fieldState(f, detail.project_type, detail.portfolio).applies,
+  );
+  const retired = custom.filter((f) => !f.active && stored[f.key] != null && stored[f.key] !== '');
+  if (current.length === 0 && retired.length === 0) return null;
+
+  const people = users.data ?? [];
+  const valueText = (f: (typeof custom)[number]) =>
+    displayValue(f, stored[f.key], (v) =>
+      f.type === 'user'
+        ? (people.find((u) => u.id === v)?.name ?? v)
+        : optionLabel(f.option_list ?? '', v),
+    );
+  const canEdit = detail.access['edit_transition'] === null && current.length > 0;
+  const why = detail.access['edit_transition'];
+
+  const save = () => {
+    if (!draft) return;
+    // An emptied field is sent as null so the stored value is removed.
+    const body = Object.fromEntries(current.map((f) => [f.key, toApiValue(f, draft[f.key])]));
+    update.mutate(
+      { custom_fields: body },
+      {
+        onSuccess: () => {
+          setDraft(null);
+          dispatchToast(
+            <Toast>
+              <ToastTitle>Details saved</ToastTitle>
+            </Toast>,
+            { intent: 'success' },
+          );
+        },
+        onError: showError,
+      },
+    );
+  };
+
+  return (
+    <SectionCard
+      title="Additional details"
+      actions={
+        draft ? undefined : (
+          <Button
+            size="small"
+            disabledFocusable={!canEdit}
+            title={canEdit ? undefined : (why ?? undefined)}
+            onClick={() =>
+              setDraft(
+                Object.fromEntries(
+                  current.map((f) => [f.key, fromApiValue(f, stored[f.key] ?? emptyValue(f))]),
+                ),
+              )
+            }
+          >
+            Edit
+          </Button>
+        )
+      }
+    >
+      {draft ? (
+        <>
+          <div className={s.fieldGrid}>
+            {current.map((f) => (
+              <DynamicField
+                key={f.key}
+                field={f}
+                users={people}
+                value={draft[f.key]}
+                onChange={(value) => setDraft({ ...draft, [f.key]: value })}
+              />
+            ))}
+          </div>
+          <div className={s.line} style={{ marginTop: tokens.spacingVerticalM }}>
+            <Button appearance="primary" disabled={update.isPending} onClick={save}>
+              Save
+            </Button>
+            <Button disabled={update.isPending} onClick={() => setDraft(null)}>
+              Cancel
+            </Button>
+          </div>
+        </>
+      ) : (
+        <div className={s.fieldGrid}>
+          {current.map((f) => (
+            <div key={f.key}>
+              <Caption1>{f.label}</Caption1>
+              <Body1 block>{valueText(f)}</Body1>
+            </div>
+          ))}
+        </div>
+      )}
+      {retired.length > 0 && (
+        <>
+          <Subtitle2 as="h3" style={{ marginTop: tokens.spacingVerticalM }}>
+            Retired fields
+          </Subtitle2>
+          <div className={s.fieldGrid}>
+            {retired.map((f) => (
+              <div key={f.key}>
+                <Caption1>{f.label} (retired, read-only)</Caption1>
+                <Body1 block>{valueText(f)}</Body1>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </SectionCard>
+  );
+}
+
 /** Overview tab (FR-030 a, spec 8.7 a): lens cards, conditions, exceptions, risks, blocker, activity, gates. */
 export function OverviewTab({ transitionId }: TabProps) {
   const s = useStyles();
@@ -349,6 +500,9 @@ export function OverviewTab({ transitionId }: TabProps) {
         <ConditionsCard id={detail.id} />
         <ExceptionsCard id={detail.id} />
         <RisksCard id={detail.id} />
+      </div>
+      <div className={s.two}>
+        <CustomFieldsCard detail={detail} />
       </div>
       <div className={s.two}>
         <RecentActivity id={detail.id} />

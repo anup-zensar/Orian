@@ -15,6 +15,7 @@ import {
 import { useApiErrorToast } from '../../hooks/useApiErrorToast';
 import { useAuth } from '../../auth/useAuth';
 import { useReference } from '../reference/api';
+import { useOptions } from '../reference/options';
 import {
   useCreateCondition,
   useCreateRisk,
@@ -22,6 +23,7 @@ import {
   useRequestException,
   type ConditionRow,
   type Item,
+  type RiskCreate,
 } from './api';
 import { GateSelect, ItemSelect, OwnerSelect } from './common';
 import { useRecordStyles } from './hooks';
@@ -185,7 +187,11 @@ export function CreateRiskDialog(props: {
   const create = useCreateRisk(props.transitionId);
   const showError = useApiErrorToast();
   const [title, setTitle] = useState('');
-  const [rating, setRating] = useState<'High' | 'Medium' | 'Low'>('Medium');
+  const ratings = useOptions('risk_ratings');
+  // A new risk starts at the middle rating of the list (Medium today).
+  const [rating, setRating] = useState<string>(
+    ratings[Math.floor(ratings.length / 2)]?.value ?? '',
+  );
   const [decision, setDecision] = useState('');
   const [itemId, setItemId] = useState('');
   return (
@@ -199,7 +205,7 @@ export function CreateRiskDialog(props: {
         create.mutate(
           {
             title: title.trim(),
-            rating,
+            rating: rating as RiskCreate['rating'],
             decision: decision.trim(),
             item_ids: itemId ? [itemId] : [],
           },
@@ -211,9 +217,11 @@ export function CreateRiskDialog(props: {
         <Input value={title} onChange={(_, d) => setTitle(d.value)} />
       </Field>
       <Field label="Rating">
-        <Select value={rating} onChange={(_, d) => setRating(d.value as typeof rating)}>
-          {['High', 'Medium', 'Low'].map((r) => (
-            <option key={r}>{r}</option>
+        <Select value={rating} onChange={(_, d) => setRating(d.value)}>
+          {ratings.map((r) => (
+            <option key={r.value} value={r.value}>
+              {r.label}
+            </option>
           ))}
         </Select>
       </Field>

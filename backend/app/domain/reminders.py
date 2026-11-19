@@ -17,7 +17,9 @@ from sqlalchemy.orm import Session
 
 from app import clock
 from app.config import get_settings
-from app.domain import audit
+from app.domain import audit, cfg
+from app.domain.approvals import chain_type_for_gate
+from app.domain.notify import message_templates
 from app.errors import BadRequest, Forbidden, NotFound
 from app.models import (
     Action,
@@ -79,10 +81,10 @@ def _next_decision_gate(current_gate: str) -> str | None:
 def _first_approver_role(db: Session, gate: str | None) -> str | None:
     if gate is None:
         return None
-    config = db.get(ApprovalChainConfig, "AtD" if gate == "SG4_ATD" else "AtO")
+    config = db.get(ApprovalChainConfig, chain_type_for_gate(db, gate) or "")
     if config is None or not config.steps:
         return None
-    return str(sorted(config.steps, key=lambda s: s["step"])[0]["role"])
+    return cfg.role_short_label(db, sorted(config.steps, key=lambda s: s["step"])[0]["role"])
 
 
 def _transition_facts(db: Session, transitions: list[Transition]) -> list[rm.TransitionFact]:
@@ -92,7 +94,7 @@ def _transition_facts(db: Session, transitions: list[Transition]) -> list[rm.Tra
         for r in db.scalars(
             select(ApprovalRequest).where(
                 ApprovalRequest.transition_id.in_(ids),
-                ApprovalRequest.type.in_(("AtD", "AtO")),
+                ApprovalRequest.type.in_(list(cfg.gate_chain(db).values())),
                 ApprovalRequest.status == "Pending",
             )
         ).all()
@@ -177,6 +179,7 @@ def _item_facts(db: Session, transitions: list[Transition]) -> list[rm.ItemFact]
                 first_due_gate=row.due_gate,
                 gate_index=GATE_ORDER.get(row.due_gate, 0),
                 done_or_covered=row.status in DONE_STATUSES or row.status in NA_STATUSES or covered,
+                category=row.playbook_item.category,
             )
         )
     return facts
@@ -198,6 +201,7 @@ def _action_facts(db: Session, ids: list[str]) -> list[rm.ActionFact]:
 
 def _step_facts(db: Session, transitions: list[Transition]) -> list[rm.StepFact]:
     by_id = {t.id: t for t in transitions}
+    mock_role = cfg.mock_approver(db)["mock_role"]
     facts = []
     for request in db.scalars(
         select(ApprovalRequest)
@@ -208,7 +212,7 @@ def _step_facts(db: Session, transitions: list[Transition]) -> list[rm.StepFact]
             if step.status != "Pending":
                 continue
             approver = step.approver_user_id
-            if approver is None and step.role == "CISO_BISO":  # mocked step: IRM acts (demo)
+            if approver is None and step.role == mock_role:  # mocked step: IRM acts (demo)
                 approver = by_id[request.transition_id].irm_user_id
             if approver is None:
                 continue
@@ -447,23 +451,23 @@ def run_reminders(
         tfacts = _transition_facts(db, transitions)
         ifacts = _item_facts(db, transitions) if enabled.keys() & {"R1", "R4", "R6"} else []
 
-        def cfg(rid: str) -> Any:
+        def rule_config(rid: str) -> Any:
             return rm.RuleConfig(rule_id=rid, params=dict(enabled[rid].params or {}), today=today)
 
         if "R1" in enabled:
-            candidates += rm.evaluate_r1(cfg("R1"), tfacts, ifacts)
+            candidates += rm.evaluate_r1(rule_config("R1"), tfacts, ifacts)
         if "R2" in enabled:
-            candidates += rm.evaluate_r2(cfg("R2"), tfacts, _action_facts(db, ids))
+            candidates += rm.evaluate_r2(rule_config("R2"), tfacts, _action_facts(db, ids))
         if "R3" in enabled:
-            candidates += rm.evaluate_r3(cfg("R3"), tfacts, _step_facts(db, transitions))
+            candidates += rm.evaluate_r3(rule_config("R3"), tfacts, _step_facts(db, transitions))
         if "R4" in enabled:
-            candidates += rm.evaluate_r4(cfg("R4"), tfacts, ifacts)
+            candidates += rm.evaluate_r4(rule_config("R4"), tfacts, ifacts)
         if "R5" in enabled:
-            candidates += rm.evaluate_r5(cfg("R5"), tfacts, _ocet_facts(db, ids))
+            candidates += rm.evaluate_r5(rule_config("R5"), tfacts, _ocet_facts(db, ids))
         if "R6" in enabled:
-            candidates += rm.evaluate_r6(cfg("R6"), tfacts, ifacts)
+            candidates += rm.evaluate_r6(rule_config("R6"), tfacts, ifacts)
         if "R7" in enabled:
-            candidates += rm.evaluate_r7(cfg("R7"), tfacts)
+            candidates += rm.evaluate_r7(rule_config("R7"), tfacts)
 
     skipped = 0
     if candidates:
@@ -506,7 +510,8 @@ def run_reminders(
             to, cc, text = drafts.approval_request_message(db, t, c.payload["gate"], recipient)
             text = {**text, "subject": c.payload["subject"]}
         else:
-            text = get_ai_service().draft_message(c.kind, _message_context(c, t, users))
+            ctx = {**_message_context(c, t, users), "templates": message_templates(db)}
+            text = get_ai_service().draft_message(c.kind, ctx)
         draft = drafts.create_draft(
             db,
             kind=c.kind,

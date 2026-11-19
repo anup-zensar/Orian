@@ -28,13 +28,16 @@ def create_transition(
 
     Validations (422 with one reason per problem, listed in ``reasons``):
     - project_type, portfolio, region, audience, write_actions, sensitive_data, target_gate,
-      investment_type, delivery_method must be options from reference.json (project types come from
-      FlavourRule, portfolios from Portfolio).
-    - Project type Agentic AI or Combined (FlavourRule.requires_tiering): audience, write_actions and
-      sensitive_data are required.
-    - Portfolio Retail Site Systems (AC-05): at least one ``sites`` row and every row must have both
-      Site ID and Site key (trimmed, non-empty). Fully blank rows are dropped first; for other
-      portfolios sites are ignored (stored as []).
+      investment_type, delivery_method must be active options of the configuration (Admin: Project
+      types, Portfolios, Forms & dropdowns).
+    - Fields the Admin required for the project type (by default audience, write_actions and
+      sensitive_data for the AI project types) are required, as are required custom fields.
+    - ``custom_fields`` ({"cf_<key>": value}) holds the "Additional details" fields of the form; every
+      key must be an active custom field and its value is checked against the field type, range and
+      dropdown list. A blank value clears the field.
+    - Portfolio with "Requires sites" (AC-05, Retail Site Systems by default): at least one ``sites``
+      row and every row must have both Site ID and Site key (trimmed, non-empty). Fully blank rows are
+      dropped first; for other portfolios sites are ignored (stored as []).
     - or_focal_user_id is required; every role picker must reference an existing user whose role matches
       (or_focal -> OR_FOCAL, pm -> PM, architect -> ARCHITECT, olm -> OLM, irm -> IRM).
     - name is trimmed and non-empty.
@@ -83,7 +86,7 @@ def update_transition(
     OR focal / IRM can only be re-assigned by an Admin; tier inputs (audience, write actions, sensitive
     data, project type) only by the OR focal and are locked (409) once the IRM confirmed the tier (before
     that a change clears the tier proposal); 404 unknown id; 409 "Transition is closed" when status is
-    Closed; 422 with the same option / role / site validations as create, evaluated on the merged
+    Closed; 422 with the same option / role / site / custom-field validations as create, evaluated on the merged
     result (a field explicitly set to null clears an optional field; required fields cannot be null).
 
     BR-010 re-assembly: if the assessment is launched and project_type or portfolio changes, rebuild

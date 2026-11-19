@@ -24,6 +24,7 @@ import { useApiErrorToast, TOASTER_ID } from '../../../hooks/useApiErrorToast';
 import { plural } from '../../../lib/format';
 import type { Lens } from '../../../theme/tokens';
 import { useReference } from '../../reference/api';
+import { useOptions } from '../../reference/options';
 import { useTransition } from '../../transition/api';
 import { useUsers } from '../../users/api';
 import { useBulkItems, useItems, usePatchItem, type ItemOut, type ItemPatchIn } from '../api';
@@ -181,7 +182,7 @@ export function AssessmentTab({ transitionId }: TabProps) {
     };
   }, [detail.data?.access]);
   const isFocal = perms.permissions.includes('confirm_scope');
-  const deOptions = ref.data?.design_effectiveness_options ?? ['–', 'Yes', 'No', 'N/A'];
+  const deOptions = useOptions('design_effectiveness').map((o) => o.value);
 
   const doPatch = useCallback(
     (item: ItemOut, body: ItemPatchIn) =>

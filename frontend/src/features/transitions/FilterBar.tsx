@@ -15,9 +15,17 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { Dismiss12Regular, Search20Regular } from '@fluentui/react-icons';
+import type { IntakeFieldRef } from '../../api/types';
 import { useReference } from '../reference/api';
+import {
+  useIntakeFields,
+  useOptionLabel,
+  useOptions,
+  usePortfolios,
+  useProjectTypes,
+} from '../reference/options';
 import { plural } from '../../lib/format';
-import type { FilterKey, UrlFilters } from './useUrlFilters';
+import type { CustomFilterKey, FilterKey, UrlFilters } from './useUrlFilters';
 
 const useStyles = makeStyles({
   bar: {
@@ -33,7 +41,7 @@ const useStyles = makeStyles({
 });
 
 type Update = (
-  patch: Partial<Record<FilterKey, string | undefined>>,
+  patch: Partial<Record<FilterKey | CustomFilterKey, string | undefined>>,
   opts?: { replace?: boolean },
 ) => void;
 
@@ -47,16 +55,14 @@ interface Props {
   notice?: string;
 }
 
-const RAG_OPTIONS = [
-  ['Red', 'Red'],
-  ['Amber', 'Amber'],
-  ['Green', 'Green'],
-  ['Grey', 'Not started'],
-] as const;
-
 const STATUS_OPTIONS = [
   ['Active', 'Active'],
   ['Closed', 'Closed'],
+] as const;
+
+const YES_NO = [
+  ['true', 'Yes'],
+  ['false', 'No'],
 ] as const;
 
 /** Describes the filters that have no dropdown (they come from KPI tiles) as removable tags. */
@@ -76,15 +82,43 @@ function tileFilterTags(f: UrlFilters): { key: FilterKey; label: string }[] {
   return tags;
 }
 
+type Dropdown = (
+  key: FilterKey | CustomFilterKey,
+  label: string,
+  options: readonly (readonly [string, string])[],
+) => React.ReactElement;
+
+/** The filter dropdown of one custom field: its option list, or Yes / No. */
+function CustomFilter(props: { field: IntakeFieldRef; filters: UrlFilters; dropdown: Dropdown }) {
+  const { field, filters, dropdown } = props;
+  const key = field.key as CustomFilterKey;
+  // A value in the URL stays selectable even if it has since been switched off.
+  const options = useOptions(field.option_list ?? '', { include: filters[key] ?? null });
+  const choices: readonly (readonly [string, string])[] =
+    field.type === 'boolean' ? YES_NO : options.map((o) => [o.value, o.label] as const);
+  return dropdown(key, field.label, choices);
+}
+
 export function FilterBar({ filters, update, clear, showMine, notice }: Props) {
   const s = useStyles();
   const ref = useReference();
+  const optionLabel = useOptionLabel();
+  const regions = useOptions('regions');
+  const portfolios = usePortfolios();
+  const projectTypes = useProjectTypes();
+  // Filter dropdowns for the custom fields an Admin marked filterable (yes/no and dropdown fields).
+  const customFilters = useIntakeFields().filter(
+    (f) => !f.builtin && f.filterable && (f.type === 'select' || f.type === 'boolean'),
+  );
+  const ragOptions = ['Red', 'Amber', 'Green', 'Grey'].map(
+    (rag) => [rag, rag === 'Grey' ? 'Not started' : optionLabel('rag_words', rag) || rag] as const,
+  );
   const [dismissed, setDismissed] = useState<string | null>(null);
   const tags = tileFilterTags(filters);
   const hasAny = Object.keys(filters).length > 0;
 
   const dropdown = (
-    key: FilterKey,
+    key: FilterKey | CustomFilterKey,
     label: string,
     options: readonly (readonly [string, string])[],
   ) => (
@@ -118,25 +152,28 @@ export function FilterBar({ filters, update, clear, showMine, notice }: Props) {
         {dropdown(
           'portfolio',
           'Portfolio',
-          (ref.data?.portfolios ?? []).map((p) => [p, p] as const),
+          portfolios.map((p) => [p.name, p.label] as const),
         )}
         {dropdown(
           'region',
           'Region',
-          (ref.data?.regions ?? []).map((r) => [r, r] as const),
+          regions.map((r) => [r.value, r.label] as const),
         )}
         {dropdown(
           'gate',
           'Current gate',
           (ref.data?.gates ?? []).map((g) => [g.code, g.short] as const),
         )}
-        {dropdown('rag', 'RAG', RAG_OPTIONS)}
+        {dropdown('rag', 'RAG', ragOptions)}
         {dropdown('status', 'Status', STATUS_OPTIONS)}
         {dropdown(
           'type',
           'Project type',
-          (ref.data?.project_types ?? []).map((t) => [t.code, t.code] as const),
+          projectTypes.map((t) => [t.code, t.label] as const),
         )}
+        {customFilters.map((f) => (
+          <CustomFilter key={f.key} field={f} filters={filters} dropdown={dropdown} />
+        ))}
         {showMine && (
           <Switch
             label="Only mine"

@@ -12,7 +12,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import access
-from app.domain import audit
+from app.domain import audit, cfg
+from app.domain.config_admin import check_autonomy_lowered
 from app.errors import BadRequest, NotFound
 from app.models import (
     ApprovalChainConfig,
@@ -48,18 +49,7 @@ from app.schemas.admin import (
     ReminderRulesIn,
 )
 
-CHAIN_ROLES: tuple[str, ...] = (
-    "OR_FOCAL",
-    "PM",
-    "ARCHITECT",
-    "OLM",
-    "PLANNER",
-    "IRM",
-    "LEADERSHIP",
-    "ADMIN",
-    "CISO_BISO",
-)
-SOURCES = ("FRAMEWORK", "AI_PLAYBOOK", "PORTFOLIO", "COMMON")
+MOCK_ROLE = "CISO_BISO"  # the mocked approval role (IRM acts for it in demo mode)
 CHAIN_ORDER = ("OCET", "AtD", "AtO", "SUPPORT_MODEL", "EXCEPTION")
 ITEM_FIELDS = ("title", "description", "gate", "lens", "applicable_tiers", "mandatory", "active")
 
@@ -114,8 +104,9 @@ def list_playbook_items(
     active: bool | None,
 ) -> list[PlaybookItemAdminOut]:
     """Filtered library (q = case-insensitive match on id/title/description), ordered by id."""
-    if source is not None and source not in SOURCES:
-        raise BadRequest("Invalid source", [f"source must be one of {', '.join(SOURCES)}"])
+    sources = [c.code for c in cfg.checklist_defs(db, active_only=False)]
+    if source is not None and source not in sources:
+        raise BadRequest("Invalid source", [f"source must be one of {', '.join(sources)}"])
     stmt = select(PlaybookItem).order_by(PlaybookItem.id)
     if source:
         stmt = stmt.where(PlaybookItem.source == source)
@@ -158,8 +149,9 @@ def update_playbook_item(
     access.ensure_admin(user, "edit the playbook")
     item = _load_item(db, item_id)
     reasons = _validate_gate_lens(body.gate, body.lens)
-    if any(t not in (1, 2, 3, 4) for t in body.applicable_tiers):
-        reasons.append("applicable_tiers must be within 1..4")
+    tiers = cfg.tier_numbers(db)
+    if any(t not in tiers for t in body.applicable_tiers):
+        reasons.append(f"applicable_tiers must be within {tiers[0]}..{tiers[-1]}")
     if reasons:
         raise BadRequest("Invalid playbook item", reasons)
     before = audit.snapshot(item, ITEM_FIELDS)
@@ -180,7 +172,7 @@ def update_playbook_item(
 
 # --- flavour rules ----------------------------------------------------------------------------
 def _flavour_out(db: Session) -> FlavourRulesOut:
-    rows = db.scalars(select(FlavourRule).order_by(FlavourRule.project_type)).all()
+    rows = db.scalars(select(FlavourRule).order_by(FlavourRule.sort_order)).all()
     return FlavourRulesOut(rules=[FlavourRuleOut.model_validate(r) for r in rows])
 
 
@@ -196,15 +188,20 @@ def put_flavour_rules(db: Session, body: FlavourRulesIn, user: User) -> FlavourR
     unknown = [r.project_type for r in body.rules if r.project_type not in existing]
     if unknown:
         raise BadRequest("Unknown project type", [f"Unknown project type '{u}'" for u in unknown])
-    empty = [r.project_type for r in body.rules if not r.checklists]
-    if empty:
-        raise BadRequest(
-            "Invalid flavour rules",
-            [
-                f"{t}: at least one checklist is required (a type without items is unusable)"
-                for t in empty
-            ],
-        )
+    known = {c.code for c in cfg.checklist_defs(db)}
+    reasons = [
+        f"{r.project_type}: at least one checklist is required (a type without items is unusable)"
+        for r in body.rules
+        if not r.checklists
+    ]
+    reasons += [
+        f"{r.project_type}: '{code}' is not an active checklist"
+        for r in body.rules
+        for code in r.checklists
+        if code not in known
+    ]
+    if reasons:
+        raise BadRequest("Invalid flavour rules", reasons)
     for entry in body.rules:
         row = existing[entry.project_type]
         fields = ("checklists", "requires_tiering", "note")
@@ -260,8 +257,6 @@ def put_golden_set(db: Session, portfolio: str, body: GoldenSetIn, user: User) -
     """Replace list: new ids "<CODE>-NN" (next free number), edit existing, deactivate omitted
     ones (active=False; never delete rows). Audit entity "PlaybookItem" per change. 404/422."""
     access.ensure_admin(user, "change golden sets")
-    from app.seed.loader import ALL_PROJECT_TYPES
-
     pf = _portfolio(db, portfolio)
     existing = {
         r.id: r
@@ -326,7 +321,7 @@ def put_golden_set(db: Session, portfolio: str, body: GoldenSetIn, user: User) -
                 kind="Deliverable",
                 mandatory=entry.mandatory,
                 mandatory_rule="always" if entry.mandatory else None,
-                applies_to_project_types=list(ALL_PROJECT_TYPES),
+                applies_to_project_types=[],  # [] = every project type, also future ones
                 owner_role_hint=entry.owner_role_hint,
                 active=True,
                 sort_order=max_sort,
@@ -446,6 +441,18 @@ def put_eval_targets(db: Session, body: EvalTargetsIn, user: User) -> EvalTarget
 
 
 # --- approval chains --------------------------------------------------------------------------
+NEVER_APPROVE = ("ADMIN", "LEADERSHIP")
+MAX_CHAIN_STEPS = 8
+
+
+def chain_roles(db: Session) -> list[str]:
+    """Roles that may sit on an approval step: every active role that can approve, plus the mock role.
+    The Admin has no workflow override and Leadership only reads, so neither approves."""
+    return [r.code for r in cfg.roles(db) if r.can_approve and r.code not in NEVER_APPROVE] + [
+        MOCK_ROLE
+    ]
+
+
 def get_approval_chains(db: Session) -> ApprovalChainsOut:
     """All chains plus allowed roles."""
     rows = {r.type: r for r in db.scalars(select(ApprovalChainConfig)).all()}
@@ -454,48 +461,69 @@ def get_approval_chains(db: Session) -> ApprovalChainsOut:
         ApprovalChainOut(
             type=t,  # type: ignore[arg-type]
             steps=[ChainStep(**s) for s in rows[t].steps],
+            label=rows[t].label,
         )
         for t in order
     ]
-    return ApprovalChainsOut(chains=chains, roles=list(CHAIN_ROLES))
+    return ApprovalChainsOut(chains=chains, roles=chain_roles(db))
 
 
 def put_approval_chains(db: Session, body: ApprovalChainsIn, user: User) -> ApprovalChainsOut:
-    """Replace steps per chain type (>=1 step, steps numbered 1..n, role in CHAIN_ROLES); audit
-    "ApprovalChainConfig". Existing approval requests keep their steps."""
+    """Replace steps (and the display name) per chain type: at least one step, numbered 1..n, role
+    from ``chain_roles``; the mock role is always a mocked step. Audit "config:approval_chains".
+    Existing approval requests keep their steps."""
     access.ensure_admin(user, "change approval chains")
     reasons: list[str] = []
-    staffed = set(db.scalars(select(User.role).distinct()).all())
+    staffed = set(db.scalars(select(User.role).where(User.active.is_(True)).distinct()).all())
+    allowed = chain_roles(db)
     for chain in body.chains:
         if not chain.steps:
             reasons.append(f"{chain.type}: at least one step is required")
+        if len(chain.steps) > MAX_CHAIN_STEPS:
+            reasons.append(f"{chain.type}: at most {MAX_CHAIN_STEPS} steps")
         if [s.step for s in chain.steps] != list(range(1, len(chain.steps) + 1)):
             reasons.append(f"{chain.type}: steps must be numbered 1..{len(chain.steps)} in order")
         for s in chain.steps:
-            if s.role not in CHAIN_ROLES:
+            if s.role not in allowed:
                 reasons.append(f"{chain.type} step {s.step}: invalid role '{s.role}'")
-            elif s.role != "CISO_BISO" and s.role not in staffed:
-                # CISO_BISO is the documented mock step (IRM approves in demo mode).
+            elif s.role != MOCK_ROLE and s.role not in staffed:
+                # the mock role is the documented mock step (IRM approves in demo mode).
                 reasons.append(
-                    f"{chain.type} step {s.step}: no user has role '{s.role}', "
+                    f"{chain.type} step {s.step}: no active user has role '{s.role}', "
                     "so the step could never be approved"
                 )
     if reasons:
         raise BadRequest("Invalid approval chains", reasons)
     for chain in body.chains:
         row = db.get(ApprovalChainConfig, chain.type)
-        new_steps = [s.model_dump() for s in chain.steps]
+        new_steps = [
+            dict(s.model_dump(), is_mock=s.is_mock or s.role == MOCK_ROLE) for s in chain.steps
+        ]
+        label = (chain.label or "").strip() or None
         if row is None:
-            db.add(ApprovalChainConfig(type=chain.type, steps=new_steps))
+            db.add(ApprovalChainConfig(type=chain.type, steps=new_steps, label=label))
             _audit(
-                db, user, "ApprovalChainConfig", chain.type, "created", None, {"steps": new_steps}
+                db,
+                user,
+                "config:approval_chains",
+                chain.type,
+                "created",
+                None,
+                {"steps": new_steps, "label": label},
             )
             continue
-        before = {"steps": list(row.steps)}
-        if row.steps != new_steps:
+        before = {"steps": list(row.steps), "label": row.label}
+        if row.steps != new_steps or row.label != label:
             row.steps = new_steps
+            row.label = label
             _audit(
-                db, user, "ApprovalChainConfig", chain.type, "updated", before, {"steps": new_steps}
+                db,
+                user,
+                "config:approval_chains",
+                chain.type,
+                "updated",
+                before,
+                {"steps": new_steps, "label": label},
             )
     db.flush()
     return get_approval_chains(db)
@@ -508,8 +536,31 @@ def list_reminder_rules(db: Session) -> list[ReminderRuleOut]:
     return [ReminderRuleOut.model_validate(r) for r in rows]
 
 
+def _check_reminder_params(db: Session, rule: ReminderRule, params: dict[str, Any]) -> list[str]:
+    """Numeric thresholds are whole numbers 1..3650; R6 may also name the items it asks about
+    (``item_ids``, existing library ids) and a ``category`` of the library."""
+    reasons: list[str] = []
+    for key, val in params.items():
+        if rule.id == "R6" and key == "item_ids":
+            ids = val if isinstance(val, list) and all(isinstance(v, str) for v in val) else None
+            known = set(db.scalars(select(PlaybookItem.id).where(PlaybookItem.id.in_(ids or []))))
+            if ids is None:
+                reasons.append("R6: 'item_ids' must be a list of item ids")
+            else:
+                reasons += [f"R6: unknown playbook item '{i}'" for i in ids if i not in known]
+        elif rule.id == "R6" and key == "category":
+            if not isinstance(val, str) or len(val) > 120:
+                reasons.append("R6: 'category' must be text of at most 120 characters")
+        elif key not in (rule.params or {}):
+            reasons.append(f"{rule.id}: unknown parameter '{key}'")
+        elif isinstance(val, bool) or not isinstance(val, int) or not 0 < val <= 3650:
+            reasons.append(f"{rule.id}: '{key}' must be a whole number from 1 to 3650")
+    return reasons
+
+
 def put_reminder_rules(db: Session, body: ReminderRulesIn, user: User) -> list[ReminderRuleOut]:
-    """Update enabled + params per rule id; audit "ReminderRule". 422 unknown id / bad params."""
+    """Update enabled, params and (only downwards) autonomous_eligible per rule id; audit
+    "config:reminder_rules". 422 unknown id / bad params / autonomy switched on."""
     access.ensure_admin(user, "change reminder rules")
     rows = {r.id: r for r in db.scalars(select(ReminderRule)).all()}
     reasons: list[str] = []
@@ -518,21 +569,31 @@ def put_reminder_rules(db: Session, body: ReminderRulesIn, user: User) -> list[R
         if row is None:
             reasons.append(f"Unknown reminder rule '{entry.id}'")
             continue
-        for key, val in entry.params.items():
-            if key not in (row.params or {}):
-                reasons.append(f"{entry.id}: unknown parameter '{key}'")
-            elif isinstance(val, bool) or not isinstance(val, int) or not 0 < val <= 3650:
-                reasons.append(f"{entry.id}: '{key}' must be a whole number from 1 to 3650")
+        reasons += _check_reminder_params(db, row, entry.params)
+        if entry.autonomous_eligible is not None:
+            reasons += check_autonomy_lowered(
+                row.id, row.autonomous_eligible, entry.autonomous_eligible
+            )
     if reasons:
         raise BadRequest("Invalid reminder rules", reasons)
     for entry in body.rules:
         row = rows[entry.id]
-        before = {"enabled": row.enabled, "params": dict(row.params or {})}
+        before = {
+            "enabled": row.enabled,
+            "params": dict(row.params or {}),
+            "autonomous_eligible": row.autonomous_eligible,
+        }
         row.enabled = entry.enabled
         row.params = {**(row.params or {}), **entry.params}
-        after = {"enabled": row.enabled, "params": dict(row.params)}
+        if entry.autonomous_eligible is not None:
+            row.autonomous_eligible = entry.autonomous_eligible
+        after = {
+            "enabled": row.enabled,
+            "params": dict(row.params),
+            "autonomous_eligible": row.autonomous_eligible,
+        }
         if before != after:
-            _audit(db, user, "ReminderRule", row.id, "updated", before, after)
+            _audit(db, user, "config:reminder_rules", row.id, "updated", before, after)
     db.flush()
     return list_reminder_rules(db)
 

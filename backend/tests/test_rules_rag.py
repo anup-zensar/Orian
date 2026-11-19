@@ -64,3 +64,19 @@ def test_empty_lens_map_is_green():
 def test_seeded_snapshots(tid, pcts, critical, days, expected):
     lenses = dict(zip(("Business", "Technical", "Compliance"), pcts, strict=True))
     assert compute_rag(critical, lenses, days) == expected, tid
+
+
+def test_thresholds_parameter_defaults_to_the_client_rule():
+    from app.rules.rag import DEFAULT_RAG, RagThresholds
+
+    assert compute_rag(2, OK, None, thresholds=DEFAULT_RAG) == compute_rag(2, OK, None) == "Red"
+    strict = RagThresholds(
+        red_critical_gaps=1, red_lens_below=60, red_near_days=14, amber_lens_below=95
+    )
+    assert compute_rag(1, OK, 30, thresholds=strict) == "Red"
+    assert compute_rag(0, lens(Business=59), 30, thresholds=strict) == "Red"
+    assert compute_rag(0, lens(Business=94), 30, thresholds=strict) == "Amber"
+    assert (
+        compute_rag(0, lens(Business=96, Technical=96, Compliance=96), 30, thresholds=strict)
+        == "Green"
+    )

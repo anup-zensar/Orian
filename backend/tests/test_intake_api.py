@@ -337,3 +337,55 @@ def test_servicenow_unknown_project(client, headers):
     assert res.status_code == 404
     assert res.json()["detail"] == "Not found in ServiceNow (mock) – enter manually"
     assert client.get(f"{API}/integrations/servicenow/projects/PRJ0049920").status_code == 401
+
+
+# --- CR-01: flags and custom fields come from configuration ---------------------------------------
+
+
+def test_detail_carries_the_project_type_switches(client, headers, fresh_seed):
+    ai = _post(client, headers).json()  # Agentic AI
+    assert (ai["requires_tiering"], ai["has_ai_profile"], ai["has_eval_metrics"]) == (True,) * 3
+    normal = _post(client, headers, project_type="Normal").json()
+    assert (normal["requires_tiering"], normal["has_ai_profile"], normal["has_eval_metrics"]) == (
+        False,
+    ) * 3
+    assert normal["custom_fields"] == {}
+
+
+def test_custom_fields_unknown_key_is_refused(client, headers, fresh_seed):
+    res = _post(client, headers, custom_fields={"cf_nope": "x"})
+    assert res.status_code == 422
+    assert any("cf_nope" in r for r in res.json()["reasons"])
+
+
+def test_inactive_option_stays_valid_on_an_unchanged_record(client, headers, db, fresh_seed):
+    from sqlalchemy import select
+
+    from app.domain import cfg
+    from app.models import OptionItem
+
+    tid = _post(client, headers).json()["id"]
+    row = db.scalars(
+        select(OptionItem).where(
+            OptionItem.list_key == "audience", OptionItem.value == "Internal department"
+        )
+    ).one()
+    row.active = False
+    db.commit()
+    cfg.invalidate()
+
+    # a new transition cannot use the retired value ...
+    assert _post(client, headers).status_code == 422
+    # ... the existing one keeps it when it is sent back unchanged, and can change away from it
+    same = client.patch(
+        f"{API}/transitions/{tid}", json={"audience": "Internal department"}, headers=headers("U01")
+    )
+    assert same.status_code == 200, same.text
+    other = client.patch(
+        f"{API}/transitions/{tid}", json={"audience": "Enterprise"}, headers=headers("U01")
+    )
+    assert other.status_code == 200, other.text
+    back = client.patch(
+        f"{API}/transitions/{tid}", json={"audience": "Internal department"}, headers=headers("U01")
+    )
+    assert back.status_code == 422  # no longer unchanged: the retired value is not on offer

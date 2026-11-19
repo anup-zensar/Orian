@@ -13,6 +13,7 @@ from app.deps import IdPath, get_current_user, get_db
 from app.domain import approvals as domain
 from app.errors import Forbidden, NotFound
 from app.models import ApprovalRequest, ApprovalStep, Transition, User
+from app.permissions import DENIAL_REASONS, Perm, has_perm
 from app.rules.constants import GATE_SHORT
 from app.schemas.approvals import (
     ApprovalDecisionIn,
@@ -91,17 +92,19 @@ def approval_out(db: Session, request: ApprovalRequest, viewer: User) -> Approva
         current_step=current.step if current else None,
         can_act=can_act,
         act_denied_reason=denied if request.status == "Pending" and not can_act else None,
-        is_mock_step=bool(current and domain.is_mock_step(current)),
+        is_mock_step=bool(current and domain.is_mock_step(db, current)),
         link=domain.subject_link(request),
     )
 
 
-def _involves(step: ApprovalStep, user: User) -> bool:
+def _involves(db: Session, step: ApprovalStep, user: User) -> bool:
+    """The step is the user's: named approver, decider, same role, or the mock step for a role that
+    may see mock approvals (IRM)."""
     return (
         step.approver_user_id == user.id
         or step.decided_by == user.id
         or step.role == user.role
-        or (domain.is_mock_step(step) and user.role == domain.MOCK_APPROVER_ROLE)
+        or (domain.is_mock_step(db, step) and has_perm(user.role, Perm.SEE_MOCK_APPROVALS))
     )
 
 
@@ -125,12 +128,12 @@ def list_approvals(
       == user role; IRM also sees the CISO_BISO mock step), plus the user's finished ones when
       ``status`` is given.
     * requested: requests created_by the user.
-    * all: every request; only OR_FOCAL and ADMIN, else 403 "Only the OR focal or Admin can see
+    * all: every request; only roles with "view all approvals" (OR_FOCAL, ADMIN), else 403 "Only the OR focal or Admin can see
       all approvals".
     ``can_act``, ``act_denied_reason``, ``is_mock_step`` are computed for the calling user.
     """
-    if scope == "all" and user.role not in ("OR_FOCAL", "ADMIN"):
-        raise Forbidden("Only the OR focal or Admin can see all approvals")
+    if scope == "all" and not has_perm(user.role, Perm.VIEW_ALL_APPROVALS):
+        raise Forbidden(DENIAL_REASONS[Perm.VIEW_ALL_APPROVALS])
     query = select(ApprovalRequest).order_by(
         ApprovalRequest.created_at.desc(), ApprovalRequest.id.desc()
     )
@@ -141,14 +144,14 @@ def list_approvals(
         rows = [r for r in rows if r.created_by == user.id]
     elif scope == "mine":
         if status:
-            rows = [r for r in rows if any(_involves(s, user) for s in r.steps)]
+            rows = [r for r in rows if any(_involves(db, s, user) for s in r.steps)]
         else:
             rows = [
                 r
                 for r in rows
                 if r.status == "Pending"
                 and (cur := domain.current_step(r)) is not None
-                and _involves(cur, user)
+                and _involves(db, cur, user)
             ]
     return [approval_out(db, r, user) for r in rows]
 

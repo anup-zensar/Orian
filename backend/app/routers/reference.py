@@ -6,7 +6,7 @@ it never contains users or message templates.
 Structural vocabulary (statuses, gate codes / order / outcomes, item status buckets) comes from
 reference.json (stored at seed time). Everything an Admin can edit (CR-01) comes from the
 configuration tables through ``app.domain.cfg``: project types, portfolios, option lists, roles, tier
-questions, thresholds, gate and lens texts. Every key that existed before CR-01 keeps its shape.
+questions, thresholds. Every key that existed before CR-01 keeps its shape.
 """
 
 from __future__ import annotations
@@ -29,7 +29,6 @@ from app.schemas.reference import (
     ChecklistCountsOut,
     ChecklistRefOut,
     EnumsOut,
-    GateLabelOut,
     IntakeFieldRefOut,
     OptionOut,
     PortfolioDetailOut,
@@ -65,23 +64,6 @@ ENUMS = EnumsOut(
     applicability=["Applies", "Not applicable", "To confirm"],
     item_sources=["FRAMEWORK", "AI_PLAYBOOK", "PORTFOLIO", "COMMON"],
 )
-
-
-def _checklist_counts(db: Session) -> ChecklistCountsOut:
-    def count(*conditions: Any) -> int:
-        return db.scalar(select(func.count()).select_from(PlaybookItem).where(*conditions)) or 0
-
-    active = PlaybookItem.active.is_(True)
-    ai_items = db.scalars(
-        select(PlaybookItem.applicable_tiers).where(active, PlaybookItem.source == "AI_PLAYBOOK")
-    ).all()
-    by_tier = {str(t): sum(1 for tiers in ai_items if t in (tiers or [])) for t in (1, 2, 3, 4)}
-    return ChecklistCountsOut(
-        framework=count(active, PlaybookItem.source == "FRAMEWORK"),
-        ai_playbook_total=len(ai_items),
-        ai_playbook_by_tier=by_tier,
-        common=count(active, PlaybookItem.source == "COMMON"),
-    )
 
 
 def _checklist_counts(db: Session) -> ChecklistCountsOut:
@@ -179,7 +161,6 @@ def get_reference(
             has_eval_metrics=p.has_eval_metrics,
             required_intake_fields=list(p.required_intake_fields),
             synonyms=list(p.synonyms),
-            color=p.color,
         )
         for p in cfg.project_types(db, active_only=active_only)
     ]
@@ -227,19 +208,6 @@ def get_reference(
     chains = {c.type: c.steps for c in chain_rows}
     chain_labels = {c.type: c.label for c in chain_rows if c.label}
 
-    # gates: codes, order and type are structural (reference.json); the texts are editable
-    gates = [
-        {
-            **g,
-            "label": cfg.gate_label(db, g["code"]),
-            "short": cfg.gate_short(db, g["code"]),
-            "description": cfg.gate_description(db, g["code"]),
-        }
-        for g in ref["gates"]
-    ]
-    lens_cfg = cfg.lenses(db)
-    lenses = [{**lens, **(lens_cfg.get(lens["code"]) or {})} for lens in ref["lenses"]]
-
     lists = {
         key: [
             OptionOut(
@@ -273,15 +241,14 @@ def get_reference(
             transition_column=r.transition_column,
             can_approve=r.can_approve,
             sort_order=r.sort_order,
-            color=r.color,
         )
         for r in cfg.roles(db, active_only=active_only)
     ]
 
     return ReferenceOut(
-        gates=gates,
+        gates=ref["gates"],
         gate_outcomes=ref["gate_outcomes"],
-        lenses=lenses,
+        lenses=ref["lenses"],
         item_statuses=ref["item_statuses"],
         done_statuses=ref["done_statuses"],
         na_statuses=ref["na_statuses"],
@@ -338,7 +305,6 @@ def get_reference(
             )
             for c in cfg.checklist_defs(db, active_only=active_only)
         ],
-        labels=cfg.labels(db),
         thresholds={
             "rag": t["rag"],
             "insights": t["insights"],
@@ -347,6 +313,5 @@ def get_reference(
             "default_tier": t["default_tier"],
             "narrative_top": t["narrative_top"],
         },
-        gate_labels={code: GateLabelOut(**vals) for code, vals in cfg.gates_doc(db).items()},
         approval_chain_labels=chain_labels,
     )

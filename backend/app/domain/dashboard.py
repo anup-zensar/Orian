@@ -1,7 +1,7 @@
 """Role-aware dashboard (FR-010, spec §8.1).
 
 "My transitions" = the involvement set of the user (see ``domain.transitions``), Active only.
-LEADERSHIP gets portfolio-wide tiles and portfolio summaries instead of "My work".
+Roles with "see all transitions" (Leadership) get portfolio-wide tiles and portfolio summaries instead of "My work".
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ from app.domain.control_tower import build_kpis
 from app.domain.metrics import ItemRow, TransitionMetrics, compute_metrics, plural, reference_lists
 from app.domain.transitions import is_involved, sort_register
 from app.models import Action, ApprovalRequest, ApprovalStep, AuditEvent, Transition, User
+from app.permissions import Perm, has_perm
 from app.rules.constants import GAP_STATUSES, GATE_ORDER, GATE_SHORT, is_open_status
 from app.rules.rag import AMBER, GREEN, GREY, RED
 from app.rules.readiness import round_half_up
@@ -29,8 +30,6 @@ from app.schemas.audit import AuditEventOut
 from app.schemas.common import KpiTileOut, UserOut
 from app.schemas.dashboard import DashboardOut, PortfolioTileOut, WorkItemOut
 
-MY_WORK_LIMIT = 200  # the UI shows the first 25 and a "Show all" toggle
-RECENT_ACTIVITY_LIMIT = 10
 OPEN_ACTION_STATUSES = ("Open", "In progress")
 
 
@@ -61,13 +60,14 @@ class PendingApproval:
 def pending_approvals(db: Session, user: User) -> list[PendingApproval]:
     """Approval steps waiting for ``user``, oldest first. Same rule as the approvals inbox (A-57):
     the Pending step of a Pending request whose approver is the user, or that has no named approver
-    and the user's role, or the CISO/BISO mock step for IRM in demo mode."""
+    and the user's role, or the CISO/BISO mock step for a role that may see mock approvals (IRM) in
+    demo mode."""
     waiting_for_me = [
         ApprovalStep.approver_user_id == user.id,
         and_(ApprovalStep.approver_user_id.is_(None), ApprovalStep.role == user.role),
     ]
-    if user.role == "IRM" and get_settings().demo_mode:
-        waiting_for_me.append(ApprovalStep.role == "CISO_BISO")
+    if has_perm(user.role, Perm.SEE_MOCK_APPROVALS) and get_settings().demo_mode:
+        waiting_for_me.append(ApprovalStep.role == cfg.mock_approver(db)["mock_role"])
     rows = db.execute(
         select(ApprovalStep, ApprovalRequest, Transition.name)
         .join(ApprovalRequest, ApprovalRequest.id == ApprovalStep.request_id)
@@ -158,6 +158,7 @@ def build_my_work(
         )
 
     critical: list[WorkItemOut] = []
+    critical_severity = cfg.critical_severity(db)
     gaps: list[WorkItemOut] = []
     others: list[WorkItemOut] = []
     for m in mine:
@@ -177,7 +178,7 @@ def build_my_work(
                 due_date=m.transition.next_decision_date,
                 link=f"/transitions/{m.id}/assessment?item={item.playbook_item_id}",
             )
-            if is_gap(item) and item.gap_severity == "Critical":
+            if is_gap(item) and item.gap_severity == critical_severity:
                 critical.append(row)
             elif is_gap(item):
                 gaps.append(row)
@@ -207,18 +208,18 @@ def build_my_work(
     ]
 
     out += critical + gaps + action_rows + others
-    return out[:MY_WORK_LIMIT], len(out)
+    return out[: cfg.thresholds(db)["dashboard"]["my_work_limit"]], len(out)
 
 
 def build_recent_activity(db: Session, names: dict[str, str]) -> list[AuditEventOut]:
-    """Last 10 audit events whose transition is one of mine (``names``: id -> name), newest first."""
+    """Latest audit events (recent_activity_limit) whose transition is one of mine (``names``: id -> name), newest first."""
     if not names:
         return []
     events = db.scalars(
         select(AuditEvent)
         .where(AuditEvent.transition_id.in_(list(names)))
         .order_by(AuditEvent.at.desc(), AuditEvent.id.desc())
-        .limit(RECENT_ACTIVITY_LIMIT)
+        .limit(cfg.thresholds(db)["dashboard"]["recent_activity_limit"])
     ).all()
     actor_ids = {e.actor_user_id for e in events if e.actor_user_id}
     users = (
@@ -241,7 +242,7 @@ def build_recent_activity(db: Session, names: dict[str, str]) -> list[AuditEvent
             before=e.before,
             after=e.after,
             note=e.note,
-            summary=describe_event(e.entity, e.entity_id, e.action),
+            summary=describe_event(e.entity, e.entity_id, e.action, e.after, e.note or ""),
         )
         for e in events
     ]
@@ -354,11 +355,12 @@ def _subtitle(db: Session, user: User, mine: list[Transition]) -> str:
 
 
 def build_dashboard(db: Session, user: User) -> DashboardOut:
-    """One metrics computation per request. LEADERSHIP computes the whole portfolio once and takes
+    """One metrics computation per request. A role that sees all transitions computes the whole portfolio once and takes
     "mine" (Active) from it; every other role computes only its own Active transitions."""
     active = db.scalars(select(Transition).where(Transition.status == "Active")).all()
     mine_rows = [t for t in active if is_involved(user, t)]
-    if user.role == "LEADERSHIP":
+    sees_all = has_perm(user.role, Perm.SEE_ALL_TRANSITIONS)
+    if sees_all:
         everything = compute_metrics(db, list(db.scalars(select(Transition)).all()))
         mine_ids = {t.id for t in mine_rows}
         mine = sort_register([m for m in everything if m.id in mine_ids])
@@ -366,14 +368,16 @@ def build_dashboard(db: Session, user: User) -> DashboardOut:
         everything = []
         mine = sort_register(compute_metrics(db, mine_rows))
     names = {m.id: m.transition.name for m in mine}
+    me = UserOut.model_validate(user)
+    me.role_label = cfg.role_label(db, user.role)
     base = dict(
-        user=UserOut.model_validate(user),
+        user=me,
         subtitle=_subtitle(db, user, mine_rows),
         today=clock.today(),
         recent_activity=build_recent_activity(db, names),
     )
 
-    if user.role == "LEADERSHIP":
+    if sees_all:
         ref = reference_lists(db)
         return DashboardOut(
             **base,

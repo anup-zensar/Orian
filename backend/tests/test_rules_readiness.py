@@ -153,3 +153,15 @@ def test_to_dict_shape():
         "critical_gaps",
         "readiness_pct",
     }
+
+
+def test_critical_severity_is_a_parameter():
+    items = [
+        item(status="Gap", sev="Critical"),
+        item(status="Gap", sev="Major"),
+        item(status="Gap", sev="Major"),
+    ]
+    assert compute_readiness(items, "SG2").critical_gaps == 1  # default: "Critical"
+    assert compute_readiness(items, "SG2", critical_value="Major").critical_gaps == 2
+    assert compute_readiness(items, "SG2", "Showstopper").critical_gaps == 0
+    assert compute_readiness(items, "SG2", "Major").open_gaps == 3  # open gaps do not change

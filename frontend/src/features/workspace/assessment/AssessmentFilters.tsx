@@ -30,13 +30,6 @@ type Update = (
   replace?: boolean,
 ) => void;
 
-const SOURCES: [string, string][] = [
-  ['FRAMEWORK', 'Framework'],
-  ['AI_PLAYBOOK', 'AI playbook'],
-  ['PORTFOLIO', 'Portfolio'],
-  ['COMMON', 'Common'],
-];
-
 export function AssessmentFilters(props: {
   values: AssessmentFilterValues;
   update: Update;
@@ -62,6 +55,10 @@ export function AssessmentFilters(props: {
     return () => window.clearTimeout(t);
   }, [draft, update]);
 
+  // Checklists an item can come from; the tier-filtered one (AI playbook) only when the transition has tiering.
+  const checklists = (ref.data?.checklists ?? []).filter(
+    (c) => c.active !== false && (props.hasAiPlaybook || !c.tier_filtered),
+  );
   const statuses = Array.from(new Set(Object.values(ref.data?.item_statuses ?? {}).flat()));
 
   return (
@@ -99,9 +96,9 @@ export function AssessmentFilters(props: {
       <Field label="Source" className={s.select}>
         <Select value={values.source} onChange={(_, d) => update({ source: d.value || undefined })}>
           <option value="">All</option>
-          {SOURCES.filter(([k]) => props.hasAiPlaybook || k !== 'AI_PLAYBOOK').map(([k, label]) => (
-            <option key={k} value={k}>
-              {label}
+          {checklists.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.label}
             </option>
           ))}
         </Select>

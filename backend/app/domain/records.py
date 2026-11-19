@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app import clock
 from app.access import ensure_open, ensure_transition_role
-from app.domain import audit
+from app.domain import audit, cfg
 from app.domain.conditions import create_condition
 from app.domain.ids import next_id
 from app.errors import BadRequest, Conflict, NotFound
@@ -51,7 +51,19 @@ RISK_FIELDS = ("title", "rating", "decision", "item_ids")
 DEFECT_FIELDS = ("title", "priority", "status", "owner_user_id")
 
 OPEN_ACTION_STATUSES = ("Open", "In progress")
-RATING_ORDER = {"High": 0, "Medium": 1, "Low": 2}
+
+
+def _order(db: Session, list_key: str) -> dict[str, int]:
+    """Position of each value in a dropdown list (the order the admin set), for sorting."""
+    return {v: i for i, v in enumerate(cfg.option_values(db, list_key, active_only=False))}
+
+
+def _default_option(db: Session, list_key: str) -> str:
+    """The value used when none is given: the middle option of the list ("Medium")."""
+    values = cfg.option_values(db, list_key)
+    if not values:
+        raise BadRequest("No options configured", [f"The list '{list_key}' has no active values"])
+    return values[len(values) // 2]
 
 
 # --- shared helpers -------------------------------------------------------------------------------
@@ -167,6 +179,8 @@ def create_action(db: Session, transition_id: str, body: ActionCreateIn, user: U
     if _blank(body.title) or not body.title.strip():
         raise BadRequest("Invalid action", ["The action needs a title"])
     check_owner(db, body.owner_user_id)
+    priority = body.priority or _default_option(db, "action_priorities")
+    cfg.validate_option(db, "action_priorities", priority)
     item_ids = check_item_ids(db, transition, body.item_ids)
     action = Action(
         id=next_id(db, Action.id, "ACT-"),
@@ -176,7 +190,7 @@ def create_action(db: Session, transition_id: str, body: ActionCreateIn, user: U
         owner_user_id=body.owner_user_id,
         due_date=body.due_date,
         status="Open",
-        priority=body.priority,
+        priority=priority,
         origin="Human",
         created_by=user.id,
     )
@@ -230,6 +244,7 @@ def patch_action(db: Session, action_id: str, body: ActionPatchIn, user: User) -
     if "status" in fields and body.status is not None:
         action.status = body.status
     if "priority" in fields and body.priority is not None:
+        cfg.validate_option(db, "action_priorities", body.priority, current=action.priority)
         action.priority = body.priority
     after = audit.snapshot(action, ACTION_FIELDS)
     old, new = _diff(before, after)
@@ -442,7 +457,8 @@ def risk_out(risk: Risk) -> RiskOut:
 def list_risks(db: Session, transition_id: str) -> list[RiskOut]:
     get_transition(db, transition_id)
     rows = db.scalars(select(Risk).where(Risk.transition_id == transition_id)).all()
-    return [risk_out(r) for r in sorted(rows, key=lambda r: (RATING_ORDER.get(r.rating, 9), r.id))]
+    order = _order(db, "risk_ratings")
+    return [risk_out(r) for r in sorted(rows, key=lambda r: (order.get(r.rating, 9), r.id))]
 
 
 def create_risk(db: Session, transition_id: str, body: RiskCreateIn, user: User) -> RiskOut:
@@ -450,6 +466,7 @@ def create_risk(db: Session, transition_id: str, body: RiskCreateIn, user: User)
     ensure_transition_role(db, user, transition, Perm.MANAGE_RISKS)
     if not body.title.strip():
         raise BadRequest("Invalid risk", ["The risk needs a title"])
+    cfg.validate_option(db, "risk_ratings", body.rating)
     item_ids = check_item_ids(db, transition, body.item_ids)
     risk = Risk(
         id=next_id(db, Risk.id, "CR-"),
@@ -489,7 +506,8 @@ def hypercare(db: Session, transition: Transition) -> HypercareOut:
     rows = db.scalars(
         select(HypercareDefect).where(HypercareDefect.transition_id == transition.id)
     ).all()
-    ordered = sorted(rows, key=lambda d: (d.status != "Open", d.priority, d.id))
+    order = _order(db, "defect_priorities")
+    ordered = sorted(rows, key=lambda d: (d.status != "Open", order.get(d.priority, 99), d.id))
     users = users_by_id(db)
     confirmed = bool(transition.hypercare_no_defects_confirmed)
     return HypercareOut(
@@ -510,6 +528,7 @@ def create_defect(db: Session, transition_id: str, body: DefectCreateIn, user: U
     if not body.title.strip():
         raise BadRequest("Invalid defect", ["The defect needs a title"])
     check_owner(db, body.owner_user_id)
+    cfg.validate_option(db, "defect_priorities", body.priority)
     defect = HypercareDefect(
         id=next_id(db, HypercareDefect.id, "DEF-"),
         transition_id=transition.id,
@@ -552,6 +571,7 @@ def patch_defect(db: Session, defect_id: str, body: DefectPatchIn, user: User) -
     if "title" in fields and body.title is not None:
         defect.title = body.title.strip()
     if "priority" in fields and body.priority is not None:
+        cfg.validate_option(db, "defect_priorities", body.priority, current=defect.priority)
         defect.priority = body.priority
     if "status" in fields and body.status is not None:
         defect.status = body.status

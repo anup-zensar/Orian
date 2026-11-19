@@ -89,11 +89,13 @@ interface Props {
   isLoading: boolean;
   error: unknown;
   onRetry?: () => void;
+  /** The signed-in user has nothing assigned, so "all on track" would mislead. */
+  noTransitions?: boolean;
 }
 
 /** Orion insights card (spec 8.1, 8.2). Always labelled AI + "Orion agent" (BR-050). Action buttons
  * are links, or typed actions that the signed-in human triggers (BR-050). */
-export function InsightsCard({ title, data, isLoading, error, onRetry }: Props) {
+export function InsightsCard({ title, data, isLoading, error, onRetry, noTransitions }: Props) {
   const s = useStyles();
   return (
     <SectionCard
@@ -113,6 +115,8 @@ export function InsightsCard({ title, data, isLoading, error, onRetry }: Props) 
         </Skeleton>
       ) : error ? (
         <ErrorState error={error} onRetry={onRetry} />
+      ) : noTransitions ? (
+        <Caption1>No transitions assigned yet. Browse transitions or start a new one.</Caption1>
       ) : !data || data.insights.length === 0 ? (
         <Caption1>No insights right now: nothing needs attention.</Caption1>
       ) : (

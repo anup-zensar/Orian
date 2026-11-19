@@ -45,7 +45,7 @@ export function AppShell() {
   const { userId } = useAuth();
   const onOrionPage = !!useMatch('/orion');
   useEffect(() => chatStore.resetFor(userId), [userId]);
-  const isAdmin = me.data?.user.role === 'ADMIN';
+  const isAdmin = !!me.data?.permissions.includes('admin');
   const orionPanel = useMemo<OrionPanelState>(
     () => ({
       isOpen: orionOpen,

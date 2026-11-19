@@ -21,6 +21,7 @@ from app.schemas.admin import PlaybookItemAdminOut
 
 NOTICE_NEW_ONLY = "Changes affect NEW transitions; existing transitions keep their items."
 NOTICE_LIVE = "Applies immediately; RAG recalculates for all active transitions."
+NOTICE_AI_NOW = "Applies to all AI transitions straight away, including ones already running."
 
 Code = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40)]
 Text80 = Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)]
@@ -31,7 +32,7 @@ FieldType = Literal[
 ]
 RequiredMode = Literal["never", "always", "by_project_type"]
 ChecklistKind = Literal["library", "portfolio_golden", "common"]
-FieldForm = Literal["intake", "ai_profile"]
+FieldForm = Literal["intake"]  # custom fields live on the intake form only
 Scope = Literal["global", "transition"]
 
 
@@ -50,7 +51,6 @@ class ProjectTypeAdminOut(BaseModel):
     has_eval_metrics: bool
     required_intake_fields: list[str] = []
     synonyms: list[str] = []
-    color: str | None = None
     note: str | None = None
     used_by: int = 0
     notice: str = NOTICE_NEW_ONLY
@@ -68,7 +68,6 @@ class ProjectTypeCreateIn(BaseModel):
     has_eval_metrics: bool = False
     required_intake_fields: list[Code] = Field(default_factory=list, max_length=40)
     synonyms: list[Text80] = Field(default_factory=list, max_length=30)
-    color: Text80 | None = None
     note: LongText | None = None
 
 
@@ -83,7 +82,6 @@ class ProjectTypeUpdateIn(BaseModel):
     has_eval_metrics: bool | None = None
     required_intake_fields: list[Code] | None = Field(default=None, max_length=40)
     synonyms: list[Text80] | None = Field(default=None, max_length=30)
-    color: Text80 | None = None
     note: LongText | None = None
 
 
@@ -290,33 +288,7 @@ class OptionItemsOut(BaseModel):
     option_list: OptionListAdminOut
     items: list[OptionItemOut]
     notice: str = NOTICE_LIVE
-
-
-class ConfigResetIn(BaseModel):
-    """POST /admin/config/reset (extension of design 4): restore ONE editor to seed/config.json.
-    Refused (409) when it would remove a value that is in use. ``key`` selects a list / role / ...
-    """
-
-    section: Literal[
-        "option_list",
-        "intake_fields",
-        "roles",
-        "permissions",
-        "tiering",
-        "thresholds",
-        "labels",
-        "gates",
-        "lenses",
-        "message_templates",
-    ]
-    key: str | None = None
-
-
-class ConfigResetOut(BaseModel):
-    section: str
-    key: str | None = None
-    restored: int  # rows restored
-    notice: str = ""
+    warnings: list[str] = []  # values deactivated instead of removed because they are in use
 
 
 # --------------------------------------------------------------------------- intake fields (1.5)
@@ -417,34 +389,17 @@ class RoleAdminOut(BaseModel):
     transition_column: str | None = None
     can_approve: bool
     sort_order: int
-    color: str | None = None
     user_count: int = 0
     lock_reason: str | None = None
 
 
-class RoleCreateIn(BaseModel):
-    """POST /admin/roles. ``code`` is immutable; "Orion", "agent", "bot", "ai" are reserved."""
-
-    code: Annotated[str, StringConstraints(pattern=r"^[A-Z][A-Z0-9_]{1,29}$")]
-    label: Text80
-    short_label: Annotated[str, StringConstraints(max_length=40)] = ""
-    phrase_label: Annotated[str, StringConstraints(max_length=40)] = ""
-    description: LongText = ""
-    has_transition_slot: bool = False
-    can_approve: bool = False
-    color: Text80 | None = None
-
-
 class RoleUpdateIn(BaseModel):
+    """PATCH /admin/roles/{code}: the eight roles are fixed; only their wording can change."""
+
     label: Text80 | None = None
     short_label: Annotated[str, StringConstraints(max_length=40)] | None = None
     phrase_label: Annotated[str, StringConstraints(max_length=40)] | None = None
     description: LongText | None = None
-    active: bool | None = None
-    has_transition_slot: bool | None = None
-    can_approve: bool | None = None
-    sort_order: int | None = Field(default=None, ge=0, le=10000)
-    color: Text80 | None = None
 
 
 class UserAdminOut(BaseModel):
@@ -481,6 +436,7 @@ class UserUpdateIn(BaseModel):
     role: Code | None = None
     focal_label: Text80 | None = None
     title: Annotated[str, StringConstraints(max_length=120)] | None = None
+    active: bool | None = None  # true re-activates; switching off is POST .../deactivate
 
 
 class UserDeactivateIn(BaseModel):
@@ -543,6 +499,8 @@ class PermissionsPutIn(BaseModel):
 
 
 class TierDefIn(BaseModel):
+    """One tier definition. The tier number is fixed (BR-011 produces tiers 1-4); the wording is yours."""
+
     tier: int = Field(ge=1, le=9)
     name: Text200
     definition: LongText = ""
@@ -551,90 +509,30 @@ class TierDefIn(BaseModel):
 
 
 class TierQuestionIn(BaseModel):
-    """``id`` empty = a new question (TQ6, TQ7 ... generated)."""
+    """One tiering question. ``id`` (TQ1 ...) is fixed because BR-011 reads the answers by id."""
 
-    id: Annotated[str, StringConstraints(pattern=r"^(TQ\d{1,3})?$")] = ""
+    id: Annotated[str, StringConstraints(pattern=r"^TQ\d{1,3}$")]
     text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
     hint: Text200 = ""
-    active: bool = True
 
 
 class TierQuestionOut(TierQuestionIn):
-    id: str
     sort_order: int = 0
-
-
-class TierConditionIn(BaseModel):
-    """One condition of a rule. ``source`` question: ``key`` = a question id, op yes / no.
-    ``source`` intake / custom: ``key`` = field key (an audience-style option list or a custom
-    field), op equals / not_equals / in (``value`` = text, or a list for ``in``)."""
-
-    source: Literal["question", "intake", "custom"]
-    key: Code
-    op: Literal["yes", "no", "equals", "not_equals", "in"]
-    value: str | list[str] | None = None
-    rationale: Text200 = ""
-
-
-class TierRuleIn(BaseModel):
-    id: Annotated[str, StringConstraints(max_length=20)] = ""  # empty = new (RULE-n generated)
-    label: Text200 = ""
-    result_tier: int = Field(ge=1, le=9)
-    match: Literal["any", "all"] = "any"
-    conditions: list[TierConditionIn] = Field(default_factory=list, max_length=20)
-    active: bool = True
-
-
-class TierRuleOut(TierRuleIn):
-    id: str
-    sort_order: int = 0
-
-
-class TierSourceOut(BaseModel):
-    """What a rule condition can look at: an intake field with its option values."""
-
-    key: str
-    label: str
-    source: Literal["intake", "custom"]
-    values: list[str] = []
 
 
 class TieringConfigOut(BaseModel):
-    """GET / PUT /admin/tiering."""
+    """GET / PUT /admin/tiering: tier definitions and question wording."""
 
     tiers: list[TierDefIn]
-    dimensions: list[str]
-    default_tier: int
     questions: list[TierQuestionOut]
-    rules: list[TierRuleOut]  # evaluation order; the first match wins
-    sources: list[TierSourceOut] = []
-    notice: str = "Applies to new tier proposals; confirmed tiers stay as they are."
+    notice: str = "Changes the wording only; the tiering rules (BR-011) stay as they are."
 
 
 class TieringConfigIn(BaseModel):
-    """PUT: the whole tiering configuration (list order = evaluation order). Guardrails: tier numbers
-    unique and contiguous from 1, rules reference existing questions, ``default_tier`` is defined.
-    """
+    """PUT: the same tier numbers and question ids as today, with new wording."""
 
     tiers: list[TierDefIn] = Field(min_length=1, max_length=9)
-    dimensions: list[Annotated[str, StringConstraints(max_length=300)]] = Field(max_length=10)
-    default_tier: int = Field(ge=1, le=9)
     questions: list[TierQuestionIn] = Field(max_length=30)
-    rules: list[TierRuleIn] = Field(max_length=50)
-
-
-class TierTestIn(BaseModel):
-    """POST /admin/tiering/test: runs the pure ``propose_tier`` on a hypothetical project."""
-
-    intake: dict[str, str | None] = Field(default_factory=dict)  # e.g. {"audience": "External"}
-    answers: dict[str, bool] = Field(default_factory=dict)  # {"TQ1": true}
-    config: TieringConfigIn | None = None  # test unsaved edits; omitted = the saved configuration
-
-
-class TierTestOut(BaseModel):
-    tier: int
-    rationale: list[str]
-    matched_rule_id: str | None = None  # None = default tier
 
 
 # --------------------------------------------------------------------------- eval metrics (1.7)
@@ -670,10 +568,10 @@ class EvalMetricAdminOut(BaseModel):
     unit: str | None = None
     active: bool = True
     targets_by_tier: dict[str, str] = {}
-    notice: str = NOTICE_NEW_ONLY
+    notice: str = NOTICE_AI_NOW
 
 
-# --------------------------------------------------------------------------- settings documents (1.8)
+# --------------------------------------------------------------------------- thresholds (1.8)
 
 
 class RagThresholdsDoc(BaseModel):
@@ -717,70 +615,6 @@ class ThresholdsOut(BaseModel):
 
 class ThresholdsIn(BaseModel):
     thresholds: ThresholdsDoc
-
-
-class LabelsDoc(BaseModel):
-    """Display overrides of workflow vocabulary: ``{key: label}`` (e.g. ``"rag.Grey": "Not started"``).
-    Keys are the ones returned by GET (unknown keys are refused)."""
-
-    labels: dict[
-        str, Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
-    ]
-
-
-class LabelsOut(LabelsDoc):
-    defaults: dict[str, str] = {}
-    notice: str = "Changes the wording only; behaviour does not change."
-
-
-class GateTextIn(BaseModel):
-    label: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
-    short: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=30)]
-    description: LongText = ""
-
-
-class GateTextOut(GateTextIn):
-    code: str
-    order: int
-    type: str  # stage_review | decision | closure (structural, code)
-
-
-class GatesDoc(BaseModel):
-    """Gate texts keyed by gate code (codes, order and type stay in code), outcome label overrides
-    ``{gate_type: {outcome: label}}`` and the decision-gate -> approval-chain map."""
-
-    gates: dict[str, GateTextIn]
-    outcome_labels: dict[str, dict[str, str]] = Field(default_factory=dict)
-    chain: dict[str, Annotated[str, StringConstraints(max_length=30)]] = Field(default_factory=dict)
-    mock_role: str | None = None  # the mocked approval role (CISO_BISO)
-    mock_approver_role: str | None = None  # the real role that acts for it (IRM)
-
-
-class GatesOut(BaseModel):
-    gates: list[GateTextOut]
-    outcome_labels: dict[str, dict[str, str]]
-    outcomes: dict[str, list[str]]  # gate type -> outcome values (structural)
-    chain: dict[str, str]
-    mock_role: str
-    mock_approver_role: str
-    notice: str = "Codes, order and gate types are fixed; the wording is yours."
-
-
-class LensCfgIn(BaseModel):
-    question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
-    color_hint: Text80
-    owner_roles: list[Code] = Field(max_length=10)
-    signoff_role: Code
-
-
-class LensesDoc(BaseModel):
-    """The three lenses (Business, Technical, Compliance - structural) keyed by code."""
-
-    lenses: dict[str, LensCfgIn]
-
-
-class LensesOut(LensesDoc):
-    notice: str = "The three lenses are fixed; their question, colour and owners are yours."
 
 
 # --------------------------------------------------------------------------- message templates (1.8)
@@ -834,30 +668,7 @@ class TemplatePreviewOut(BaseModel):
     unknown_placeholders: list[str] = []
 
 
-# --------------------------------------------------------------------------- export / import, usage
-
-
-class ConfigExportOut(BaseModel):
-    """GET /admin/config-export (stretch): every configuration section as JSON."""
-
-    schema_version: int
-    sections: dict[str, Any]
-
-
-class ConfigImportIn(BaseModel):
-    schema_version: int
-    sections: dict[str, Any]
-
-
-class ConfigDiffOut(BaseModel):
-    """POST /admin/config-import?dry_run=true: what the import would add, change and remove."""
-
-    dry_run: bool
-    applied: bool
-    added: dict[str, list[str]] = {}
-    changed: dict[str, list[str]] = {}
-    removed: dict[str, list[str]] = {}
-    reasons: list[str] = []
+# --------------------------------------------------------------------------- usage
 
 
 class UsageTransitionOut(BaseModel):

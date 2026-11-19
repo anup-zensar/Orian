@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app import clock
 from app.access import ensure_transition_role
-from app.domain import audit
+from app.domain import audit, cfg
 from app.domain.conditions import close_superseded_conditions, create_condition
 from app.domain.readiness_check import latest_chain, load_gate_inputs
 from app.errors import BadRequest, Conflict, NotFound
@@ -29,7 +29,6 @@ from app.rules.constants import (
 from app.schemas.gates import ConditionIn
 
 REVIEW_FIELDS = ("gate", "gate_type", "outcome", "note", "conditions_created")
-DECISION_CHAIN_TYPE = {"SG4_ATD": "AtD", "SG6_ATO": "AtO"}
 
 
 def next_gate(gate: str) -> str:
@@ -356,7 +355,7 @@ def request_gate_approval(
 
     ensure_transition_role(db, user, transition, Perm.SEND_DRAFTS, phrase="request approval")
 
-    chain_type = DECISION_CHAIN_TYPE.get(gate)
+    chain_type = cfg.gate_chain(db).get(gate)
     if chain_type is None:
         raise Conflict(
             f"{GATE_SHORT[gate]} does not need an approval request",

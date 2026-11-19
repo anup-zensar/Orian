@@ -21,11 +21,14 @@ import { useApiErrorToast } from '../../../hooks/useApiErrorToast';
 import { useConfirmNoDefects, useHypercare, usePatchDefect, type Defect } from '../../records/api';
 import { GuardedButton } from '../../records/common';
 import { useRecordStyles, usePerm } from '../../records/hooks';
+import { useOptionColor, useOptionLabel } from '../../reference/options';
 import { DefectDialog } from '../../records/DefectDialog';
 import type { TabProps } from '../types';
 
 /** Hypercare tab (spec 8.7 h): defect tracker plus the "No defects – tracker in place" confirmation. */
 export function HypercareTab({ transitionId }: TabProps) {
+  const optionColor = useOptionColor();
+  const optionLabel = useOptionLabel();
   const s = useRecordStyles();
   const showError = useApiErrorToast();
   const data = useHypercare(transitionId);
@@ -109,14 +112,12 @@ export function HypercareTab({ transitionId }: TabProps) {
                         <TableCell>
                           <Badge
                             appearance="tint"
-                            color={
-                              d.priority === 'P1' || d.priority === 'P2' ? 'danger' : 'informative'
-                            }
+                            color={optionColor('defect_priorities', d.priority)}
                           >
-                            {d.priority}
+                            {optionLabel('defect_priorities', d.priority)}
                           </Badge>
                         </TableCell>
-                        <TableCell>{d.status}</TableCell>
+                        <TableCell>{optionLabel('defect_statuses', d.status)}</TableCell>
                         <TableCell>{d.owner?.name ?? '–'}</TableCell>
                         <TableCell>
                           <div className={s.row}>

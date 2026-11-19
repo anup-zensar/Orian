@@ -23,7 +23,7 @@ def _set_version(value: int | None) -> None:
 
 
 def test_seed_writes_the_current_schema_version(client, fresh_seed) -> None:
-    assert SCHEMA_VERSION >= 2
+    assert SCHEMA_VERSION >= 3  # 3 = CR-01 simplification
     assert stored_schema_version() == SCHEMA_VERSION
 
 
@@ -36,7 +36,7 @@ def test_equal_version_keeps_modified_data(client, fresh_seed) -> None:
         assert db.get(Portfolio, "GCC").label == "Changed label"
 
 
-@pytest.mark.parametrize("stored", [1, SCHEMA_VERSION + 5, None])
+@pytest.mark.parametrize("stored", [1, 2, SCHEMA_VERSION + 5, None])
 def test_other_version_rebuilds_and_reseeds(client, fresh_seed, stored: int | None) -> None:
     """Older, newer than the code, or missing: drop, re-create, re-seed (demo data is synthetic)."""
     with SessionLocal() as db:

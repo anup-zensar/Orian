@@ -279,7 +279,7 @@ def test_approval_chains_round_trip(client, headers, fresh_seed, db):
     assert res.status_code == 200, res.text
     ocet = next(c for c in res.json()["chains"] if c["type"] == "OCET")
     assert [s["role"] for s in ocet["steps"]] == ["PLANNER", "ARCHITECT", "OLM"]
-    assert len(_audits(db, "ApprovalChainConfig", "OCET")) == 1
+    assert len(_audits(db, "config:approval_chains", "OCET")) == 1
     # an existing request keeps its steps
     seeded = client.get(f"{API}/approvals/APR-0001", headers=headers("U14")).json()
     assert len(seeded["steps"]) == 2
@@ -310,7 +310,7 @@ def test_reminder_rules_round_trip(client, headers, fresh_seed, db):
     got = res.json()[0]
     assert got["enabled"] is False and got["params"] == {"days_before_decision": 7}
     assert got["name"] == r1["name"]
-    assert len(_audits(db, "ReminderRule", "R1")) == 1
+    assert len(_audits(db, "config:reminder_rules", "R1")) == 1
 
     def put(rule):
         return client.put(f"{API}/admin/reminder-rules", json={"rules": [rule]}, headers=h)
@@ -364,3 +364,33 @@ def test_approval_chain_role_without_user_is_422(client, headers, db, fresh_seed
 def test_reminders_stub_is_501_not_500(client, headers):
     res = client.post(f"{API}/reminders/run", json={}, headers=headers("U01"))
     assert res.status_code in (200, 501), res.text
+
+
+def test_flavour_rules_alias_carries_the_project_type_fields(client, headers):
+    """CR-01: /admin/flavour-rules is an alias of the project types (original four fields kept)."""
+    rules = client.get(f"{API}/admin/flavour-rules", headers=headers(ADMIN)).json()["rules"]
+    ai = next(r for r in rules if r["project_type"] == "Agentic AI")
+    assert ai["checklists"] == ["FRAMEWORK", "AI_PLAYBOOK"] and ai["requires_tiering"] is True
+    assert ai["label"] == "Agentic AI" and ai["has_ai_profile"] and ai["has_eval_metrics"]
+    assert ai["required_intake_fields"] == ["audience", "write_actions", "sensitive_data"]
+    assert [r["project_type"] for r in rules] == [
+        "Normal",
+        "Infrastructure",
+        "Agentic AI",
+        "Combined",
+    ]
+
+
+def test_flavour_rules_alias_refuses_an_unknown_checklist(client, headers, fresh_seed):
+    entry = {"project_type": "Normal", "checklists": ["FRAMEWORK", "NOPE"]}
+    r = client.put(f"{API}/admin/flavour-rules", json={"rules": [entry]}, headers=headers(ADMIN))
+    assert r.status_code == 422 and "'NOPE' is not an active checklist" in r.json()["reasons"][0]
+
+
+def test_new_golden_set_items_apply_to_every_project_type(client, headers, fresh_seed, db):
+    body = {"items": [{"title": "New golden item", "gate": "SG3", "lens": "Technical"}]}
+    r = client.put(f"{API}/admin/portfolios/GCC/golden-set", json=body, headers=headers(ADMIN))
+    assert r.status_code == 200
+    db.expire_all()
+    new = db.scalars(select(PlaybookItem).where(PlaybookItem.title == "New golden item")).one()
+    assert new.applies_to_project_types == []  # [] = also for project types added later

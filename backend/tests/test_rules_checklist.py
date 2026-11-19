@@ -9,6 +9,7 @@ import pytest
 
 from app.config import get_settings
 from app.rules.checklist import (
+    ChecklistDef,
     ExistingItem,
     LibraryItem,
     TransitionRoles,
@@ -252,3 +253,140 @@ def test_reassemble_restore_add_and_manual_na(library):
         if change.change == "restored":
             assert change.applicability == "Applies" and change.status == "Not started"
             assert change.excluded_by is None
+
+
+# --- CR-01: checklists and owner hints are configuration -----------------------------------------
+
+SECURITY = ChecklistDef("SECURITY_PLAYBOOK")  # an Admin-added "library" checklist
+SECURITY_ITEMS = [
+    LibraryItem(id="SEC-1", source="SECURITY_PLAYBOOK", gate="SG0", lens="Business"),
+    LibraryItem(id="SEC-2", source="SECURITY_PLAYBOOK", gate="SG3", lens="Technical"),
+]
+
+
+def _with_security(library):
+    return [*library, *SECURITY_ITEMS]
+
+
+def test_default_definitions_change_nothing(library):
+    from app.rules.checklist import DEFAULT_CHECKLIST_DEFS
+
+    plain = assemble(library, "Agentic AI", "GCC", 2, WITH_AI)
+    explicit = assemble_checklist(
+        library, "Agentic AI", "GCC", 2, WITH_AI, ROLES, checklist_defs=DEFAULT_CHECKLIST_DEFS
+    )
+    assert plain == explicit
+
+
+def test_admin_added_checklist_is_assembled_when_the_type_lists_it(library):
+    defs = [*loader_defaults(), SECURITY]
+    planned = assemble_checklist(
+        _with_security(library),
+        "Security Review",
+        "GCC",
+        None,
+        ["FRAMEWORK", "SECURITY_PLAYBOOK"],
+        ROLES,
+        checklist_defs=defs,
+    )
+    sources = {p.source for p in planned}
+    assert sources == {"FRAMEWORK", "SECURITY_PLAYBOOK", "COMMON", "PORTFOLIO"}
+    security = [p for p in planned if p.source == "SECURITY_PLAYBOOK"]
+    assert [p.applicability for p in security] == ["Applies", "Applies"]  # not tier filtered
+    counts = summarize_counts(planned)
+    assert counts["other"] == 2 and counts["ai_applicable"] == 0
+    assert counts["total_applicable"] == 72 + 1 + 2  # framework + ALL-01 + the two security items
+
+
+def test_checklist_not_listed_by_the_type_is_skipped(library):
+    planned = assemble_checklist(
+        _with_security(library),
+        "Normal",
+        "GCC",
+        None,
+        FRAMEWORK_ONLY,
+        ROLES,
+        checklist_defs=[*loader_defaults(), SECURITY],
+    )
+    assert "SECURITY_PLAYBOOK" not in {p.source for p in planned}
+
+
+def test_unknown_checklist_is_never_guessed(library):
+    # SECURITY_PLAYBOOK is not a configured checklist here: its items are ignored
+    planned = assemble_checklist(
+        _with_security(library),
+        "Normal",
+        "GCC",
+        None,
+        ["FRAMEWORK", "SECURITY_PLAYBOOK"],
+        ROLES,
+    )
+    assert "SECURITY_PLAYBOOK" not in {p.source for p in planned}
+
+
+def test_tier_filter_follows_the_checklist_definition_not_its_name():
+    tiered = ChecklistDef("RISK_LIST", tier_filtered=True)
+    items = [
+        LibraryItem(
+            id="R-1", source="RISK_LIST", gate="SG0", lens="Business", applicable_tiers=(3, 4)
+        ),
+        LibraryItem(
+            id="R-2", source="RISK_LIST", gate="SG0", lens="Business", applicable_tiers=(1,)
+        ),
+    ]
+
+    def run(tier):
+        return {
+            p.playbook_item_id: p.applicability
+            for p in assemble_checklist(
+                items, "X", "GCC", tier, ["RISK_LIST"], ROLES, checklist_defs=[tiered]
+            )
+        }
+
+    assert run(3) == {"R-1": "Applies", "R-2": "Not applicable"}
+    assert run(None) == {"R-1": "Applies", "R-2": "Applies"}  # no tier yet: everything applies
+
+
+def test_reassemble_excludes_dropped_admin_checklist_items_by_project_type(library):
+    from app.rules.checklist import ExistingItem
+
+    defs = [*loader_defaults(), SECURITY]
+    items = _with_security(library)
+    existing = [ExistingItem("SEC-1", "Applies", None, "Not started")]
+    planned = assemble_checklist(
+        items, "Normal", "GCC", None, FRAMEWORK_ONLY, ROLES, checklist_defs=defs
+    )
+    result = reassemble(existing, planned, items, checklist_defs=defs)
+    change = next(c for c in result.changes if c.playbook_item_id == "SEC-1")
+    assert (change.change, change.excluded_by) == ("excluded", "project_type")
+
+
+def loader_defaults():
+    from app.rules.checklist import DEFAULT_CHECKLIST_DEFS
+
+    return list(DEFAULT_CHECKLIST_DEFS)
+
+
+def test_owner_hints_come_from_configuration():
+    hints = [("Security", "ARCHITECT"), ("Delivery", "PM")]
+    assert role_from_hint("Security (review), Delivery", hints) == "architect"  # leftmost wins
+    assert role_from_hint("Delivery then Security", hints) == "pm"
+    assert role_from_hint("S&T", hints) is None  # the default keywords are replaced, not added
+    item = _item("Business", hint="Security team")
+    assert default_owner_role(item, hints) == "architect"
+
+
+def test_item_default_owner_role_beats_hint_and_lens():
+    item = LibraryItem(
+        id="T-2",
+        source="FRAMEWORK",
+        gate="SG2",
+        lens="Compliance",
+        owner_role_hint="Project Team",
+        default_owner_role="OLM",
+    )
+    assert default_owner_role(item) == "olm"
+    item_unknown = LibraryItem(
+        id="T-3", source="FRAMEWORK", gate="SG2", lens="Compliance", default_owner_role="NO_SUCH"
+    )
+    assert default_owner_role(item_unknown) == "irm"  # an unknown role code falls back to the rules

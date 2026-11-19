@@ -7,15 +7,13 @@ PRINCIPLES (binding for builders)
    ``link`` or a draft in the drafts queue. A permitted human clicks Accept / Create / Send. The only
    modules allowed to import mutating domain functions are listed in ``domain/proposals.py``; this module
    imports NONE of them (it may read the DB and call ``domain.proposals.create_proposal``).
-2. NO hard-coded business enumerations. Project types, portfolios, regions, option lists, roles and users
-   are read from the database at runtime by ``build_vocabulary`` (the same sources as GET /reference), so
-   an Admin who adds a project type or portfolio in the UI is understood immediately, with no code change.
-   Behavioural flags come from data too: ``requires_tiering`` (FlavourRule) and ``requires_sites`` (a
-   portfolio flag; until the admin model carries it, derive it from the constant used by
-   ``domain.intake`` and expose it only through ``vocab["portfolios"][i]["requires_sites"]``).
-3. Admin-tunable language: optional AppSetting key ``orion_synonyms`` =
-   ``{"<vocab key or field>": {"<canonical value>": ["phrase", ...]}}`` (e.g. a nickname for a project
-   type) is merged into ``vocab`` at runtime; editing it is an Admin UI concern, never code.
+2. NO hard-coded business enumerations. Project types, portfolios, regions, option lists, roles, users
+   and custom intake fields are read from the configuration at runtime by ``build_vocabulary`` (the
+   same sources as GET /reference), so an Admin who adds a project type or portfolio in the UI is
+   understood immediately, with no code change. Behavioural flags come from data too:
+   ``requires_tiering`` and the required intake fields (project type), ``requires_sites`` (portfolio).
+3. Admin-tunable language: the synonyms an Admin types on a project type or portfolio, and the
+   Glossary dropdown list, are merged into ``vocab`` at runtime; never code.
 4. Never invent: a value is returned only when it exists in the vocabulary. Anything unsure is
    ``ambiguous`` (candidates) or ``missing`` - never guessed - and is shown to the human as such.
 5. Same input -> same output (mock). The live LLM only replaces the extractor
@@ -57,16 +55,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
-from app.domain.intake import RETAIL_PORTFOLIO, ROLE_FIELDS, lookup_servicenow
+from app.domain import cfg
+from app.domain.intake import REQUIRED_FIELDS, ROLE_FIELDS, lookup_servicenow
 from app.domain.proposals import create_proposal, proposal_out
 from app.domain.tiering import reference
 from app.errors import ApiError, Forbidden, NotFound
 from app.models import (
-    AppSetting,
-    FlavourRule,
     OcetEstimate,
     PlaybookItem,
-    Portfolio,
     Transition,
     TransitionItem,
     User,
@@ -77,9 +73,8 @@ from app.rules.constants import (
     DONE_STATUSES,
     GATE_ORDER,
     GATE_SHORT,
+    LENSES,
     NA_STATUSES,
-    SEVERITIES,
-    STATUSES_BY_LENS,
 )
 from app.schemas.intake import TransitionUpdateIn
 from app.schemas.orion import (
@@ -455,7 +450,8 @@ for _entry in INTENT_CATALOG:
 
 CATALOG_BY_INTENT: dict[str, dict[str, Any]] = {e["intent"]: e for e in INTENT_CATALOG}
 
-# Field language (labels, order) of the intake form.
+# Field order of the intake form; labels come from the Admin's "Form fields" (vocab["field_labels"]),
+# FIELD_LABEL is the fallback for fields the Admin cannot rename.
 FIELD_ORDER = (
     "name",
     "servicenow_project_id",
@@ -479,21 +475,8 @@ FIELD_ORDER = (
     "next_decision_date",
 )
 FIELD_LABEL = {
-    "name": "Solution / transition name",
     "servicenow_project_id": "ServiceNow project ID",
-    "project_type": "Project type",
-    "portfolio": "Portfolio",
-    "region": "Region",
-    "market": "Market",
     "sites": "Sites",
-    "audience": "Audience",
-    "write_actions": "Write actions",
-    "sensitive_data": "Sensitive data",
-    "target_gate": "Target gate",
-    "investment_type": "Investment type",
-    "delivery_method": "Delivery method",
-    "description": "Description",
-    "next_decision_date": "Next decision date",
     **{field: label for field, (_role, label) in ROLE_FIELDS.items()},
 }
 OPTION_FIELD_NAMES = (
@@ -521,58 +504,81 @@ _MODULES = [
 # ---------------------------------------------------------------------------------------------
 # Vocabulary
 # ---------------------------------------------------------------------------------------------
-def _setting(db: Session, key: str) -> Any:
-    row = db.get(AppSetting, key)
-    return row.value if row is not None else None
+def _or_list(values: list[str]) -> str:
+    """'Critical, Major or Minor'."""
+    return " or ".join([", ".join(values[:-1]), values[-1]]) if len(values) > 1 else "".join(values)
+
+
+def _middle(values: list[str]) -> str:
+    """The option used when none was named: the middle of the list ("Medium" of High/Medium/Low)."""
+    return values[len(values) // 2]
 
 
 def build_vocabulary(db: Session) -> dict[str, Any]:
-    """Everything the extractors may match against, loaded from the DB on EVERY call (no cache), so
-    Admin edits are live. Shape (plain JSON, deterministic order = sorted by name/id):
+    """Everything the extractors may match against, loaded from the configuration on EVERY call, so
+    Admin edits are live. Shape (plain JSON, deterministic order):
 
-    ``project_types`` [{name, requires_tiering, synonyms}] from FlavourRule (via
-    ``routers.reference.get_reference``); ``portfolios`` [{name, requires_sites, synonyms}];
-    ``regions`` [str]; ``options`` {audience|write_actions|sensitive_data|target_gate|investment_type|
-    delivery_method: [str]}; ``gates`` [{code, short, label}] ("AtD" = short); ``roles`` [{code,
-    label}] and ``role_fields`` {"or_focal_user_id": "OR_FOCAL", ...} (from
-    ``domain.intake.ROLE_FIELDS``); ``users`` [{id, name, role, email}]; ``transitions`` [{id, name,
-    portfolio}]; ``terms`` (glossary). ``synonyms`` merge AppSetting ``orion_synonyms``
-    (principle 3). Read-only; no writes."""
-    from app.routers.reference import ENUMS  # priorities come from the same enums as GET /reference
-
+    ``project_types`` [{name, requires_tiering, required, synonyms}] (``synonyms`` = the label and the
+    synonyms typed by the Admin; ``required`` = the intake fields required for the type);
+    ``portfolios`` [{name, requires_sites, synonyms}]; ``regions`` [str]; ``options``
+    {audience|write_actions|sensitive_data|target_gate|investment_type|delivery_method: [str]};
+    ``field_labels`` {field: label} (built-in and additional fields); ``custom_fields`` [{key, label,
+    type}] (the additional intake fields); ``gates`` [{code, short, label}]
+    ("AtD" = short); ``roles`` [{code, label}] and ``role_fields`` {"or_focal_user_id": "OR_FOCAL",
+    ...} (from ``domain.intake.ROLE_FIELDS``); ``users`` [{id, name, role, email}]; ``transitions``
+    [{id, name, portfolio}]; ``terms`` (glossary). Read-only; no writes."""
     ref = reference(db)
-    flavours = sorted(db.scalars(select(FlavourRule)).all(), key=lambda f: f.project_type)
-    portfolios = sorted(db.scalars(select(Portfolio)).all(), key=lambda p: p.name)
     users = sorted(db.scalars(select(User)).all(), key=lambda u: u.id)
     transitions = sorted(db.scalars(select(Transition)).all(), key=lambda t: t.id)
-    synonyms = _setting(db, "orion_synonyms")
-    glossary = _setting(db, "orion_glossary")
     terms = dict(DEFAULT_TERMS)
-    if isinstance(glossary, dict):
-        terms.update({str(k): str(v) for k, v in glossary.items()})
-    b_t_statuses = [st for st in STATUSES_BY_LENS["Business"] if st not in NA_STATUSES]
-    status_words = [{"phrase": st.lower(), "status": st} for st in b_t_statuses]
+    terms.update({o.value: o.description for o in cfg.options(db, "glossary") if o.description})
+    b_t_statuses = [
+        st
+        for st in cfg.option_values(db, "item_statuses_business", active_only=False)
+        if st not in NA_STATUSES
+    ]
+    status_words = []
+    for st in b_t_statuses:
+        status_words.append({"phrase": st.lower(), "status": st})
+        label = cfg.option_label(db, "item_statuses_business", st).lower()
+        if label != st.lower():
+            status_words.append({"phrase": label, "status": st})
     for status, phrases in _STATUS_SYNONYMS.items():
         status_words += [{"phrase": ph, "status": status} for ph in phrases]
+    options = {}
+    for name in OPTION_FIELD_NAMES:
+        field = cfg.intake_field(db, name)
+        options[name] = cfg.option_values(db, (field.option_list if field else None) or name)
+    custom = [f for f in cfg.intake_fields(db) if not f.builtin]
+    field_labels = {f.key: f.label for f in cfg.intake_fields(db)}
     return {
         "today": clock.today().isoformat(),
         "project_types": [
-            {"name": f.project_type, "requires_tiering": f.requires_tiering, "synonyms": []}
-            for f in flavours
+            {
+                "name": p.code,
+                "requires_tiering": p.requires_tiering,
+                "required": cfg.required_fields_for(db, p.code),
+                "synonyms": _synonyms(p.label, p.code, p.synonyms),
+            }
+            for p in sorted(cfg.project_types(db), key=lambda p: p.code)
         ],
         "portfolios": [
-            {"name": p.name, "requires_sites": p.name == RETAIL_PORTFOLIO, "synonyms": []}
-            for p in portfolios
+            {
+                "name": p.name,
+                "requires_sites": p.requires_sites,
+                "synonyms": _synonyms(p.label, p.name, p.synonyms),
+            }
+            for p in sorted(cfg.portfolios(db), key=lambda p: p.name)
         ],
-        "regions": list(ref.get("regions", [])),
-        "options": {
-            field: list(values) for field, values in sorted(ref.get("intake_options", {}).items())
-        },
+        "regions": cfg.option_values(db, "regions"),
+        "options": dict(sorted(options.items())),
+        "field_labels": field_labels,
+        "custom_fields": [{"key": f.key, "label": f.label, "type": f.type} for f in custom],
         "gates": [
             {"code": g["code"], "short": g.get("short", g["code"]), "label": g.get("label", "")}
             for g in ref.get("gates", [])
         ],
-        "roles": [dict(r) for r in ref.get("roles", [])],
+        "roles": [{"code": r.code, "label": r.label} for r in cfg.roles(db)],
         "role_fields": {field: role for field, (role, _label) in ROLE_FIELDS.items()},
         "users": [{"id": u.id, "name": u.name, "role": u.role, "email": u.email} for u in users],
         "transitions": [
@@ -580,13 +586,22 @@ def build_vocabulary(db: Session) -> dict[str, Any]:
             for t in transitions
         ],
         "terms": terms,
-        "synonyms": synonyms if isinstance(synonyms, dict) else {},
-        "priorities": list(ENUMS.action_priorities),
-        "severities": list(SEVERITIES),
+        "synonyms": {},
+        "priorities": cfg.option_values(db, "action_priorities"),
+        "severities": cfg.option_values(db, "severities"),
         "status_words": status_words,
-        "item_statuses": {lens: list(st) for lens, st in STATUSES_BY_LENS.items()},
+        "item_statuses": {
+            lens: cfg.option_values(db, f"item_statuses_{lens.lower()}", active_only=False)
+            for lens in LENSES
+        },
         "modules": _MODULES,
     }
+
+
+def _synonyms(label: str, code: str, typed: Any) -> list[str]:
+    """Other ways to name a project type or portfolio: its label (when renamed) and the Admin's synonyms."""
+    names = ([label] if label and label != code else []) + [str(x) for x in (typed or [])]
+    return list(dict.fromkeys(names))
 
 
 # ---------------------------------------------------------------------------------------------
@@ -685,13 +700,20 @@ def _display(name: str, value: Any, vocab: dict[str, Any]) -> str | None:
 def required_fields(
     vocab: dict[str, Any], project_type: str | None, portfolio: str | None
 ) -> list[str]:
-    """Required for Create: the same rules as POST /transitions."""
-    required = ["name", "project_type", "portfolio", "region", "or_focal_user_id"]
-    if any(p["name"] == project_type and p["requires_tiering"] for p in vocab["project_types"]):
-        required += ["audience", "write_actions", "sensitive_data"]
+    """Required for Create: the same rules as POST /transitions (always-required fields, what the
+    Admin required for the project type, and sites for a portfolio that needs them)."""
+    required = list(REQUIRED_FIELDS)
+    for p in vocab["project_types"]:
+        if p["name"] == project_type:
+            required += [k for k in p["required"] if k not in required]
     if any(p["name"] == portfolio and p["requires_sites"] for p in vocab["portfolios"]):
         required.append("sites")
     return required
+
+
+def _label(vocab: dict[str, Any], name: str) -> str:
+    """Field label as the Admin named it (Forms & dropdowns)."""
+    return str(vocab["field_labels"].get(name) or FIELD_LABEL.get(name, name))
 
 
 def _extracted_fields(
@@ -711,7 +733,7 @@ def _extracted_fields(
     for name in FIELD_ORDER:
         entry = raw.get(name) or {}
         state = entry.get("state", "missing")
-        label = FIELD_LABEL[name]
+        label = _label(vocab, name)
         if state in ("found", "inferred"):
             value, why = _validate_value(name, entry.get("value"), vocab, portfolio)
             if value is None:
@@ -755,7 +777,11 @@ def _extracted_fields(
             )
     # OR focal defaults to the writing user (context, inferred) when none was named
     focal = out["or_focal_user_id"]
-    if focal.state == "missing" and user is not None and user.role == "OR_FOCAL":
+    if (
+        focal.state == "missing"
+        and user is not None
+        and user.role == ROLE_FIELDS["or_focal_user_id"][0]
+    ):
         out["or_focal_user_id"] = ExtractedField(
             name="or_focal_user_id",
             label=focal.label,
@@ -772,6 +798,19 @@ def _extracted_fields(
         f = out[name]
         f.required = name in required
         result.append(f)
+    # Additional details the Admin made required for this project type: Orion cannot read them from
+    # text, so they are listed as missing for the human to fill in on the form.
+    for field in vocab["custom_fields"]:
+        if field["key"] in required:
+            result.append(
+                ExtractedField(
+                    name=field["key"],
+                    label=field["label"],
+                    state="missing",
+                    required=True,
+                    note="Additional detail - fill it in on the form",
+                )
+            )
     return result
 
 
@@ -803,7 +842,7 @@ def extract_transition_proposal(
        ``sites`` when the portfolio ``requires_sites`` - the same rules as POST /transitions.
     5. ``create_proposal(kind="create_transition", transition_id=None, title="Start transition: <name
        or 'new transition'>", payload=CreateTransitionPayload)`` and return the ``proposal`` message
-       preceded by one ``text`` message ("I found N of M fields. Review the card, then Accept to open
+       preceded by one ``text`` message ("I found N of M fields. Review the card, then click Open pre-filled form to open
        the pre-filled form - nothing is created yet."). When nothing at all was found the answer is
        only "I could not find any intake details - tell me the project name, type, portfolio and
        region." and no proposal is stored.
@@ -895,7 +934,7 @@ def extract_transition_proposal(
             TextMessage(
                 text=(
                     f"I found {len(have)} of {len(required)} required fields. Review the card, then "
-                    "Accept to open the pre-filled form - nothing is created yet."
+                    "click Open pre-filled form - nothing is created yet."
                     + "".join(f" Note: {w}." for w in warnings)
                 )
             ),
@@ -1262,11 +1301,7 @@ def _b_create_action(
     if owner is None:
         return [_text("I could not find that person.")]
     priorities = vocab["priorities"]
-    priority = (
-        args["priority"]
-        if args.get("priority") in priorities
-        else ("Medium" if "Medium" in priorities else priorities[0])
-    )
+    priority = args["priority"] if args.get("priority") in priorities else _middle(priorities)
     payload = {
         "title": args.get("title") or "Follow up",
         "item_ids": items,
@@ -1508,7 +1543,7 @@ def _b_update_transition(
             continue
         clean, why = _validate_value(name, value, vocab, t.portfolio)
         if clean is None:
-            label = FIELD_LABEL.get(name, name)
+            label = _label(vocab, name)
             return [_text(f"I can't use that value for {label}: {why or 'not recognised'}.")]
         current = getattr(t, name, None)
         if str(current) == str(clean):
@@ -1517,7 +1552,7 @@ def _b_update_transition(
         fields.append(
             ExtractedField(
                 name=name,
-                label=FIELD_LABEL.get(name, name),
+                label=_label(vocab, name),
                 value=clean,
                 display=_display(name, clean, vocab),
                 state="found",
@@ -1598,15 +1633,15 @@ def _b_update_item(
                     "'S3-005 does not apply because ...'."
                 )
             ]
-        if status not in STATUSES_BY_LENS.get(lens, ()):
+        if status not in vocab["item_statuses"].get(lens, ()):
             return [_text(f"'{status}' is not a status of the {lens} lens.")]
         if status == "Gap" and not (changes.get("gap_severity") and changes.get("note")):
             return _need(
-                ["a gap severity (Critical, Major or Minor)", "a note"],
+                [f"a gap severity ({_or_list(vocab['severities'])})", "a note"],
                 "For example: 'S3-021 is a critical gap, no test environment'.",
             )
-    if "gap_severity" in changes and changes["gap_severity"] not in SEVERITIES:
-        return [_text("Gap severity must be Critical, Major or Minor.")]
+    if "gap_severity" in changes and changes["gap_severity"] not in vocab["severities"]:
+        return [_text(f"Gap severity must be {_or_list(vocab['severities'])}.")]
     if "owner_user_id" in changes and db.get(User, changes["owner_user_id"]) is None:
         return [_text("I could not find that person.")]
     payload = {
@@ -1644,20 +1679,26 @@ def _b_add_evidence(
     item_id = args.get("item_id")
     if item_id and _item_row(db, t.id, item_id) is None:
         return [_text(f"{item_id} is not an item of {t.id}.")]
+    link_type = cfg.evidence_type_for(db, "url")
+    text_type = cfg.evidence_type_for(db, "text")
     if args.get("url"):
+        if link_type is None:
+            return [_text("No evidence type for links is switched on - ask your Admin.")]
         payload = {
             "transition_id": t.id,
             "item_id": item_id,
             "title": str(args.get("title") or "Evidence link")[:300],
-            "type": "Link",
+            "type": link_type,
             "url": args["url"],
         }
     elif args.get("text"):
+        if text_type is None:
+            return [_text("No evidence type for pasted e-mails is switched on - ask your Admin.")]
         payload = {
             "transition_id": t.id,
             "item_id": item_id,
             "title": str(args.get("title") or "Email sign-off")[:300],
-            "type": "Email sign-off",
+            "type": text_type,
             "text": str(args["text"]),
         }
     else:
@@ -1705,14 +1746,19 @@ def signoff_evidence_proposal(
     ):
         return None
     subject = re.search(r"^\s*subject\s*:\s*(.+)$", text, re.IGNORECASE | re.MULTILINE)
-    title = (subject.group(1).strip() if subject else "Email sign-off")[:300]
+    text_type = cfg.evidence_type_for(db, "text")
+    if text_type is None:
+        return None
+    title = (
+        subject.group(1).strip() if subject else cfg.option_label(db, "evidence_types", text_type)
+    )[:300]
     ids = re.findall(r"\b([A-Za-z]{1,6}\d{0,3}-\d{1,4})\b", text)
     item_id = next((i.upper() for i in ids if _item_row(db, transition.id, i.upper())), None)
     payload = {
         "transition_id": transition.id,
         "item_id": item_id,
         "title": title,
-        "type": "Email sign-off",
+        "type": text_type,
         "text": text.strip(),
     }
     return ChatOut(

@@ -8,6 +8,7 @@ import { LoadingState } from '../../components/LoadingState';
 import { PageHeader } from '../../components/PageHeader';
 import { useInsights } from '../orion/api';
 import { useReference } from '../reference/api';
+import { useMe } from '../users/api';
 import { useDashboard } from './api';
 import { MyWorkCard, PortfolioTiles, RecentActivityCard } from './DashboardSections';
 
@@ -33,13 +34,18 @@ export function DashboardPage() {
   const dash = useDashboard();
   const insights = useInsights('dashboard');
   const reference = useReference();
+  const me = useMe();
   const d = dash.data;
 
   if (dash.isLoading) return <LoadingState rows={6} />;
   if (dash.error || !d)
     return <ErrorState error={dash.error} onRetry={() => void dash.refetch()} />;
 
-  const isLeadership = d.user.role === 'LEADERSHIP';
+  // People who may see every transition (a permission, Leadership by default) get portfolio tiles.
+  const isLeadership = !!me.data?.permissions.includes('see_all_transitions');
+  const ownedKpi = d.kpis.find((k) => k.key === 'transitions_i_own');
+  const noTransitions =
+    !isLeadership && d.my_work_total === 0 && Number(ownedKpi?.value ?? 0) === 0;
   const firstName = d.user.name.split(' ')[0];
   // /dashboard may leave role_label empty, so fall back to the reference role name.
   const roleLabel =
@@ -88,6 +94,7 @@ export function DashboardPage() {
           isLoading={insights.isLoading}
           error={insights.error}
           onRetry={() => void insights.refetch()}
+          noTransitions={noTransitions}
         />
         <RecentActivityCard events={d.recent_activity} today={d.today} />
       </div>

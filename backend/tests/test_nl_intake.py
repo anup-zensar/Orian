@@ -8,7 +8,7 @@ import zipfile
 
 from sqlalchemy import func, select
 
-from app.domain import nl_intake
+from app.domain import cfg, nl_intake
 from app.models import (
     AuditEvent,
     FlavourRule,
@@ -177,21 +177,81 @@ def test_vocabulary_is_dynamic(client, db, headers, fresh_seed):
     )
     db.add(Portfolio(name="Quantum Labs", code="QL", focus_areas=[], intake_extra_fields=[]))
     db.commit()
+    cfg.invalidate()  # what every admin save does
     (after,) = _proposals(_extract(client, headers, text=text).json()["messages"])
     prefill = after["payload"]["prefill"]
     assert prefill["project_type"] == "Data Platform" and prefill["portfolio"] == "Quantum Labs"
     assert _field(after, "project_type")["state"] == "found"
-    # an admin synonym (AppSetting) is understood too
-    from app.models import AppSetting
-
-    db.add(AppSetting(key="orion_synonyms", value={"portfolio": {"Quantum Labs": ["the lab"]}}))
+    # a synonym typed on the portfolio in Admin is understood too
+    db.get(Portfolio, "Quantum Labs").synonyms = ["the lab"]
     db.commit()
+    cfg.invalidate()
     (syn,) = _proposals(
         _extract(client, headers, text="New project Zed, Normal, region Global, the lab").json()[
             "messages"
         ]
     )
     assert syn["payload"]["prefill"]["portfolio"] == "Quantum Labs"
+
+
+def test_admin_flags_and_labels_drive_the_extraction(client, db, headers, fresh_seed):
+    """A new project type with its own synonym and required field, a new portfolio that needs sites,
+    a renamed label and an additional required field: all read from the configuration."""
+    from app.models import IntakeField
+
+    db.add(
+        FlavourRule(
+            project_type="Security Review",
+            label="Security Review",
+            checklists=["FRAMEWORK"],
+            requires_tiering=True,
+            required_intake_fields=["audience", "cf_budget_code"],
+            synonyms=["sec review"],
+        )
+    )
+    db.add(
+        Portfolio(
+            name="Fuels EU", code="FE", focus_areas=[], requires_sites=True, synonyms=["EU fuels"]
+        )
+    )
+    db.add(
+        IntakeField(
+            key="cf_budget_code",
+            label="Budget code",
+            builtin=False,
+            type="text",
+            visible=True,
+            required_mode="by_project_type",
+            active=True,
+            sort_order=99,
+            form="intake",
+        )
+    )
+    db.commit()
+    cfg.invalidate()
+    text = "New project Pump Cam, sec review, EU fuels, region Global. Site id 1234 key AB1."
+    (proposal,) = _proposals(_extract(client, headers, text=text).json()["messages"])
+    payload = proposal["payload"]
+    assert payload["prefill"]["project_type"] == "Security Review"
+    assert payload["prefill"]["portfolio"] == "Fuels EU"
+    assert payload["prefill"]["sites"] == [
+        {"site_id": "1234", "site_key": "AB1"}
+    ]  # requires_sites flag
+    assert "audience" in payload["missing_fields"]  # required for the type, from its own list
+    assert "cf_budget_code" in payload["missing_fields"]  # the additional field is listed too
+    assert _field(proposal, "cf_budget_code")["label"] == "Budget code"
+    assert _field(proposal, "audience")["required"] is True
+
+
+def test_renamed_field_label_is_used(client, db, headers, fresh_seed):
+    from app.models import IntakeField
+
+    db.get(IntakeField, "region").label = "Sales region"
+    db.commit()
+    cfg.invalidate()
+    text = "New project Nimbus, Normal, GCC, region Global"
+    (proposal,) = _proposals(_extract(client, headers, text=text).json()["messages"])
+    assert _field(proposal, "region")["label"] == "Sales region"
 
 
 def test_extract_retail_sites(client, headers):

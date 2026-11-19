@@ -140,7 +140,7 @@ class OcetLineIn(BaseModel):
     category: str
     description: str = Field(default="", max_length=2000)
     vendor: str = Field(default="", max_length=120)
-    pricing_basis: str = "Fixed (contract)"
+    pricing_basis: str | None = None  # none = the default pricing basis (Rules & thresholds)
     base_amount: float | None = Field(default=None, ge=0, le=1e12)
     growth_pct: float = Field(default=0.0, ge=-100, le=1000)
     year_overrides: dict[int, float] = Field(default_factory=dict)

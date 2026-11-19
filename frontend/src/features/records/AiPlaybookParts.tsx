@@ -20,6 +20,7 @@ import { SectionCard } from '../../components/SectionCard';
 import { useApiErrorToast } from '../../hooks/useApiErrorToast';
 import { formatDate } from '../../lib/format';
 import { useReference } from '../reference/api';
+import { useRoleLabel } from '../reference/options';
 import type { TransitionDetail } from '../transition/api';
 import {
   useAiProfile,
@@ -41,6 +42,7 @@ export const TARGETS_BANNER =
 /** Proposed / confirmed tier with rationale and who confirmed (spec 8.7 i). */
 export function TierCard({ transition }: { transition: TransitionDetail }) {
   const s = useRecordStyles();
+  const roleLabel = useRoleLabel();
   const ref = useReference();
   const t = transition.tier;
   const shown = t?.confirmed_tier ?? t?.proposed_tier ?? null;
@@ -70,9 +72,11 @@ export function TierCard({ transition }: { transition: TransitionDetail }) {
           <span className={s.muted}>
             {t.proposed_by ? `Proposed by ${t.proposed_by.name}. ` : ''}
             {t.confirmed_by_or_focal
-              ? `Acknowledged by ${t.confirmed_by_or_focal.name} (OR focal). `
+              ? `Acknowledged by ${t.confirmed_by_or_focal.name} (${roleLabel('OR_FOCAL', 'short')}). `
               : ''}
-            {t.confirmed_by_irm ? `Confirmed by ${t.confirmed_by_irm.name} (IRM). ` : ''}
+            {t.confirmed_by_irm
+              ? `Confirmed by ${t.confirmed_by_irm.name} (${roleLabel('IRM', 'short')}). `
+              : ''}
             {t.confirmed_at ? formatDate(t.confirmed_at) : ''}
           </span>
         </>

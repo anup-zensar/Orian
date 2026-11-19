@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import access, clock
-from app.domain import approvals, audit, drafts
+from app.domain import approvals, audit, cfg, drafts
 from app.domain.html_sanitize import escape_text
 from app.errors import BadRequest, Conflict, NotFound
 from app.models import (
@@ -54,25 +54,26 @@ from app.schemas.ocet import (
 )
 from app.services.factory import get_ai_service
 
-LINKED_OCET_ITEM_IDS: tuple[str, ...] = ("FW-008", "S45-006")
+LINKED_MODULE = "OCET"  # checklist items with this linked_module complete when the OCET is approved
 EDITABLE_STATUSES: tuple[str, ...] = ("Draft", "Inputs pending")
-
-_OWNER_FIELD = {
-    "OR_FOCAL": "or_focal_user_id",
-    "PM": "pm_user_id",
-    "ARCHITECT": "architect_user_id",
-    "OLM": "olm_user_id",
-    "IRM": "irm_user_id",
-}
 
 
 # --------------------------------------------------------------------------- helpers
 
 
 def _reference_ocet(db: Session) -> dict[str, Any]:
-    from app.domain.tiering import reference
-
-    return dict(reference(db).get("ocet", {}))
+    """The OCET dropdowns as configured under Forms & dropdowns: categories (with their default
+    growth %), pricing bases, currencies, and the default horizon in years."""
+    return {
+        "categories": cfg.option_values(db, "ocet_categories"),
+        "pricing_basis": cfg.option_values(db, "ocet_pricing_basis"),
+        "currencies": cfg.option_values(db, "ocet_currencies"),
+        "default_horizon_years": cfg.thresholds(db)["default_horizon_years"],
+        "default_growth_pct": {
+            o.value: o.meta.get("default_growth_pct", cfg.thresholds(db)["default_growth_pct"])
+            for o in cfg.options(db, "ocet_categories")
+        },
+    }
 
 
 def _person(db: Session, user_id: str | None) -> PersonRef | None:
@@ -396,9 +397,9 @@ def create_estimate(db: Session, transition: Transition, user: User) -> OcetEsti
     ref = _reference_ocet(db)
     estimate = OcetEstimate(
         transition_id=transition.id,
-        currency="USD",
+        currency=(ref["currencies"] or ["USD"])[0],
         start_year=clock.today().year + 1,
-        horizon_years=int(ref.get("default_horizon_years", 5)),
+        horizon_years=int(ref["default_horizon_years"]),
         current_version=1,
     )
     estimate.versions = [OcetVersion(version=1, status="Draft", note="", created_by=user.id)]
@@ -437,13 +438,23 @@ def _line_snapshot(version: OcetVersion) -> list[dict[str, Any]]:
 
 
 def _validate_line(
-    line: OcetLineIn, ref: dict[str, Any], years: list[int], position: int
+    line: OcetLineIn,
+    ref: dict[str, Any],
+    years: list[int],
+    position: int,
+    kept: OcetLine | None = None,
 ) -> list[str]:
+    """Problems of one line. ``kept`` is the stored line being edited: a category or pricing basis
+    the admin has since retired stays valid on it (only new choices must be active)."""
     errors: list[str] = []
     tag = f"Line {position}"
-    if line.category not in ref.get("categories", []):
+    if line.category not in ref.get("categories", []) and not (
+        kept and kept.category == line.category
+    ):
         errors.append(f"{tag}: unknown category '{line.category}'")
-    if line.pricing_basis not in ref.get("pricing_basis", []):
+    if line.pricing_basis not in ref.get("pricing_basis", []) and not (
+        kept and kept.pricing_basis == line.pricing_basis
+    ):
         errors.append(f"{tag}: unknown pricing basis '{line.pricing_basis}'")
     if not -100 <= line.growth_pct <= 1000:
         errors.append(f"{tag}: growth must be between -100 and 1000")
@@ -462,8 +473,8 @@ def _validate_line(
 
 
 def _default_owner(transition: Transition, role: str) -> str | None:
-    field = _OWNER_FIELD.get(role)
-    return getattr(transition, field) if field else None
+    """The person holding ``role`` on the transition (None for a role without a slot)."""
+    return access.assigned_user_id(transition, role)
 
 
 def save_lines(db: Session, version: OcetVersion, payload: OcetSaveIn, user: User) -> OcetVersion:
@@ -482,8 +493,10 @@ def save_lines(db: Session, version: OcetVersion, payload: OcetSaveIn, user: Use
     by_id = {ln.id: ln for ln in version.lines}
     errors: list[str] = []
     keys_seen: set[str] = set()
+    default_basis = cfg.thresholds(db)["default_pricing_basis"]
     for position, line in enumerate(payload.lines, start=1):
-        errors.extend(_validate_line(line, ref, years, position))
+        line.pricing_basis = line.pricing_basis or default_basis
+        errors.extend(_validate_line(line, ref, years, position, by_id.get(line.id)))
         if line.id is not None and line.id not in by_id:
             errors.append(f"Line {position}: id {line.id} does not belong to v{version.version}")
         key = line.line_key or (by_id[line.id].line_key if line.id in by_id else None)
@@ -889,7 +902,7 @@ def on_ocet_chain_completed(db: Session, request: ApprovalRequest) -> None:
     items = db.scalars(
         select(TransitionItem).where(
             TransitionItem.transition_id == transition_id,
-            TransitionItem.playbook_item_id.in_(LINKED_OCET_ITEM_IDS),
+            TransitionItem.linked_module == LINKED_MODULE,
         )
     ).all()
     for item in items:

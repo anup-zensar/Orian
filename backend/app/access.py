@@ -13,11 +13,9 @@ demo fast-forward, approval completion hooks, the reminder engine and autonomous
 
 Only this module knows how roles map to transition slots (``assigned_user_id``).
 
-CR-01: roles an Admin creates with a transition slot keep their person in ``Transition.role_assignments``
-({role_code: user_id}); the five built-in slots keep their columns. Which roles have a slot, and their
-labels, come from ``app.domain.cfg`` (``TRANSITION_ROLE_COLUMN`` / ``ROLE_LABEL`` below are the
-defaults). The Admin has no workflow override: ADMIN never has a slot, so granting a
-transition-scoped permission to ADMIN has no effect on transitions (design guardrail 11).
+CR-01: the five slots are fixed (``TRANSITION_ROLE_COLUMN``); the role labels shown in messages come
+from ``app.domain.cfg`` so an Admin can rename them. The Admin has no workflow override: ADMIN never
+has a slot, so granting a transition-scoped permission to ADMIN has no effect on transitions.
 """
 
 from __future__ import annotations
@@ -31,23 +29,13 @@ from app.errors import Conflict, Forbidden, NotFound
 from app.models import Transition, User
 from app.permissions import DENIAL_REASONS, Perm, has_perm
 
-# DEFAULT role -> the Transition column holding the person assigned to that role (order = message
-# order). Admin-created slot roles use ``Transition.role_assignments`` instead.
+# Role -> the Transition column holding the person assigned to that role (order = message order).
 TRANSITION_ROLE_COLUMN: dict[str, str] = {
     "OR_FOCAL": "or_focal_user_id",
     "PM": "pm_user_id",
     "ARCHITECT": "architect_user_id",
     "OLM": "olm_user_id",
     "IRM": "irm_user_id",
-}
-
-# DEFAULT role labels for messages; the live ones are ``cfg.role_phrase_label(db, role)``.
-ROLE_LABEL: dict[str, str] = {
-    "OR_FOCAL": "OR focal",
-    "PM": "project manager",
-    "ARCHITECT": "architect",
-    "OLM": "OLM",
-    "IRM": "IRM",
 }
 
 # Verb phrase per permission for "Only <who> can <phrase>" messages.
@@ -80,16 +68,9 @@ PERM_PHRASE: dict[Perm, str] = {
 
 def assigned_user_id(transition: Transition, role: str) -> str | None:
     """The id of the person holding ``role`` on ``transition`` (None for roles without a slot or an
-    empty slot): built-in slots read their column, admin-created slot roles ``role_assignments``."""
+    empty slot)."""
     column = TRANSITION_ROLE_COLUMN.get(role)
-    if column:
-        return getattr(transition, column)
-    return (transition.role_assignments or {}).get(role) or None
-
-
-def slot_role_codes(db: Session) -> list[str]:
-    """Active roles with a transition slot, in display order (the built-in five plus custom ones)."""
-    return [r.code for r in cfg.slot_roles(db)]
+    return (getattr(transition, column) or None) if column else None
 
 
 def is_assigned(user: User, transition: Transition) -> bool:
@@ -123,7 +104,7 @@ def transition_denial(
         return DENIAL_REASONS[perm]
     qualifying = [
         role
-        for role in slot_role_codes(db)
+        for role in TRANSITION_ROLE_COLUMN
         if has_perm(role, perm) and (roles is None or role in roles)
     ]
     if user.role in qualifying and (

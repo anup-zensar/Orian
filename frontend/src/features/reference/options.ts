@@ -115,6 +115,9 @@ export function useOptionLabel(): (list: string, value: string | null | undefine
   return useCallback((list, value) => optionLabelFrom(data, list, value), [data]);
 }
 
+/** Key of the dropdown list that holds the statuses of a lens, e.g. 'Business' -> item_statuses_business. */
+export const itemStatusList = (lens: string): string => `item_statuses_${lens.toLowerCase()}`;
+
 /** `(list, value) => Badge colour token`; neutral for unknown values. */
 export function useOptionColor(): (list: string, value: string | null | undefined) => BadgeColor {
   const { data } = useReference();
@@ -224,24 +227,6 @@ export function useRoleLabel(): (
       if (kind === 'short') return r.short_label || r.label || code;
       if (kind === 'phrase') return r.phrase_label || r.label || code;
       return r.label || code;
-    },
-    [data],
-  );
-}
-
-// --- gates --------------------------------------------------------------------------------------
-
-/** `(gateCode, kind?) => text`: 'label' = full name, 'short' = "AtD". Falls back to the code. */
-export function useGateLabel(): (
-  code: string | null | undefined,
-  kind?: 'label' | 'short',
-) => string {
-  const { data } = useReference();
-  return useCallback(
-    (code, kind = 'label') => {
-      if (!code) return '';
-      const g = data?.gate_labels?.[code];
-      return (kind === 'short' ? g?.short : g?.label) || code;
     },
     [data],
   );

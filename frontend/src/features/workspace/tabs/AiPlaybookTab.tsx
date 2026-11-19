@@ -23,13 +23,13 @@ export function AiPlaybookTab({ transitionId }: TabProps) {
         <LoadingState rows={4} />
       ) : transition.isError ? (
         <ErrorState error={transition.error} />
-      ) : !transition.data.requires_tiering ? (
+      ) : !transition.data.has_ai_profile && !transition.data.has_eval_metrics ? (
         <EmptyState message="The AI playbook applies to AI project types only." />
       ) : (
         <>
-          <TierCard transition={transition.data} />
-          <AiProfileCard transitionId={transitionId} />
-          <EvalCard transitionId={transitionId} />
+          {transition.data.requires_tiering && <TierCard transition={transition.data} />}
+          {transition.data.has_ai_profile && <AiProfileCard transitionId={transitionId} />}
+          {transition.data.has_eval_metrics && <EvalCard transitionId={transitionId} />}
         </>
       )}
     </div>

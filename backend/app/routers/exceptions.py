@@ -132,7 +132,7 @@ def create_exception(
     record.approval_request_id = request.id
     first = next((s for s in request.steps if s.status == "Pending"), None)
     if first is not None:
-        record.status = pending_status_label(first)[:24]
+        record.status = pending_status_label(db, first)[:24]
     audit.record(
         db,
         actor=user,

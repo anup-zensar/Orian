@@ -17,6 +17,7 @@ import dayjs from 'dayjs';
 import { SectionCard } from '../../../components/SectionCard';
 import { useSuccessToast } from '../../admin/useSavedToast';
 import { useApiErrorToast } from '../../../hooks/useApiErrorToast';
+import { useOptions } from '../../reference/options';
 import {
   useConfluenceFetch,
   useSaveInputs,
@@ -44,24 +45,20 @@ const useStyles = makeStyles({
 interface Slot {
   key: 'recording' | 'design' | 'diagram';
   title: string;
+  /** Kinds of the support_file_kinds list this slot accepts; their extensions come from the list. */
+  kinds: string[];
   hint: string;
   exts: string[];
 }
 
-const SLOTS: Slot[] = [
+const SLOT_DEFS: Pick<Slot, 'key' | 'title' | 'kinds'>[] = [
   {
     key: 'recording',
     title: 'Walkthrough recording or transcript',
-    hint: '.mp4, .m4a, .vtt, .txt, .docx',
-    exts: ['.mp4', '.m4a', '.vtt', '.txt', '.docx'],
+    kinds: ['recording', 'transcript'],
   },
-  { key: 'design', title: 'Solution design', hint: '.pdf, .docx', exts: ['.pdf', '.docx'] },
-  {
-    key: 'diagram',
-    title: 'Architecture diagrams',
-    hint: '.png, .jpg, .pdf',
-    exts: ['.png', '.jpg', '.pdf'],
-  },
+  { key: 'design', title: 'Solution design', kinds: ['design'] },
+  { key: 'diagram', title: 'Architecture diagrams', kinds: ['diagram'] },
 ];
 
 const ext = (name: string) => name.slice(name.lastIndexOf('.')).toLowerCase();
@@ -75,6 +72,13 @@ export function InputsStep(props: { transitionId: string; model: SupportModel })
   const notify = useSuccessToast();
   const { model } = props;
   const editable = model.can_edit;
+  const fileKinds = useOptions('support_file_kinds');
+  const slots: Slot[] = SLOT_DEFS.map((def) => {
+    const exts = fileKinds
+      .filter((k) => def.kinds.includes(k.value))
+      .flatMap((k) => (Array.isArray(k.meta.extensions) ? (k.meta.extensions as string[]) : []));
+    return { ...def, exts, hint: exts.join(', ') };
+  });
   const save = useSaveInputs(props.transitionId);
   const fetchPage = useConfluenceFetch();
 
@@ -151,7 +155,7 @@ export function InputsStep(props: { transitionId: string; model: SupportModel })
       </SectionCard>
 
       <SectionCard title="Uploads">
-        {SLOTS.map((slot) => (
+        {slots.map((slot) => (
           <div key={slot.key} className={s.row}>
             <Body1 className={s.grow}>
               {slot.title} <Caption1>({slot.hint})</Caption1>

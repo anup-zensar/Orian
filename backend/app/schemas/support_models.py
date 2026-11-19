@@ -10,19 +10,9 @@ from pydantic import BaseModel, Field, StringConstraints, model_validator
 from app.schemas.approvals import ApprovalStatus, ApprovalStepOut
 
 SupportModelStatus = Literal["Not started", "Draft", "In review", "Agreed"]
-InputFileKind = Literal["recording", "transcript", "design", "diagram", "other"]
-SourceType = Literal["diagram", "recording", "document"]
+InputFileKind = str  # a value of "support_file_kinds" (checked in the domain)
+SourceType = str  # "diagram", "recording" or "document" (checked in the domain)
 
-ALLOWED_EXTENSIONS: tuple[str, ...] = (
-    ".mp4",
-    ".m4a",
-    ".vtt",
-    ".txt",
-    ".docx",
-    ".pdf",
-    ".png",
-    ".jpg",
-)
 INFO_NOTE = "Orion doesn't join meetings. Upload the recording or transcript after the walkthrough."
 
 

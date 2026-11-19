@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import access, clock
-from app.domain import audit
+from app.domain import audit, cfg
 from app.domain.ids import next_id
 from app.errors import BadRequest, Conflict, NotFound
 from app.models import (
@@ -37,7 +37,6 @@ from app.rules.constants import (
     is_open_status,
 )
 from app.schemas.support_models import (
-    ALLOWED_EXTENSIONS,
     INFO_NOTE,
     ConfluencePageOut,
     ConfluenceSummaryOut,
@@ -68,22 +67,20 @@ GENERATE_STEPS: list[tuple[str, int]] = [
     ("Reading diagrams and documents", 1500),
     ("Drafting landscape and support flows", 1500),
 ]
-RELATIONS = ("bidirectional", "inbound", "outbound")
-_KIND_BY_EXT = {
-    ".mp4": "recording",
-    ".m4a": "recording",
-    ".vtt": "transcript",
-    ".txt": "transcript",
-    ".docx": "design",
-    ".pdf": "design",
-    ".png": "diagram",
-    ".jpg": "diagram",
-}
 _TEXT_KINDS = ("recording", "transcript")
 _URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 
 
 # ------------------------------------------------------------------ helpers
+
+
+def _kind_by_extension(db: Session) -> dict[str, str]:
+    """File extension -> input kind, from the "Support file kinds" list (e.g. .vtt -> transcript)."""
+    return {
+        ext.lower(): o.value
+        for o in cfg.options(db, "support_file_kinds")
+        for ext in o.meta.get("extensions", [])
+    }
 
 
 def _transition(db: Session, transition_id: str) -> Transition:
@@ -130,9 +127,10 @@ def _central(model: SupportModel) -> str:
     return str((model.landscape or {}).get("central_app") or "")
 
 
-def validate_landscape(landscape: LandscapeIn) -> None:
-    """422 on duplicate ids, unknown relation, or a child_of / target naming an unknown component."""
+def validate_landscape(db: Session, landscape: LandscapeIn) -> None:
+    """422 on duplicate ids, a relation that is not in the "Support relations" list, or a child_of / target naming an unknown component."""
     reasons: list[str] = []
+    relations = cfg.option_values(db, "support_relations", active_only=False)
     ids = [c.id for c in landscape.components]
     for dup in sorted({i for i in ids if ids.count(i) > 1}):
         reasons.append(f"Component id '{dup}' is used more than once")
@@ -159,7 +157,7 @@ def validate_landscape(landscape: LandscapeIn) -> None:
                 reasons.append(f"'{comp.name}' is a child of unknown component '{parent}'")
             elif parent == comp.name:
                 reasons.append(f"'{comp.name}' cannot be its own parent")
-        elif rel not in RELATIONS:
+        elif rel not in relations:
             reasons.append(f"'{comp.name}' has unknown relation '{rel}'")
         if comp.target is not None and comp.target not in names:
             reasons.append(f"'{comp.name}' points to unknown component '{comp.target}'")
@@ -325,17 +323,18 @@ def save_inputs(
 
     reasons: list[str] = []
     payloads: list[tuple[str, str, bytes]] = []
+    kind_by_ext = _kind_by_extension(db)
     for raw_name, handle in files:
         name = sanitize_filename(raw_name)
         ext = PurePosixPath(name).suffix.lower()
-        if ext not in ALLOWED_EXTENSIONS:
-            reasons.append(f"{name}: type not allowed (use {', '.join(ALLOWED_EXTENSIONS)})")
+        if ext not in kind_by_ext:
+            reasons.append(f"{name}: type not allowed (use {', '.join(kind_by_ext)})")
             continue
         content = read_upload(handle)
         if not content:
             reasons.append(f"{name}: the file is empty")
             continue
-        payloads.append((name, _KIND_BY_EXT[ext], content))
+        payloads.append((name, kind_by_ext[ext], content))
     page = None
     url = None
     if confluence_url is not None and confluence_url.strip():
@@ -491,7 +490,7 @@ def update_landscape(
             "Support model cannot be edited",
             [f"The support model is {model.status}; only Draft can be edited"],
         )
-    validate_landscape(landscape)
+    validate_landscape(db, landscape)
     before = model.landscape
     model.landscape = landscape.model_dump()
     db.flush()

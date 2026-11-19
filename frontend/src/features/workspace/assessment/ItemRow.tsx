@@ -26,6 +26,13 @@ import {
 import { ActorBadge } from '../../../components/ActorBadge';
 import { LensChip } from '../../../components/LensChip';
 import type { ActorType, Lens } from '../../../theme/tokens';
+import { useReference } from '../../reference/api';
+import {
+  colorForOption,
+  itemStatusList,
+  optionLabelFrom,
+  useOptionLabel,
+} from '../../reference/options';
 import type { ItemOut } from '../api';
 import { ROW_GRID, STICKY } from './rowLayout';
 
@@ -61,13 +68,6 @@ const useStyles = makeStyles({
   updated: { display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-start' },
 });
 
-const SOURCE_LABEL: Record<string, string> = {
-  FRAMEWORK: 'Framework',
-  AI_PLAYBOOK: 'AI playbook',
-  PORTFOLIO: 'Portfolio',
-  COMMON: 'Common',
-};
-
 export interface RowPermissions {
   permissions: readonly string[];
   denied: Readonly<Record<string, string>>;
@@ -88,12 +88,14 @@ export interface ItemRowProps {
   onDesignEffectiveness: (item: ItemOut, value: string) => void;
 }
 
-const SEVERITY_COLOR = { Critical: 'danger', Major: 'warning', Minor: 'informative' } as const;
-
 function ItemRowImpl(p: ItemRowProps) {
   const s = useStyles();
+  const optionLabel = useOptionLabel();
   const navigate = useNavigate();
   const { item } = p;
+  const { data: reference } = useReference();
+  const sourceLabel =
+    reference?.checklists?.find((c) => c.code === item.source)?.label ?? item.source;
   const [open, setOpen] = useState(p.autoOpen);
   const excluded = item.applicability === 'Not applicable';
   const base = `/transitions/${encodeURIComponent(p.transitionId)}`;
@@ -122,7 +124,7 @@ function ItemRowImpl(p: ItemRowProps) {
     >
       {item.allowed_statuses.map((st) => (
         <option key={st} value={st}>
-          {st}
+          {optionLabel(itemStatusList(item.lens), st)}
         </option>
       ))}
     </Select>
@@ -183,8 +185,19 @@ function ItemRowImpl(p: ItemRowProps) {
             )}
           </div>
         </div>
-        <Badge appearance="outline" shape="rounded" size="small">
-          {SOURCE_LABEL[item.source] ?? item.source}
+        <Badge
+          appearance="outline"
+          shape="rounded"
+          size="small"
+          title={sourceLabel}
+          style={{
+            maxWidth: '100%',
+            display: 'block',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {sourceLabel}
         </Badge>
         <LensChip lens={item.lens as Lens} />
         <Caption1 className={s.cell} title={item.owner?.name ?? 'Unassigned'}>
@@ -204,8 +217,11 @@ function ItemRowImpl(p: ItemRowProps) {
         </div>
         <div>
           {item.gap_severity && (
-            <Badge appearance="tint" color={SEVERITY_COLOR[item.gap_severity]}>
-              {item.gap_severity}
+            <Badge
+              appearance="tint"
+              color={colorForOption(reference, 'severities', item.gap_severity)}
+            >
+              {optionLabelFrom(reference, 'severities', item.gap_severity)}
             </Badge>
           )}
         </div>

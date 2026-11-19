@@ -101,7 +101,7 @@ def _passing_evals(db: Session, transition: Transition) -> int:
     """Re-import eval results so every metric of the tier passes. Returns metrics written."""
     from app.domain import eval as ev
 
-    if transition.project_type not in ev.AI_PROJECT_TYPES:
+    if not ev.has_eval_metrics(db, transition):
         return 0
     targets = ev._targets(db, ev.transition_tier(db, transition))
     existing = ev._results(db, transition.id)

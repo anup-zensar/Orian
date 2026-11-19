@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   Badge,
-  Button,
   Field,
   Input,
   Switch,
@@ -11,16 +10,18 @@ import {
   TableHeader,
   TableHeaderCell,
   TableRow,
+  Tooltip,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import { EmptyState } from '../../components/EmptyState';
-import { ErrorState } from '../../components/ErrorState';
-import { LoadingState } from '../../components/LoadingState';
-import { SectionCard } from '../../components/SectionCard';
-import { useApiErrorToast } from '../../hooks/useApiErrorToast';
-import { usePutReminderRules, useReminderRules, type ReminderRule } from './api';
-import { useSuccessToast } from './useSavedToast';
+import { EmptyState } from '../../../components/EmptyState';
+import { ErrorState } from '../../../components/ErrorState';
+import { LoadingState } from '../../../components/LoadingState';
+import { useApiErrorToast } from '../../../hooks/useApiErrorToast';
+import { usePutReminderRules, useReminderRules, type ReminderRule } from '../api';
+import { SaveBar } from '../peopleRulesUi';
+import { useDirty } from '../useDirty';
+import { useSuccessToast } from '../useSavedToast';
 
 interface Draft {
   enabled: boolean;
@@ -33,19 +34,21 @@ const useStyles = makeStyles({
   muted: { color: tokens.colorNeutralForeground3 },
 });
 
+const draftOf = (rules: ReminderRule[]): Record<string, Draft> =>
+  Object.fromEntries(
+    rules.map((r) => [
+      r.id,
+      {
+        enabled: r.enabled,
+        params: Object.fromEntries(Object.entries(r.params).map(([k, v]) => [k, String(v)])),
+      },
+    ]),
+  );
+
 function Editor({ rules }: { rules: ReminderRule[] }) {
   const s = useStyles();
-  const [draft, setDraft] = useState<Record<string, Draft>>(() =>
-    Object.fromEntries(
-      rules.map((r) => [
-        r.id,
-        {
-          enabled: r.enabled,
-          params: Object.fromEntries(Object.entries(r.params).map(([k, v]) => [k, String(v)])),
-        },
-      ]),
-    ),
-  );
+  const [draft, setDraft] = useState<Record<string, Draft>>(() => draftOf(rules));
+  const dirty = useDirty(draft, 'reminders');
   const save = usePutReminderRules();
   const showError = useApiErrorToast();
   const ok = useSuccessToast();
@@ -65,18 +68,11 @@ function Editor({ rules }: { rules: ReminderRule[] }) {
           ),
         })),
       },
-      { onSuccess: () => ok('Reminder rules saved'), onError: showError },
+      { onSuccess: () => ok('Saved - applies immediately'), onError: showError },
     );
 
   return (
-    <SectionCard
-      title="Reminder rules"
-      actions={
-        <Button appearance="primary" onClick={submit} disabled={save.isPending || invalid}>
-          {save.isPending ? 'Saving...' : 'Save reminder rules'}
-        </Button>
-      }
-    >
+    <>
       {rules.length === 0 ? (
         <EmptyState message="No reminder rules configured." />
       ) : (
@@ -100,11 +96,16 @@ function Editor({ rules }: { rules: ReminderRule[] }) {
                 return (
                   <TableRow key={r.id}>
                     <TableCell>
-                      <strong>{r.id}</strong> {r.name}
+                      {r.name}
                       {r.autonomous_eligible && (
-                        <Badge appearance="tint" style={{ marginLeft: 6 }}>
-                          autonomous eligible
-                        </Badge>
+                        <Tooltip
+                          relationship="description"
+                          content="This reminder may be sent without a person reviewing it first, if you allow that."
+                        >
+                          <Badge appearance="tint" style={{ marginLeft: 6, whiteSpace: 'nowrap' }}>
+                            Can be sent without review
+                          </Badge>
+                        </Tooltip>
                       )}
                     </TableCell>
                     <TableCell className={s.muted} style={{ minWidth: 260 }}>
@@ -160,11 +161,18 @@ function Editor({ rules }: { rules: ReminderRule[] }) {
           </Table>
         </div>
       )}
-    </SectionCard>
+      <SaveBar
+        dirty={dirty}
+        saving={save.isPending}
+        blockedReason={invalid ? 'Every number must be a positive whole number' : undefined}
+        onSave={submit}
+        onDiscard={() => setDraft(draftOf(rules))}
+      />
+    </>
   );
 }
 
-export function RemindersSection() {
+export function RemindersPanel() {
   const q = useReminderRules();
   if (q.isLoading) return <LoadingState rows={5} />;
   if (q.isError) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;

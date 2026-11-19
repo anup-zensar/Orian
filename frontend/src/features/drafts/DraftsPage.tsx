@@ -28,6 +28,7 @@ import { LoadingState } from '../../components/LoadingState';
 import { PageHeader } from '../../components/PageHeader';
 import { SectionCard } from '../../components/SectionCard';
 import { useTransitions } from '../transitions/api';
+import { useOptionLabel, useOptions } from '../reference/options';
 import { useDraft, useDrafts, useReminderStatus } from './api';
 import { RunRemindersControl } from './RunReminders';
 import { DraftEditor } from './DraftEditor';
@@ -107,7 +108,9 @@ export function DraftsPage() {
   const reminders = useReminderStatus();
 
   const isOrion = (label: string) => label.toLowerCase().startsWith('orion');
-  const kinds = Array.from(new Set((all.data ?? []).map((d) => d.kind))).sort();
+  // Kinds come from the draft_kinds list (an inactive kind still used by a draft is kept).
+  const kindOptions = useOptions('draft_kinds', { include: (all.data ?? []).map((d) => d.kind) });
+  const kindLabel = useOptionLabel();
   const rows = (all.data ?? []).filter(
     (d) =>
       (status === 'all' || d.status === status) &&
@@ -180,9 +183,9 @@ export function DraftsPage() {
         </Select>
         <Select aria-label="Kind" value={kind} onChange={(_, d) => setParam('kind', d.value)}>
           <option value="">All kinds</option>
-          {kinds.map((k) => (
-            <option key={k} value={k}>
-              {k}
+          {kindOptions.map((k) => (
+            <option key={k.value} value={k.value}>
+              {k.label}
             </option>
           ))}
         </Select>
@@ -236,7 +239,7 @@ export function DraftsPage() {
                     }
                   }}
                 >
-                  <TableCell className={s.cKind}>{d.kind}</TableCell>
+                  <TableCell className={s.cKind}>{kindLabel('draft_kinds', d.kind)}</TableCell>
                   <TableCell className={s.cTransition}>
                     {d.transition_id ? (
                       <span onClick={(e) => e.stopPropagation()}>

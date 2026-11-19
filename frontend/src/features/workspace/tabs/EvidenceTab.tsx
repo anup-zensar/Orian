@@ -18,6 +18,7 @@ import { LoadingState } from '../../../components/LoadingState';
 import { PageHeader } from '../../../components/PageHeader';
 import { useApiErrorToast } from '../../../hooks/useApiErrorToast';
 import { formatDate } from '../../../lib/format';
+import { useOptionLabel, useOptions } from '../../reference/options';
 import { useEvidence, useItems, type Evidence } from '../../records/api';
 import { GuardedButton } from '../../records/common';
 import { useRecordStyles, usePerm, useUrlParams } from '../../records/hooks';
@@ -25,8 +26,6 @@ import { AddEvidenceDialog, ReviewEvidenceDialog } from '../../records/EvidenceD
 import type { TabProps } from '../types';
 
 const STATUS_COLOR = { Submitted: 'informative', Accepted: 'success', Rejected: 'danger' } as const;
-const TYPES = ['Document', 'Link', 'Email sign-off', 'Recording', 'Generated'];
-const STATUSES = ['Submitted', 'Accepted', 'Rejected'];
 
 function isHttp(url: string): boolean {
   return /^https?:\/\//i.test(url);
@@ -35,6 +34,11 @@ function isHttp(url: string): boolean {
 /** Evidence tab (FR-033, spec 8.7 d): filterable list, add dialog, accept / reject, download. */
 export function EvidenceTab({ transitionId }: TabProps) {
   const s = useRecordStyles();
+  const types = useOptions('evidence_types');
+  const statuses = useOptions('evidence_statuses');
+  const typeLabel = useOptionLabel();
+  // What a type needs (list setting 'needs'): a link URL or pasted text; 'system' types are generated.
+  const typeMeta = (type: string) => types.find((o) => o.value === type)?.meta ?? {};
   const { params, set } = useUrlParams();
   const showError = useApiErrorToast();
   const filters = {
@@ -89,8 +93,10 @@ export function EvidenceTab({ transitionId }: TabProps) {
             onChange={(_, d) => set({ type: d.value || undefined })}
           >
             <option value="">All types</option>
-            {TYPES.map((t) => (
-              <option key={t}>{t}</option>
+            {types.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
             ))}
           </Select>
         </Field>
@@ -100,8 +106,10 @@ export function EvidenceTab({ transitionId }: TabProps) {
             onChange={(_, d) => set({ status: d.value || undefined })}
           >
             <option value="">All statuses</option>
-            {STATUSES.map((t) => (
-              <option key={t}>{t}</option>
+            {statuses.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
             ))}
           </Select>
         </Field>
@@ -138,12 +146,12 @@ export function EvidenceTab({ transitionId }: TabProps) {
                   <TableCell>{ev.id}</TableCell>
                   <TableCell>
                     <div>{ev.title}</div>
-                    {ev.type === 'Link' && ev.url && isHttp(ev.url) && (
+                    {typeMeta(ev.type).needs === 'url' && ev.url && isHttp(ev.url) && (
                       <a href={ev.url} target="_blank" rel="noreferrer noopener">
                         {ev.url}
                       </a>
                     )}
-                    {ev.type === 'Email sign-off' && ev.text && (
+                    {typeMeta(ev.type).needs === 'text' && ev.text && (
                       <div className={s.muted}>{ev.text}</div>
                     )}
                   </TableCell>
@@ -151,12 +159,12 @@ export function EvidenceTab({ transitionId }: TabProps) {
                     {ev.item_id ? `${ev.item_id} – ${ev.item_title ?? ''}` : '–'}
                   </TableCell>
                   <TableCell>
-                    {ev.type === 'Generated' ? (
+                    {typeMeta(ev.type).system ? (
                       <Badge appearance="tint" color="brand">
-                        Generated artefact
+                        {typeLabel('evidence_types', ev.type)} artefact
                       </Badge>
                     ) : (
-                      ev.type
+                      typeLabel('evidence_types', ev.type)
                     )}
                   </TableCell>
                   <TableCell>
@@ -165,7 +173,7 @@ export function EvidenceTab({ transitionId }: TabProps) {
                   </TableCell>
                   <TableCell>
                     <Badge appearance="tint" color={STATUS_COLOR[ev.status]}>
-                      {ev.status}
+                      {typeLabel('evidence_statuses', ev.status)}
                     </Badge>
                   </TableCell>
                   <TableCell>

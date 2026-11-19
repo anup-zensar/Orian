@@ -12,11 +12,16 @@ import {
   Select,
 } from '@fluentui/react-components';
 import { useApiErrorToast } from '../../hooks/useApiErrorToast';
-import { useCreateDefect, usePatchDefect, type Defect } from './api';
+import { useOptions } from '../reference/options';
+import {
+  useCreateDefect,
+  usePatchDefect,
+  type Defect,
+  type DefectCreate,
+  type DefectPatch,
+} from './api';
 import { OwnerSelect } from './common';
 import { useRecordStyles } from './hooks';
-
-const PRIORITIES = ['P1', 'P2', 'P3', 'P4'] as const;
 
 /** Create (defect undefined) or edit a hypercare defect. Mount only while open. */
 export function DefectDialog(props: {
@@ -30,7 +35,12 @@ export function DefectDialog(props: {
   const showError = useApiErrorToast();
   const d = props.defect;
   const [title, setTitle] = useState(d?.title ?? '');
-  const [priority, setPriority] = useState<(typeof PRIORITIES)[number]>(d?.priority ?? 'P3');
+  const priorities = useOptions('defect_priorities', { include: d?.priority });
+  const statuses = useOptions('defect_statuses');
+  // A new defect starts at the middle priority of the list (P3 today).
+  const [priority, setPriority] = useState<string>(
+    d?.priority ?? priorities[Math.floor(priorities.length / 2)]?.value ?? '',
+  );
   const [owner, setOwner] = useState(d?.owner?.id ?? '');
   const [status, setStatus] = useState<string>(d?.status ?? 'Open');
   const opts = { onSuccess: props.onClose, onError: showError };
@@ -42,15 +52,22 @@ export function DefectDialog(props: {
           id: d.id,
           patch: {
             title: title.trim(),
-            priority,
-            status: status as 'Open' | 'Resolved',
+            priority: priority as DefectPatch['priority'],
+            status: status as DefectPatch['status'],
             owner_user_id: owner || null,
           },
         },
         opts,
       );
     } else {
-      create.mutate({ title: title.trim(), priority, owner_user_id: owner || null }, opts);
+      create.mutate(
+        {
+          title: title.trim(),
+          priority: priority as DefectCreate['priority'],
+          owner_user_id: owner || null,
+        },
+        opts,
+      );
     }
   };
 
@@ -64,12 +81,11 @@ export function DefectDialog(props: {
               <Input value={title} onChange={(_, v) => setTitle(v.value)} />
             </Field>
             <Field label="Priority">
-              <Select
-                value={priority}
-                onChange={(_, v) => setPriority(v.value as (typeof PRIORITIES)[number])}
-              >
-                {PRIORITIES.map((p) => (
-                  <option key={p}>{p}</option>
+              <Select value={priority} onChange={(_, v) => setPriority(v.value)}>
+                {priorities.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
                 ))}
               </Select>
             </Field>
@@ -77,8 +93,10 @@ export function DefectDialog(props: {
             {d && (
               <Field label="Status">
                 <Select value={status} onChange={(_, v) => setStatus(v.value)}>
-                  {['Open', 'Resolved'].map((x) => (
-                    <option key={x}>{x}</option>
+                  {statuses.map((x) => (
+                    <option key={x.value} value={x.value}>
+                      {x.label}
+                    </option>
                   ))}
                 </Select>
               </Field>

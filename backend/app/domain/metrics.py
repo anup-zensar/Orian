@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
+from app.domain import cfg
 from app.models import (
     Condition,
     ExceptionRecord,
@@ -146,6 +147,8 @@ def compute_metrics(db: Session, transitions: Sequence[Transition]) -> list[Tran
         by_transition[row.transition_id].append(row)
 
     users = {u.id: u for u in db.scalars(select(User)).all()}
+    critical = cfg.critical_severity(db)  # which gap severity counts as critical
+    rag_limits = cfg.rag_thresholds(db)  # the Admin's Red / Amber numbers (live, never stored)
     result: list[TransitionMetrics] = []
     for t in transitions:
         gate_order = GATE_ORDER[t.current_gate]
@@ -178,6 +181,7 @@ def compute_metrics(db: Session, transitions: Sequence[Transition]) -> list[Tran
                 for i in item_rows
             ],
             t.current_gate,
+            critical,
         )
         if not item_rows:
             # A-34: not launched -> nothing is ready yet (0 %, never the vacuous 100 %).
@@ -190,7 +194,11 @@ def compute_metrics(db: Session, transitions: Sequence[Transition]) -> list[Tran
             )
         days = days_until(t)
         rag = compute_rag(
-            readiness.critical_gaps, readiness.lens_pct, days, has_items=bool(item_rows)
+            readiness.critical_gaps,
+            readiness.lens_pct,
+            days,
+            has_items=bool(item_rows),
+            thresholds=rag_limits,
         )
         focal = users.get(t.or_focal_user_id)
         result.append(
@@ -241,12 +249,23 @@ def to_summary(m: TransitionMetrics) -> TransitionSummaryOut:
 
 
 def reference_lists(db: Session) -> dict[str, Any]:
-    """Ordered portfolios, regions and gate descriptors from reference data (reference order)."""
+    """Ordered portfolios, regions and gate descriptors (configuration order). A deactivated portfolio
+    or region is listed only while a transition still uses it."""
+    used_portfolios = set(db.scalars(select(Transition.portfolio).distinct()))
+    used_regions = set(db.scalars(select(Transition.region).distinct()))
     row = db.get(ReferenceData, "reference")
     ref: dict[str, Any] = row.data if row is not None else {}
     return {
-        "portfolios": list(ref.get("portfolios", [])),
-        "regions": list(ref.get("regions", [])),
+        "portfolios": [
+            p.name
+            for p in cfg.portfolios(db, active_only=False)
+            if p.active or p.name in used_portfolios
+        ],
+        "regions": [
+            o.value
+            for o in cfg.options(db, "regions", active_only=False)
+            if o.active or o.value in used_regions
+        ],
         "gates": list(ref.get("gates", [])),
     }
 

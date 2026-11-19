@@ -193,3 +193,26 @@ def test_import_other_ai_transition_is_deterministic_and_passes(client, headers,
     assert _table(client, headers, OTHER_AI)["failed_count"] == 0
     # values differ between metrics (not one constant)
     assert len({r["result_number"] for r in table["rows"] if r["result_number"] is not None}) > 5
+
+
+def test_eval_tab_follows_the_has_eval_metrics_switch(client, headers, db, fresh_seed):
+    from app.domain import cfg
+    from app.models import FlavourRule
+
+    flagship = client.get(f"{API}/transitions/TR-0001", headers=headers("U01")).json()
+    assert flagship["has_eval_metrics"] is True
+    assert (
+        client.get(f"{API}/transitions/TR-0001/eval-metrics", headers=headers("U01")).status_code
+        == 200
+    )
+
+    # Switch it off for the flagship's project type: the table is refused (409), nothing else changes.
+    db.get(FlavourRule, flagship["project_type"]).has_eval_metrics = False
+    db.commit()
+    cfg.invalidate()
+    assert (
+        client.get(f"{API}/transitions/TR-0001/eval-metrics", headers=headers("U01")).status_code
+        == 409
+    )
+    detail = client.get(f"{API}/transitions/TR-0001", headers=headers("U01")).json()
+    assert detail["has_eval_metrics"] is False and detail["requires_tiering"] is True

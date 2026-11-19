@@ -625,3 +625,14 @@ def test_patch_project_type_after_launch_switches_flavour(client, headers, db, f
     counts = _by_source(db, tid)
     assert counts[("AI_PLAYBOOK", "Applies")] == 208
     assert counts[("AI_PLAYBOOK", "Not applicable")] == 8
+
+
+def test_counts_have_an_other_bucket_that_is_empty_without_admin_checklists(
+    client, headers, fresh_seed
+):
+    tid = _create(client, headers)
+    scope = _scope(client, headers, tid)
+    assert scope["counts"]["other"] == 0
+    launched = _launch(client, headers, tid)
+    assert launched.status_code == 200
+    assert launched.json()["counts"]["other"] == 0

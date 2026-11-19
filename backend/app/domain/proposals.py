@@ -62,7 +62,7 @@ from sqlalchemy.orm import Session
 
 from app import clock
 from app.access import ensure_open, is_assigned, transition_denial
-from app.domain import audit
+from app.domain import audit, cfg
 from app.errors import BadRequest, Conflict, Forbidden, NotFound
 from app.models import OrionProposal, Transition, TransitionItem, User
 from app.permissions import DENIAL_REASONS, Perm, has_perm
@@ -190,9 +190,15 @@ def _validate_payload(
             raise ValueError("Payload transition does not match the proposal")
         if clean["item_id"] and _item_of(db, transition_id or "", clean["item_id"]) is None:
             raise ValueError("Unknown item")
-        if clean["type"] == "Link" and not clean.get("url"):
+        needs = cfg.option_meta(db, "evidence_types", clean["type"]).get("needs")
+        if clean["type"] not in cfg.option_values(db, "evidence_types") or needs not in (
+            "url",
+            "text",
+        ):
+            raise ValueError("Orion can only add evidence that is a link or pasted e-mail text")
+        if needs == "url" and not clean.get("url"):
             raise ValueError("A link needs a url")
-        if clean["type"] == "Email sign-off" and not (clean.get("text") or "").strip():
+        if needs == "text" and not (clean.get("text") or "").strip():
             raise ValueError("An email sign-off needs the pasted text")
     return clean
 
@@ -281,7 +287,7 @@ def accept_denial(db: Session, user: User, row: OrionProposal) -> str | None:
         changes = set((row.payload or {}).get("changes", {}))
         reason = (
             None
-            if user.role == "ADMIN" and changes and changes <= people
+            if has_perm(user.role, Perm.ADMIN) and changes and changes <= people
             else transition_denial(db, user, t, Perm.EDIT_TRANSITION)
         )
     elif row.kind == "update_item":
@@ -325,7 +331,7 @@ def can_view(db: Session, user: User, row: OrionProposal) -> bool:
     creator_id = (row.payload or {}).get(CREATOR_KEY)
     if creator_id is None or creator_id == user.id:
         return True
-    if user.role == "ADMIN":
+    if has_perm(user.role, Perm.ADMIN):
         return True  # read-only: accept_denial stops an Admin from accepting a private prefill
     t = db.get(Transition, row.transition_id) if row.transition_id else None
     if t is None:
@@ -389,7 +395,7 @@ def _execute(
                 item_ids=p.get("item_ids") or [],
                 owner_user_id=p["owner_user_id"],
                 due_date=date.fromisoformat(p["due_date"]),
-                priority=p.get("priority") or "Medium",
+                priority=p.get("priority"),
             ),
             user,
         )

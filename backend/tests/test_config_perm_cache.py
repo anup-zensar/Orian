@@ -1,6 +1,6 @@
 """CR-01 design 1.6: has_perm / permissions_for / denied_reasons_for / DENIAL_REASONS read a cache built
-from role_permissions + permission_texts (fallback: the MATRIX defaults); access.py supports custom
-slot roles through Transition.role_assignments."""
+from role_permissions + permission_texts (fallback: the MATRIX defaults); access.py maps the five
+built-in roles to their transition slots."""
 
 from __future__ import annotations
 
@@ -117,49 +117,7 @@ def test_orion_is_never_a_role(db) -> None:
     assert permissions.current_cache().active_roles == {r.value for r in permissions.Role}
 
 
-# --- access.py: custom slot roles ---------------------------------------------------------------------
-
-
-def _make_custom_role(db) -> User:
-    """SECURITY_LEAD: a slot role holding confirm_scope, one user, assigned on TR-0002."""
-    db.add(
-        Role(
-            code="SECURITY_LEAD",
-            label="Security lead",
-            short_label="Security",
-            phrase_label="security lead",
-            active=True,
-            is_builtin=False,
-            has_transition_slot=True,
-            can_approve=False,
-            sort_order=99,
-        )
-    )
-    db.add(RolePermission(perm="view", role_code="SECURITY_LEAD"))
-    db.add(RolePermission(perm="confirm_scope", role_code="SECURITY_LEAD"))
-    user = User(
-        id="U90", name="Sam Secure", email="sam@example.com", role="SECURITY_LEAD", active=True
-    )
-    db.add(user)
-    db.flush()
-    t = db.get(Transition, "TR-0002")
-    t.role_assignments = {"SECURITY_LEAD": "U90"}
-    db.commit()
-    cfg.invalidate()
-    return user
-
-
-def test_custom_slot_role_passes_the_access_check_via_role_assignments(fresh_seed, db) -> None:
-    user = _make_custom_role(db)
-    assert [r.code for r in cfg.slot_roles(db)][-1] == "SECURITY_LEAD"
-    t2 = db.get(Transition, "TR-0002")
-    t1 = db.get(Transition, "TR-0001")
-    assert access.assigned_user_id(t2, "SECURITY_LEAD") == "U90"
-    assert access.assigned_user_id(t1, "SECURITY_LEAD") is None
-    assert access.is_assigned(user, t2) and not access.is_assigned(user, t1)
-    assert access.transition_denial(db, user, t2, Perm.CONFIRM_SCOPE) is None
-    reason = access.transition_denial(db, user, t1, Perm.CONFIRM_SCOPE)
-    assert reason is not None and "security lead" in reason.lower()
+# --- access.py: the five built-in slots ---------------------------------------------------------------------
 
 
 def test_builtin_slots_and_labels_unchanged(db) -> None:

@@ -12,9 +12,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
-from app.access import ensure_open
+from app.access import assigned_user_id, ensure_open
 from app.config import get_settings
-from app.domain import audit
+from app.domain import audit, cfg
 from app.domain.html_sanitize import escape_text
 from app.domain.ids import next_id
 from app.domain.notify import deliver
@@ -35,25 +35,12 @@ CardDataProvider = Callable[[Session, ApprovalRequest], dict[str, Any]]
 
 TYPE_LABELS: dict[str, str] = {
     "OCET": "OCET approval",
-    "AtD": "Authority to Deploy",
-    "AtO": "Authority to Operate",
+    "AtD": "Agreement to Deploy",
+    "AtO": "Agreement to Operate",
     "SUPPORT_MODEL": "Support model approval",
     "EXCEPTION": "Exception approval",
     "RISK_ACCEPTANCE": "Risk acceptance",
 }
-ROLE_LABELS: dict[str, str] = {
-    "OR_FOCAL": "OR focal",
-    "PM": "PM",
-    "ARCHITECT": "Architect",
-    "OLM": "OLM",
-    "PLANNER": "Planner",
-    "IRM": "IRM",
-    "CISO_BISO": "CISO/BISO",
-    "LEADERSHIP": "Leadership",
-    "ADMIN": "Admin",
-}
-MOCK_ROLE = "CISO_BISO"
-MOCK_APPROVER_ROLE = "IRM"  # demo mode: IRM approves the CISO/BISO step (spec 7.7)
 
 _HOOKS: dict[str, list[CompletionHook]] = {}
 _CARD_DATA: dict[str, CardDataProvider] = {}
@@ -62,8 +49,16 @@ _CARD_DATA: dict[str, CardDataProvider] = {}
 # --------------------------------------------------------------------------- helpers
 
 
-def role_label(role: str) -> str:
-    return ROLE_LABELS.get(role, role)
+def role_label(db: Session, role: str) -> str:
+    """Short role name as configured (People & permissions), e.g. "OLM"; "CISO/BISO" for the mock
+    role. Approval steps and exception statuses use it."""
+    return cfg.role_short_label(db, role)
+
+
+def chain_type_for_gate(db: Session, gate: str) -> str | None:
+    """The approval chain a decision gate starts (AtD for SG4_ATD, AtO for SG6_ATO), from the
+    configured gate -> chain map. None for a gate that is not a decision gate."""
+    return cfg.gate_chain(db).get(gate)
 
 
 def subject_link(request: ApprovalRequest) -> str:
@@ -102,8 +97,10 @@ def pending_approver(db: Session, request: ApprovalRequest) -> User | None:
     return db.get(User, recipients[0]) if recipients else None
 
 
-def is_mock_step(step: ApprovalStep) -> bool:
-    return step.role == MOCK_ROLE and step.approver_user_id is None
+def is_mock_step(db: Session, step: ApprovalStep) -> bool:
+    """The step played by the mocked approver (CISO/BISO): a step of the configured mock role
+    that has no named person. Which role is the mock one comes from cfg.mock_approver."""
+    return step.role == cfg.mock_approver(db)["mock_role"] and step.approver_user_id is None
 
 
 def act_denied_reason(db: Session, step: ApprovalStep, user: User) -> str | None:
@@ -111,20 +108,27 @@ def act_denied_reason(db: Session, step: ApprovalStep, user: User) -> str | None
 
     No Admin override (BE#1). The mocked CISO/BISO step has no person: in demo mode only the IRM
     assigned to the subject transition may approve it (BE#12)."""
-    if is_mock_step(step):
-        if user.role != MOCK_APPROVER_ROLE or not get_settings().demo_mode:
-            return "The CISO/BISO step can be approved only by IRM (mock) in demo mode"
+    mock = cfg.mock_approver(db)
+    if is_mock_step(db, step):
+        if user.role != mock["approver_role"] or not get_settings().demo_mode:
+            return (
+                f"The {mock['mock_label']} step can be approved only by "
+                f"{cfg.role_short_label(db, mock['approver_role'])} (mock) in demo mode"
+            )
         request = db.get(ApprovalRequest, step.request_id)
         transition = db.get(Transition, request.transition_id) if request else None
         if transition is not None and transition.irm_user_id != user.id:
             irm = db.get(User, transition.irm_user_id) if transition.irm_user_id else None
+            short = cfg.role_short_label(db, mock["approver_role"])
             who = (
-                f"{irm.name}, the IRM of {transition.id}" if irm else f"the IRM of {transition.id}"
+                f"{irm.name}, the {short} of {transition.id}"
+                if irm
+                else f"the {short} of {transition.id}"
             )
-            return f"Only {who}, can approve the CISO/BISO step (mock)"
+            return f"Only {who}, can approve the {mock['mock_label']} step (mock)"
         return None
     if user.role != step.role:
-        return f"This step needs the {role_label(step.role)} role"
+        return f"This step needs the {role_label(db, step.role)} role"
     if step.approver_user_id is not None and step.approver_user_id != user.id:
         approver = db.get(User, step.approver_user_id)
         name = approver.name if approver else step.approver_user_id
@@ -132,10 +136,10 @@ def act_denied_reason(db: Session, step: ApprovalStep, user: User) -> str | None
     return None
 
 
-def pending_status_label(step: ApprovalStep) -> str:
+def pending_status_label(db: Session, step: ApprovalStep) -> str:
     """Exception status while ``step`` is pending: "Pending IRM", "Pending CISO/BISO" (EX-status).
     The label comes from the chain step role, so an Admin-edited chain changes it automatically."""
-    return f"Pending {role_label(step.role)}"
+    return f"Pending {role_label(db, step.role)}"
 
 
 def exception_status(db: Session, record: ExceptionRecord) -> str:
@@ -144,14 +148,14 @@ def exception_status(db: Session, record: ExceptionRecord) -> str:
         return record.status
     request = db.get(ApprovalRequest, record.approval_request_id)
     step = current_step(request) if request is not None and request.status == "Pending" else None
-    return pending_status_label(step) if step is not None else record.status
+    return pending_status_label(db, step) if step is not None else record.status
 
 
 def pending_exception_statuses(db: Session) -> list[str]:
     """Every "Pending <role>" label of the configured EXCEPTION chain (reference lists)."""
     config = db.get(ApprovalChainConfig, "EXCEPTION")
     steps = sorted(config.steps, key=lambda s: s["step"]) if config else []
-    labels = [f"Pending {role_label(s['role'])}" for s in steps]
+    labels = [f"Pending {role_label(db, s['role'])}" for s in steps]
     return list(dict.fromkeys(labels))
 
 
@@ -164,23 +168,25 @@ def _actor_type(created_source: str) -> str:
 
 
 def default_approver(db: Session, transition: Transition, role: str) -> str | None:
-    if role == "OLM":
-        return transition.olm_user_id
-    if role == "IRM":
-        return transition.irm_user_id
-    if role == "ARCHITECT":
-        return transition.architect_user_id
-    if role == "PLANNER":
+    """The person who decides a step of ``role``: the one holding that role on the transition (OLM,
+    IRM, Architect ...); for a role without a transition slot (Planner) the first user of the role.
+    The mocked approver has no person."""
+    if role == cfg.mock_approver(db)["mock_role"]:
+        return None
+    slot_user = assigned_user_id(transition, role)
+    if slot_user:
+        return slot_user
+    if cfg.role(db, role) is not None and role not in {r.code for r in cfg.slot_roles(db)}:
         return db.scalars(
-            select(User.id).where(User.role == "PLANNER").order_by(User.id).limit(1)
+            select(User.id).where(User.role == role).order_by(User.id).limit(1)
         ).first()
-    return None  # CISO_BISO (mock) and anything else
+    return None
 
 
 def _recipients(db: Session, transition: Transition, step: ApprovalStep) -> list[str]:
     if step.approver_user_id:
         return [step.approver_user_id]
-    if is_mock_step(step):
+    if is_mock_step(db, step):
         return [transition.irm_user_id] if transition.irm_user_id else []  # demo: IRM acts for it
     # No approver resolved: tell every user of the step role so the step is never silent (BE#12).
     return list(db.scalars(select(User.id).where(User.role == step.role).order_by(User.id)).all())
@@ -202,14 +208,17 @@ def validate_approvers(
             continue
         role = roles[step_no]
         person = db.get(User, user_id)
-        if role == MOCK_ROLE:
-            reasons.append(f"Step {step_no} is the mocked CISO/BISO step - it has no approver")
+        if role == cfg.mock_approver(db)["mock_role"]:
+            reasons.append(
+                f"Step {step_no} is the mocked {cfg.mock_approver(db)['mock_label']} step - "
+                "it has no approver"
+            )
         elif person is None:
             reasons.append(f"Step {step_no}: unknown user '{user_id}'")
         elif person.role != role:
             reasons.append(
-                f"Step {step_no} needs a user with the {role_label(role)} role "
-                f"({person.name} is {role_label(person.role)})"
+                f"Step {step_no} needs a user with the {role_label(db, role)} role "
+                f"({person.name} is {role_label(db, person.role)})"
             )
     if reasons:
         raise BadRequest("Invalid approvers", reasons)
@@ -270,7 +279,8 @@ def _notify_step(
     if not recipients:
         return
     label = TYPE_LABELS.get(request.type, request.type)
-    mock = " (mock CISO/BISO step)" if is_mock_step(step) else ""
+    mock_label = cfg.mock_approver(db)["mock_label"]
+    mock = f" (mock {mock_label} step)" if is_mock_step(db, step) else ""
     link = absolute(subject_link(request))
     summary = f"<br>{escape_text(request.subject_label)}" if request.subject_label else ""
     html = (
@@ -421,8 +431,10 @@ def create_approval_request(
     chosen = validate_approvers(db, type, approvers)
     now = clock.now()
     steps = []
-    for i, cfg in enumerate(sorted(config.steps, key=lambda s: s["step"])):
-        approver_id = chosen.get(int(cfg["step"])) or default_approver(db, transition, cfg["role"])
+    for i, step_cfg in enumerate(sorted(config.steps, key=lambda s: s["step"])):
+        approver_id = chosen.get(int(step_cfg["step"])) or default_approver(
+            db, transition, step_cfg["role"]
+        )
         if (
             approver_id
             and created_by is not None
@@ -432,13 +444,15 @@ def create_approval_request(
         ):
             raise Conflict(
                 "The requester cannot approve their own request",
-                [f"Step {cfg['step']} ({cfg.get('label', '')}) would be approved by the requester"],
+                [
+                    f"Step {step_cfg['step']} ({step_cfg.get('label', '')}) would be approved by the requester"
+                ],
             )
         steps.append(
             ApprovalStep(
-                step=int(cfg["step"]),
-                role=cfg["role"],
-                label=cfg.get("label", ""),
+                step=int(step_cfg["step"]),
+                role=step_cfg["role"],
+                label=step_cfg.get("label", ""),
                 approver_user_id=approver_id,
                 status="Pending" if i == 0 else "Waiting",
                 activated_at=now if i == 0 else None,
@@ -491,7 +505,7 @@ def approve_step(
         raise NotFound(f"Transition {request.transition_id} not found")
     before = _snap(request)
     now = clock.now()
-    mock = is_mock_step(row)
+    mock = is_mock_step(db, row)
     row.status = "Approved"
     row.decided_at = now
     row.decided_by = user.id
@@ -507,7 +521,7 @@ def approve_step(
         before={"status": "Pending"},
         after={"status": "Approved", "comment": row.comment},
         note=f"{row.label} approved"
-        + (" as CISO/BISO (mock)" if mock else "")
+        + (f" as {cfg.mock_approver(db)['mock_label']} (mock)" if mock else "")
         + (
             " - self-approved: the requester is the approver (demo mode)"
             if user.id == request.created_by
@@ -665,7 +679,7 @@ def _sync_exception_status(db: Session, request: ApprovalRequest, step: Approval
     record = _exception_record(db, request)
     if record is None:
         return
-    label = pending_status_label(step)
+    label = pending_status_label(db, step)
     if record.status == label:
         return
     before = record.status

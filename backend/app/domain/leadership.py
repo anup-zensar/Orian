@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app import clock
 from app.config import get_settings
-from app.domain import audit
+from app.domain import audit, cfg
 from app.domain.drafts import validate_addresses
 from app.domain.html_sanitize import escape_text, sanitize_html
 from app.domain.metrics import TransitionMetrics, compute_metrics
@@ -38,7 +38,6 @@ from app.services.factory import get_ai_service, get_mail_service
 
 RECENT_APPROVAL_DAYS = 90
 RECENT_WIN_DAYS = 30
-DECISION_WINDOW_DAYS = 30
 MAX_RISKS = 8
 RAG_RANK = {"Red": 0, "Amber": 1, "Green": 2, "Grey": 3}
 OPEN_ACTION = ("Open", "In progress")
@@ -78,11 +77,12 @@ def _select_transitions(
     return list(rows), f"Leadership update - {scope_id} portfolio"
 
 
-def _critical_gaps(m: TransitionMetrics) -> list[str]:
+def _critical_gaps(m: TransitionMetrics, critical: str) -> list[str]:
+    """Open gaps of the severity the admin marked "counts as critical" (cfg.critical_severity)."""
     out = []
     for i in m.items:
         if (
-            i.gap_severity == "Critical"
+            i.gap_severity == critical
             and i.status in GAP_STATUSES
             and i.applicability == "Applies"
             and not i.covered
@@ -110,6 +110,7 @@ def collect_scope_data(db: Session, scope: LeadershipScope, scope_id: str | None
     for an unknown transition id / portfolio name; BadRequest 400 when scope=all with a scope_id, or
     scope!=all without one."""
     today = clock.today()
+    critical = cfg.critical_severity(db)
     transitions, title = _select_transitions(db, scope, scope_id)
     metrics = compute_metrics(db, transitions)
     by_id = {m.id: m for m in metrics}
@@ -158,7 +159,7 @@ def collect_scope_data(db: Session, scope: LeadershipScope, scope_id: str | None
     risks: list[dict[str, Any]] = []
     seen_risks: set[tuple[str, str]] = set()  # one line per (transition, wording)
     for m in sorted(metrics, key=lambda x: (RAG_RANK.get(x.rag, 9), x.id)):
-        for text in _critical_gaps(m)[:3]:
+        for text in _critical_gaps(m, critical)[:3]:
             risks.append({"transition_id": m.id, "text": text, "kind": "critical gap"})
         if m.transition.blocker_note:
             seen_risks.add((m.id, " ".join(m.transition.blocker_note.lower().split()).rstrip(".")))
@@ -169,8 +170,9 @@ def collect_scope_data(db: Session, scope: LeadershipScope, scope_id: str | None
                     "kind": "blocker",
                 }
             )
+    top_rating = (cfg.option_values(db, "risk_ratings") or ["High"])[0]  # the most serious rating
     for risk in db.scalars(
-        select(Risk).where(Risk.transition_id.in_(ids), Risk.rating == "High").order_by(Risk.id)
+        select(Risk).where(Risk.transition_id.in_(ids), Risk.rating == top_rating).order_by(Risk.id)
     ).all():
         m = by_id[risk.transition_id]
         name = m.transition.name
@@ -193,7 +195,7 @@ def collect_scope_data(db: Session, scope: LeadershipScope, scope_id: str | None
         )
     risks = risks[:MAX_RISKS]
 
-    horizon = today + timedelta(days=DECISION_WINDOW_DAYS)
+    horizon = today + timedelta(days=cfg.thresholds(db)["leadership_decision_window_days"])
     decisions = []
     for m in sorted(metrics, key=lambda x: (x.transition.next_decision_date or horizon, x.id)):
         t = m.transition

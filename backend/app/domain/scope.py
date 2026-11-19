@@ -15,13 +15,11 @@ from sqlalchemy.orm import Session
 
 from app import clock
 from app.access import ensure_transition_role
-from app.domain import audit
+from app.domain import audit, cfg
 from app.errors import BadRequest, Conflict
 from app.models import (
     Evidence,
-    FlavourRule,
     PlaybookItem,
-    Portfolio,
     TierAssessment,
     Transition,
     TransitionItem,
@@ -32,6 +30,7 @@ from app.rules.checklist import (
     EXCLUDED_BY_PROJECT_TYPE,
     SOURCE_COMMON,
     SOURCE_PORTFOLIO,
+    ChecklistDef,
     ExistingItem,
     LibraryItem,
     PlannedItem,
@@ -86,6 +85,7 @@ def to_library_item(row: PlaybookItem) -> LibraryItem:
         mandatory_rule=row.mandatory_rule,
         applies_to_project_types=tuple(row.applies_to_project_types or ()),
         owner_role_hint=row.owner_role_hint or "",
+        default_owner_role=row.default_owner_role,
         linked_module=row.linked_module,
         active=True if row.active is None else row.active,
     )
@@ -97,13 +97,35 @@ def library_rows(db: Session) -> list[PlaybookItem]:
 
 
 def flavour_checklists(db: Session, project_type: str) -> list[str]:
-    rule = db.get(FlavourRule, project_type)
-    return list(rule.checklists) if rule is not None else list(DEFAULT_CHECKLISTS)
+    """The checklists a project type includes (the library checklists of its configuration)."""
+    config = cfg.project_type(db, project_type)
+    return list(config.checklists) if config is not None else list(DEFAULT_CHECKLISTS)
+
+
+def checklist_defs(db: Session) -> list[ChecklistDef]:
+    """How each configured checklist takes part in assembly (framework, AI playbook, golden set, ...)."""
+    return [
+        ChecklistDef(c.code, c.kind, c.tier_filtered)
+        for c in cfg.checklist_defs(db, active_only=False)
+    ]
 
 
 def requires_tiering(db: Session, project_type: str) -> bool:
-    rule = db.get(FlavourRule, project_type)
-    return bool(rule and rule.requires_tiering)
+    """Project-type switch "Requires tiering": the tiering wizard and tier-filtered checklists apply."""
+    config = cfg.project_type(db, project_type)
+    return bool(config and config.requires_tiering)
+
+
+def has_ai_profile(db: Session, project_type: str) -> bool:
+    """Project-type switch "Has AI profile": the AI profile questionnaire applies."""
+    config = cfg.project_type(db, project_type)
+    return bool(config and config.has_ai_profile)
+
+
+def has_eval_metrics(db: Session, project_type: str) -> bool:
+    """Project-type switch "Has eval metrics": the eval table and the AtD eval check apply."""
+    config = cfg.project_type(db, project_type)
+    return bool(config and config.has_eval_metrics)
 
 
 def roles_of(t: Transition) -> TransitionRoles:
@@ -143,6 +165,8 @@ def plan_transition(
         applied_tier(db, t),
         flavour_checklists(db, t.project_type),
         roles_of(t),
+        checklist_defs(db),
+        cfg.owner_hints(db) or (),
     )
 
 
@@ -282,6 +306,7 @@ def reassemble_transition(
         [ExistingItem(i.playbook_item_id, i.applicability, i.excluded_by, i.status) for i in items],
         planned,
         library,
+        checklist_defs(db),
     )
     for change in result.changes:
         item = by_id.get(change.playbook_item_id)
@@ -380,7 +405,7 @@ def _flavour_context(db: Session, t: Transition, focus_areas: list[str]) -> dict
 
 def build_scope(db: Session, t: Transition) -> ScopeOut:
     rows = library_rows(db)
-    portfolio = db.get(Portfolio, t.portfolio)
+    portfolio = cfg.portfolio(db, t.portfolio)
     focus_areas = list(portfolio.focus_areas) if portfolio is not None else []
     launched = t.assessment_launched_at is not None
     stored = {i.playbook_item_id: i for i in stored_items(db, t.id)} if launched else {}
@@ -408,6 +433,7 @@ def build_scope(db: Session, t: Transition) -> ScopeOut:
         golden_set_applies=counts["golden_set_applies"],
         golden_set_to_confirm=counts["golden_set_to_confirm"],
         common=counts["common"],
+        other=counts["other"],
         total=counts["total_applicable"],
     )
 

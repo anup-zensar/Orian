@@ -16,7 +16,6 @@ from app.models import (
     PlaybookItem,
     Role,
     RolePermission,
-    TierRule,
     User,
 )
 from app.permissions import MATRIX, Perm
@@ -28,9 +27,13 @@ def test_option_lists_equal_the_code_constants(db) -> None:
     assert cfg.option_values(db, "severities") == list(K.SEVERITIES)
     assert cfg.option_values(db, "design_effectiveness") == list(K.DESIGN_EFFECTIVENESS)
     assert cfg.option_values(db, "actor_types") == list(K.ACTOR_TYPES)
-    assert {
-        o.value: o.meta["gate_code"] for o in cfg.options(db, "target_gate")
-    } == K.TARGET_GATE_TO_CODE
+    assert {o.value: o.meta["gate_code"] for o in cfg.options(db, "target_gate")} == {
+        "SG0-SG2": "SG2",
+        "SG3": "SG3",
+        "AtD": "SG4_ATD",
+        "AtO": "SG6_ATO",
+        "Closure": "CLOSURE",
+    }
     for lens, statuses in K.STATUSES_BY_LENS.items():
         assert cfg.option_values(db, f"item_statuses_{lens.lower()}") == list(statuses)
     assert cfg.option_values(db, "rag_words") == ["Red", "Amber", "Green", "Grey"]
@@ -53,9 +56,7 @@ def test_critical_severity_is_exactly_one(db) -> None:
 def test_owner_hints_equal_the_checklist_keyword_map(db) -> None:
     from app.rules import checklist as C
 
-    attr_to_role = {"or_focal": "OR_FOCAL", "architect": "ARCHITECT", "olm": "OLM", "pm": "PM"}
-    legacy = {kw: attr_to_role[attr] for kw, attr in C._ROLE_BY_KEYWORD.items()}
-    assert dict(cfg.owner_hints(db)) == legacy
+    assert dict(cfg.owner_hints(db)) == {kw.lower(): role for kw, role in C.DEFAULT_OWNER_HINTS}
 
 
 def test_default_thresholds_equal_the_rule_numbers(db) -> None:
@@ -67,18 +68,12 @@ def test_default_thresholds_equal_the_rule_numbers(db) -> None:
     rag = cfg.rag_thresholds(db)
     assert (rag.red_critical_gaps, rag.red_lens_below, rag.red_near_days) == (2, 50, 7)
     assert (rag.amber_critical_gaps, rag.amber_lens_below) == (1, 70)
-    from app.domain import control_tower, insights, leadership
-
-    assert t["calendar_horizon_days"] == control_tower.CALENDAR_HORIZON_DAYS
-    assert t["insights"]["within_days"] == insights.LOW_READINESS_WITHIN_DAYS
-    assert t["insights"]["low_readiness_below"] == insights.LOW_READINESS_BELOW
-    assert t["leadership_decision_window_days"] == leadership.DECISION_WINDOW_DAYS
+    assert t["calendar_horizon_days"] == 45 and t["leadership_decision_window_days"] == 30
+    assert t["insights"] == {"low_readiness_below": 70, "within_days": 45}
     assert t["default_tier"] == 3
 
 
-def test_gates_labels_and_short_equal_the_constants(db) -> None:
-    for code in K.GATES:
-        assert cfg.gate_short(db, code) == K.GATE_SHORT[code]
+def test_approval_chain_settings_equal_the_constants(db) -> None:
     assert cfg.gate_chain(db) == {"SG4_ATD": "AtD", "SG6_ATO": "AtO"}
     assert cfg.mock_approver(db)["mock_role"] == "CISO_BISO"
 
@@ -140,15 +135,11 @@ def test_library_applies_to_all_types_is_stored_as_empty(db) -> None:
     ]
 
 
-def test_tier_rules_reproduce_br011_structure(db) -> None:
-    rules = cfg.tier_rules(db)
-    assert [r.result_tier for r in rules] == [4, 3, 1, 2]
-    assert [c["key"] for c in rules[0].conditions] == ["TQ2", "TQ3", "sensitive_data"]
-    assert rules[0].conditions[2]["rationale"] == "Sensitive data SOX / MC -> Tier 4"
+def test_tier_questions_and_tiers_are_seeded(db) -> None:
+    """BR-011 stays in rules/tiering.py; only the wording of questions and tiers is data."""
     assert [q.id for q in cfg.tier_questions(db)] == list(T.TIER_QUESTION_IDS)
     assert cfg.tier_numbers(db) == [1, 2, 3, 4]
     assert cfg.default_tier(db) == 3
-    assert db.query(TierRule).count() == 4
 
 
 def test_intake_fields_seeded_in_form_order(db) -> None:

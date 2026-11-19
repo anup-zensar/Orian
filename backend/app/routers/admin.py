@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.deps import get_current_user, get_db, require, require_demo_mode
+from app.domain import cfg
 from app.models import User
 from app.permissions import Perm
 from app.schemas.admin import (
@@ -34,7 +35,7 @@ from app.schemas.admin import (
     TodayIn,
     TodayOut,
 )
-from app.schemas.common import ErrorOut, UserOut
+from app.schemas.common import ErrorOut
 
 router = APIRouter(tags=["admin"], dependencies=[Depends(get_current_user)])
 
@@ -125,6 +126,7 @@ def put_flavour_rules(
 
     result = domain.put_flavour_rules(db, body, user)
     db.commit()
+    cfg.invalidate()
     return result
 
 
@@ -156,6 +158,7 @@ def put_golden_set(
 
     result = domain.put_golden_set(db, name, body, user)
     db.commit()
+    cfg.invalidate()
     return result
 
 
@@ -191,8 +194,9 @@ def get_approval_chains(
     db: Session = Depends(get_db),
     user: User = Depends(require(Perm.ADMIN)),
 ) -> ApprovalChainsOut:
-    """Steps per approval type (OCET, AtD, AtO, SUPPORT_MODEL, EXCEPTION) plus the allowed roles
-    (role list + CISO_BISO). 403 non-admin."""
+    """Steps (with their labels and mock flag) and the display name per approval type (OCET, AtD, AtO,
+    SUPPORT_MODEL, EXCEPTION) plus the allowed roles (roles that can approve + CISO_BISO). 403
+    non-admin."""
     from app.domain import admin as domain
 
     return domain.get_approval_chains(db)
@@ -252,27 +256,14 @@ def put_reminder_rules(
     db: Session = Depends(get_db),
     user: User = Depends(require(Perm.ADMIN)),
 ) -> list[ReminderRuleOut]:
-    """Update enabled + params per rule (name/description/autonomous_eligible are read-only).
-    Audited (ReminderRule). 403; 422 unknown rule id, unknown param key, or non-positive
-    threshold."""
+    """Update enabled + params per rule (R6 also item_ids / category) and switch autonomous_eligible
+    OFF (never on). Name and description are read-only. Audited (ReminderRule). 403; 422 unknown
+    rule id, unknown param key, non-positive threshold, or autonomy switched on."""
     from app.domain import admin as domain
 
     result = domain.put_reminder_rules(db, body, user)
     db.commit()
     return result
-
-
-@router.get("/admin/users", response_model=list[UserOut], responses=_E)
-def list_admin_users(
-    db: Session = Depends(get_db),
-    user: User = Depends(require(Perm.ADMIN)),
-) -> list[UserOut]:
-    """Read-only list of demo users and roles (role_label filled). 403 non-admin."""
-    from sqlalchemy import select
-
-    from app.routers.users import to_user_out
-
-    return [to_user_out(u) for u in db.scalars(select(User).order_by(User.id)).all()]
 
 
 @router.post(

@@ -30,6 +30,7 @@ import {
 } from '../../records/ConditionDialogs';
 import { GuardedButton } from '../../records/common';
 import { useRecordStyles, usePerm, useUrlParams } from '../../records/hooks';
+import { useOptionLabel } from '../../reference/options';
 import type { TabProps } from '../types';
 
 function Head({
@@ -61,6 +62,7 @@ function Head({
 
 /** Conditions, exceptions & risks tab (FR-035, spec 8.7 g). */
 export function ConditionsTab({ transitionId }: TabProps) {
+  const optionLabel = useOptionLabel();
   const s = useRecordStyles();
   const { params, set } = useUrlParams();
   const transition = useTransition(transitionId);
@@ -126,7 +128,7 @@ export function ConditionsTab({ transitionId }: TabProps) {
                     <TableCell>{c.owner?.name ?? '–'}</TableCell>
                     <TableCell>
                       <Badge appearance="tint" color={c.status === 'Open' ? 'warning' : 'success'}>
-                        {c.status}
+                        {optionLabel('condition_statuses', c.status)}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -178,7 +180,7 @@ export function ConditionsTab({ transitionId }: TabProps) {
                       {e.item_id ? `${e.item_id} – ${e.item_title ?? ''}` : '–'}
                     </TableCell>
                     <TableCell>{e.text}</TableCell>
-                    <TableCell>{e.status}</TableCell>
+                    <TableCell>{optionLabel('exception_statuses', e.status)}</TableCell>
                     <TableCell>
                       {e.approval_request_id ? (
                         <AppLink
@@ -221,7 +223,7 @@ export function ConditionsTab({ transitionId }: TabProps) {
                   <TableRow key={r.id}>
                     <TableCell>{r.id}</TableCell>
                     <TableCell>{r.title}</TableCell>
-                    <TableCell>{r.rating}</TableCell>
+                    <TableCell>{optionLabel('risk_ratings', r.rating)}</TableCell>
                     <TableCell>{r.decision || '–'}</TableCell>
                     <TableCell>{r.item_ids.join(', ') || '–'}</TableCell>
                   </TableRow>

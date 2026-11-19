@@ -28,6 +28,7 @@ class ScopeCountsOut(BaseModel):
     golden_set_applies: int
     golden_set_to_confirm: int
     common: int
+    other: int = 0  # applicable items of checklists an Admin added
     total: int  # total applicable items
 
 

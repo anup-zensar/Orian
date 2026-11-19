@@ -42,6 +42,23 @@ def _matches_static(t: Transition, f: TransitionFilters, user: User) -> bool:
     return not f.mine or is_involved(user, t)
 
 
+def _matches_custom(t: Transition, custom: dict[str, str]) -> bool:
+    """Custom-field filters (``?cf_<key>=value``, AND): the stored value must equal ``value``; a list
+    value (multiselect) must contain it."""
+    stored = t.custom_fields or {}
+    for key, wanted in custom.items():
+        value = stored.get(key)
+        if isinstance(value, list):
+            if wanted not in [str(v) for v in value]:
+                return False
+        elif isinstance(value, bool):
+            if str(value).lower() != wanted.lower():
+                return False
+        elif value is None or str(value) != wanted:
+            return False
+    return True
+
+
 def _matches_computed(m: TransitionMetrics, f: TransitionFilters) -> bool:
     """Filters on computed values (RAG, days, gaps, readiness) and the free-text search."""
     t = m.transition
@@ -91,9 +108,13 @@ def filter_metrics(
 
 
 def filter_transitions(
-    db: Session, user: User, filters: TransitionFilters
+    db: Session,
+    user: User,
+    filters: TransitionFilters,
+    custom: dict[str, str] | None = None,
 ) -> list[TransitionMetrics]:
-    """Metrics of every transition matching ``filters`` (AND), in register order.
+    """Metrics of every transition matching ``filters`` (AND), in register order. ``custom`` holds the
+    ``cf_<key>`` filters of the Admin's custom fields.
 
     The Active/Closed filter runs in SQL; other cheap row filters run before metrics are computed
     so metrics are only computed for the survivors.
@@ -101,7 +122,11 @@ def filter_transitions(
     query = select(Transition)
     if filters.status is not None:
         query = query.where(Transition.status == filters.status)
-    candidates = [t for t in db.scalars(query).all() if _matches_static(t, filters, user)]
+    candidates = [
+        t
+        for t in db.scalars(query).all()
+        if _matches_static(t, filters, user) and _matches_custom(t, custom or {})
+    ]
     metrics = compute_metrics(db, candidates)
     return sort_register([m for m in metrics if _matches_computed(m, filters)])
 

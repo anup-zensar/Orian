@@ -6,6 +6,7 @@ import type { components } from '../../api/schema';
 type S = components['schemas'];
 
 export type TransitionCreate = S['TransitionCreateIn'];
+export type TransitionUpdate = S['TransitionUpdateIn'];
 export type TransitionDetailOut = S['TransitionDetailOut'];
 export type ServiceNowProject = S['ServiceNowProjectOut'];
 export type TierProposeIn = S['TierProposeIn'];
@@ -42,7 +43,7 @@ export function useCreateTransition() {
 export function useUpdateTransition(transitionId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: S['TransitionUpdateIn']) =>
+    mutationFn: (body: TransitionUpdate) =>
       apiFetch<TransitionDetailOut>(`/transitions/${tid(transitionId)}`, { method: 'PATCH', body }),
     onSuccess: () => invalidateTransitionData(queryClient, transitionId),
   });

@@ -18,16 +18,6 @@ from app.schemas.intake import (
     TransitionDetailOut,
 )
 
-# Reference role code -> short label for the lens "owner" line.
-_ROLE_LABELS = {
-    "OR_FOCAL": "OR focal",
-    "PM": "PM",
-    "ARCHITECT": "Architect",
-    "OLM": "OLM",
-    "IRM": "IRM",
-    "PLANNER": "Planner",
-}
-
 
 def build_transition_detail(
     db: Session, transition: Transition, user: User | None = None
@@ -37,6 +27,7 @@ def build_transition_detail(
     With ``user`` the DTO also carries ``access``: what this user may do on this transition
     (``app.access.access_map``), so the UI can disable controls with the reason (spec 12)."""
     from app.access import access_map
+    from app.domain import cfg
     from app.domain import scope as scope_domain
     from app.domain.metrics import compute_metrics, to_summary
     from app.domain.tiering import reference
@@ -91,6 +82,7 @@ def build_transition_detail(
             golden_set_applies=counts["golden_set_applies"],
             golden_set_to_confirm=counts["golden_set_to_confirm"],
             common=counts["common"],
+            other=counts["other"],
             total=counts["total_applicable"],
         )
 
@@ -104,7 +96,7 @@ def build_transition_detail(
                 lens=lens,
                 question=info.get("question", ""),
                 owner_label=" / ".join(
-                    _ROLE_LABELS.get(code, code) for code in info.get("owner_roles", [])
+                    cfg.role_short_label(db, code) for code in info.get("owner_roles", [])
                 ),
                 scope=r.scope,
                 done=r.done,
@@ -154,8 +146,14 @@ def build_transition_detail(
             olm=person(t.olm_user_id),
             irm=person(t.irm_user_id),
         ),
-        flavour_label=f"{t.project_type} · {t.portfolio} · {t.region}",
+        flavour_label=(
+            f"{cfg.project_type_label(db, t.project_type)} · "
+            f"{cfg.portfolio_label(db, t.portfolio)} · {t.region}"
+        ),
         requires_tiering=requires,
+        has_ai_profile=scope_domain.has_ai_profile(db, t.project_type),
+        has_eval_metrics=scope_domain.has_eval_metrics(db, t.project_type),
+        custom_fields=dict(t.custom_fields or {}),
         tier=tier_info,
         checklist_banner=banner,
         item_counts=item_counts,

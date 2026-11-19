@@ -12,7 +12,7 @@ import {
   Select,
   Textarea,
 } from '@fluentui/react-components';
-import { useReference } from '../../reference/api';
+import { useOptions } from '../../reference/options';
 import { useUsers } from '../../users/api';
 import type { ItemPatchIn } from '../api';
 
@@ -59,8 +59,7 @@ export function GapDialog(props: {
   onSubmit: (patch: ItemPatchIn) => void;
   onClose: () => void;
 }) {
-  const ref = useReference();
-  const severities = ref.data?.enums.severities ?? ['Critical', 'Major', 'Minor'];
+  const severities = useOptions('severities', { include: props.initialSeverity });
   const [severity, setSeverity] = useState(props.initialSeverity ?? '');
   const [note, setNote] = useState(props.initialNote ?? '');
   return (
@@ -82,8 +81,8 @@ export function GapDialog(props: {
         <Select value={severity} onChange={(_, d) => setSeverity(d.value)}>
           <option value="">Select severity</option>
           {severities.map((s) => (
-            <option key={s} value={s}>
-              {s}
+            <option key={s.value} value={s.value}>
+              {s.label}
             </option>
           ))}
         </Select>

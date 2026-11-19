@@ -21,6 +21,7 @@ import { Sparkle20Regular } from '@fluentui/react-icons';
 import { AppLink } from '../../../components/AppLink';
 import { RagChip } from '../../../components/RagChip';
 import { useApiErrorToast } from '../../../hooks/useApiErrorToast';
+import { useRoleLabel } from '../../reference/options';
 import { daysLabel, formatDate, toRag } from '../../../lib/format';
 import { useTransitionAccess, type TransitionDetail } from '../../transition/api';
 import { useOrionPanel } from '../../orion/panelContext';
@@ -119,6 +120,7 @@ function SetDecisionDate({ transitionId }: { transitionId: string }) {
 /** Workspace header (spec 8.7): identity, flavour chips, gate stepper, readiness, decision, actions. */
 export function WorkspaceHeader({ detail }: { detail: TransitionDetail }) {
   const s = useStyles();
+  const roleLabel = useRoleLabel();
   const orion = useOrionPanel();
   const showError = useApiErrorToast();
   const setAutonomous = useSetAutonomous(detail.id);
@@ -226,7 +228,7 @@ export function WorkspaceHeader({ detail }: { detail: TransitionDetail }) {
           )}
         </div>
         <div className={s.fact}>
-          <Caption1>OR focal</Caption1>
+          <Caption1>{roleLabel('OR_FOCAL', 'short')}</Caption1>
           <Body1>{detail.or_focal.name}</Body1>
         </div>
       </div>

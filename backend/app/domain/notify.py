@@ -9,9 +9,17 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.domain import cfg
 from app.domain.html_sanitize import sanitize_html
 from app.models import User
 from app.services.factory import get_mail_service, get_notification_service
+
+
+def message_templates(db: Session) -> dict[str, cfg.TemplateCfg]:
+    """The message templates (Admin > Messages) by key, for ``AIService.draft_message``
+    (``ctx["templates"]``). A key without a saved row gets the code default."""
+    found = {key: cfg.template(db, key) for key in cfg.template_keys()}
+    return {key: tpl for key, tpl in found.items() if tpl is not None}
 
 
 def deliver(

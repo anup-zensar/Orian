@@ -73,7 +73,7 @@ def query_audit(db: Session, filters: AuditFilters) -> AuditPageOut:
                 before=r.before,
                 after=r.after,
                 note=r.note or "",
-                summary=describe_event(r.entity, r.entity_id, r.action),
+                summary=describe_event(r.entity, r.entity_id, r.action, r.after, r.note or ""),
             )
             for r in rows
         ],

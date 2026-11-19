@@ -29,7 +29,8 @@ import { LoadingState } from '../../components/LoadingState';
 import { PageHeader } from '../../components/PageHeader';
 import { useApiErrorToast } from '../../hooks/useApiErrorToast';
 import { ReasonButton } from '../gates/ReasonButton';
-import { roleLabel, useSuccessToast } from '../gates/useSuccessToast';
+import { useSuccessToast } from '../gates/useSuccessToast';
+import { useRoleLabel } from '../reference/options';
 import { useMe } from '../users/api';
 import {
   useActOnApproval,
@@ -91,6 +92,7 @@ const stepColor = (status: string) =>
 
 function StepChain({ steps }: { steps: ApprovalStep[] }) {
   const s = useStyles();
+  const roleLabel = useRoleLabel();
   return (
     <div className={s.chain} role="list" aria-label="Approval chain">
       {steps.map((st) => (
@@ -258,8 +260,8 @@ export function ApprovalsPage() {
   const s = useStyles();
   const [params, setParams] = useSearchParams();
   const me = useMe();
-  const role = me.data?.user.role;
-  const canSeeAll = role === 'OR_FOCAL' || role === 'ADMIN';
+  // The All tab is a permission (View all approvals), editable in Admin > People & permissions.
+  const canSeeAll = !!me.data?.permissions.includes('view_all_approvals');
   const requestId = params.get('request');
   const raw = params.get('scope');
   const scope: ApprovalScope = raw === 'requested' || (raw === 'all' && canSeeAll) ? raw : 'mine';
@@ -292,7 +294,7 @@ export function ApprovalsPage() {
       {scopeDenied && (
         <MessageBar intent="warning">
           <MessageBarBody>
-            The All view is only available to OR focals and Admins, so Waiting for me is shown
+            The All view needs the View all approvals permission, so Waiting for me is shown
             instead.
           </MessageBarBody>
         </MessageBar>

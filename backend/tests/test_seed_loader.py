@@ -17,6 +17,7 @@ from app.models import (
     Action,
     AIProfile,
     ApprovalRequest,
+    AppSetting,
     AuditEvent,
     Condition,
     EvalResult,
@@ -298,3 +299,22 @@ def test_audit_events_seeded(db):
     assert {e.transition_id for e in per_transition} == {f"TR-{n:04d}" for n in range(1, 19)}
     assert all(e.actor_type == "System" and e.note == "Seeded" for e in per_transition)
     assert Counter(e.entity for e in seeded)["System"] == 1
+
+
+def test_config_seed_matches_the_simplified_admin(db):
+    """CR-01 simplification: no tier-rule table, no custom role slots, no label / gate / lens documents."""
+    assert "tier_rules" not in database.Base.metadata.tables
+    assert not hasattr(Transition, "role_assignments")
+    keys = set(db.scalars(select(AppSetting.key).where(AppSetting.key.like("cfg.%"))))
+    assert keys == {
+        "cfg.thresholds",
+        "cfg.gate_chain",
+        "cfg.mock_approver",
+        "cfg.tiers",
+        "cfg.tier_dimensions",
+    }
+    assert count(db, User, User.active.is_(True)) == count(db, User) == 16
+    conf = seed_json("config.json")
+    assert "tier_rules" not in conf and not {"cfg.gates", "cfg.labels", "cfg.lenses"} & set(
+        conf["settings"]
+    )

@@ -34,6 +34,7 @@ import { ActorBadge } from '../../components/ActorBadge';
 import type { Lens } from '../../theme/tokens';
 import { TOASTER_ID, useApiErrorToast } from '../../hooks/useApiErrorToast';
 import { useTransition, type TransitionDetail } from '../transition/api';
+import { useTypeFlags } from '../transitions/typeFlags';
 import {
   useLaunchAssessment,
   useScope,
@@ -197,6 +198,8 @@ function ScopeContent(props: {
   const canEdit = access['confirm_scope'] === null;
   const denied = access['confirm_scope'] ?? 'You cannot confirm scope';
   const all = [...scope.golden_set, ...scope.common];
+  // Items of checklists an Admin added (the count is part of the scope summary).
+  const otherItems = scope.counts.other;
   const reqName = (itemId: string) => all.find((r) => r.id === itemId)?.requirement ?? itemId;
 
   const change = (row: ScopeRow, applies: ScopeDecision['applies']) =>
@@ -287,17 +290,20 @@ function ScopeContent(props: {
 
       <div className={s.counts} aria-label="Scope summary">
         <Tile label="Framework" value={c.framework} />
-        <Tile
-          label="AI Playbook"
-          value={c.ai_applicable}
-          hint={`${c.ai_excluded} excluded by tier`}
-        />
+        {c.ai_applicable + c.ai_excluded > 0 && (
+          <Tile
+            label="AI Playbook"
+            value={c.ai_applicable}
+            hint={`${c.ai_excluded} excluded by tier`}
+          />
+        )}
         <Tile
           label="Golden set"
           value={c.golden_set_applies}
           hint={`${c.golden_set_to_confirm} to confirm`}
         />
         <Tile label="Common" value={c.common} />
+        {otherItems > 0 && <Tile label="Other checklists" value={otherItems} />}
         <Tile label="Total applicable" value={c.total} />
       </div>
 
@@ -382,6 +388,7 @@ export function ScopePage() {
   const sq = useScope(id ?? '');
   const err = tq.error ?? sq.error;
   const t = tq.data;
+  const flags = useTypeFlags(t);
   return (
     <>
       <PageHeader
@@ -405,7 +412,7 @@ export function ScopePage() {
             id={id}
             scope={sq.data}
             access={t.access}
-            requiresTiering={t.requires_tiering}
+            requiresTiering={flags.requiresTiering}
             tierProposed={t.tier?.proposed_tier != null}
           />
         </>

@@ -18,30 +18,25 @@ from app.domain import cfg, cfg_defaults
 from app.errors import BadRequest, NotFound
 from app.models import (
     Action,
-    AppSetting,
-    Checklist,
+    AuditEvent,
+    Condition,
     EvalTarget,
     Evidence,
-    FlavourRule,
+    ExceptionRecord,
     HypercareDefect,
-    IntakeField,
-    MessageTemplate,
     OptionItem,
     OptionList,
+    OrionDraft,
     PermissionText,
     PlaybookItem,
-    Portfolio,
     Risk,
-    Role,
     RolePermission,
-    TierQuestion,
-    TierRule,
     Transition,
     TransitionItem,
     User,
 )
 from app.permissions import MATRIX, Perm
-from app.rules.constants import GATE_ORDER, GATE_OUTCOMES, GATE_TYPE
+from app.rules.constants import GATE_ORDER
 from app.schemas import config_admin as dto
 
 STRUCTURAL_LOCK = "Behaviour depends on this value - only the label can change."
@@ -61,6 +56,18 @@ USAGE_COLUMNS: dict[str, list[InstrumentedAttribute[Any]]] = {
     "action_priorities": [Action.priority],
     "defect_priorities": [HypercareDefect.priority],
     "risk_ratings": [Risk.rating],
+    # locked lists whose values are stored on records
+    "evidence_statuses": [Evidence.status],
+    "action_statuses": [Action.status],
+    "condition_statuses": [Condition.status],
+    "exception_statuses": [ExceptionRecord.status],
+    "defect_statuses": [HypercareDefect.status],
+    "draft_kinds": [OrionDraft.kind],
+    "applicability": [TransitionItem.applicability],
+    "item_statuses_business": [TransitionItem.status],
+    "item_statuses_technical": [TransitionItem.status],
+    "item_statuses_compliance": [TransitionItem.status],
+    "actor_types": [AuditEvent.actor_type],
 }
 
 
@@ -75,12 +82,34 @@ def _grouped_counts(db: Session, column: InstrumentedAttribute[Any]) -> dict[str
 
 
 def option_usage(db: Session, list_key: str) -> dict[str, int]:
-    """value -> number of records using it, for the lists that map to stored columns."""
+    """value -> number of records using it: the stored columns of the built-in lists, plus the
+    values held by custom fields that offer the list."""
     out: dict[str, int] = {}
     for column in USAGE_COLUMNS.get(list_key, []):
         for value, n in _grouped_counts(db, column).items():
             out[value] = out.get(value, 0) + n
+    fields = [
+        f.key
+        for f in cfg.intake_fields(db, form=None, active_only=False)
+        if f.option_list == list_key and not f.builtin
+    ]
+    if fields:
+        for values in db.scalars(
+            select(Transition.custom_fields).where(Transition.custom_fields.is_not(None))
+        ):
+            for key in fields:
+                held = (values or {}).get(key)
+                for value in held if isinstance(held, list) else [held]:
+                    if value not in (None, ""):
+                        out[str(value)] = out.get(str(value), 0) + 1
     return out
+
+
+def usage_is_tracked(db: Session, list_key: str) -> bool:
+    """True when ``option_usage`` knows every place a value of the list is stored, so an unused
+    value can be removed safely (otherwise values are only ever deactivated)."""
+    option_list = db.get(OptionList, list_key)
+    return list_key in USAGE_COLUMNS or bool(option_list and not option_list.is_builtin)
 
 
 def custom_field_usage(db: Session) -> dict[str, int]:
@@ -113,7 +142,6 @@ def project_type_out(
         has_eval_metrics=p.has_eval_metrics,
         required_intake_fields=list(p.required_intake_fields),
         synonyms=list(p.synonyms),
-        color=p.color,
         note=p.note,
         used_by=(used or {}).get(p.code, 0),
     )
@@ -343,7 +371,6 @@ def role_out(r: cfg.RoleCfg, users: dict[str, int]) -> dto.RoleAdminOut:
         transition_column=r.transition_column,
         can_approve=r.can_approve,
         sort_order=r.sort_order,
-        color=r.color,
         user_count=users.get(r.code, 0),
         lock_reason=lock,
     )
@@ -376,6 +403,14 @@ def generated_denial_reason(db: Session, perm: Perm, role_codes: list[str]) -> s
     return f"Only {who} can {phrase}"
 
 
+def default_denial_text(db: Session, perm: Perm, role_codes: list[str]) -> str:
+    """The 403 / tooltip text for ``perm`` when held by ``role_codes``: the original wording while the
+    roles are the defaults, otherwise one generated from the current role labels."""
+    if {r.value for r in MATRIX[perm]} == set(role_codes):
+        return permissions.DEFAULT_DENIAL_REASONS[perm]
+    return generated_denial_reason(db, perm, role_codes)
+
+
 def permission_matrix_out(db: Session) -> dto.PermissionMatrixOut:
     active = cfg.roles(db)
     active_codes = [r.code for r in active]
@@ -402,13 +437,7 @@ def permission_matrix_out(db: Session) -> dto.PermissionMatrixOut:
                 "ADMIN",
                 "Granting this to Admin has no effect on transitions: the Admin has no workflow override",
             )
-        default_roles = {r.value for r in MATRIX[perm]}
-        same_as_default = set(roles_now) == default_roles
-        default_text = (
-            permissions.DEFAULT_DENIAL_REASONS[perm]
-            if same_as_default
-            else generated_denial_reason(db, perm, roles_now)
-        )
+        default_text = default_denial_text(db, perm, roles_now)
         rows.append(
             dto.PermissionRowOut(
                 perm=perm.value,
@@ -439,45 +468,51 @@ def roles_out_active(db: Session) -> list[dto.RoleAdminOut]:
     return [role_out(r, users) for r in cfg.roles(db)]
 
 
+def user_out(db: Session, u: User, assigned: dict[str, int] | None = None) -> dto.UserAdminOut:
+    return dto.UserAdminOut(
+        id=u.id,
+        name=u.name,
+        email=u.email,
+        role=u.role,
+        role_label=cfg.role_label(db, u.role),
+        focal_label=u.focal_label,
+        title=u.title,
+        active=bool(u.active),
+        assigned_transitions=(assigned if assigned is not None else _assigned_counts(db)).get(
+            u.id, 0
+        ),
+    )
+
+
+def users_out(db: Session) -> list[dto.UserAdminOut]:
+    assigned = _assigned_counts(db)
+    return [user_out(db, u, assigned) for u in db.scalars(select(User).order_by(User.id))]
+
+
+def _assigned_counts(db: Session) -> dict[str, int]:
+    """user id -> active transitions where the person holds a slot."""
+    counts: dict[str, int] = {}
+    for column in access.TRANSITION_ROLE_COLUMN.values():
+        attr = getattr(Transition, column)
+        for uid, n in db.execute(
+            select(attr, func.count())
+            .where(Transition.status != "Closed", attr.is_not(None))
+            .group_by(attr)
+        ).all():
+            counts[uid] = counts.get(uid, 0) + int(n)
+    return counts
+
+
 # --------------------------------------------------------------------------- tiering
 
 
 def tiering_out(db: Session) -> dto.TieringConfigOut:
-    sources: list[dto.TierSourceOut] = []
-    for f in cfg.intake_fields(db):
-        if f.type in ("select", "boolean") and f.key not in ("project_type", "portfolio"):
-            values = cfg.option_values(db, f.option_list) if f.option_list else []
-            sources.append(
-                dto.TierSourceOut(
-                    key=f.key,
-                    label=f.label,
-                    source="intake" if f.builtin else "custom",
-                    values=values,
-                )
-            )
     return dto.TieringConfigOut(
         tiers=[dto.TierDefIn(**t) for t in cfg.tiers(db)],
-        dimensions=cfg.tier_dimensions(db),
-        default_tier=cfg.default_tier(db),
         questions=[
-            dto.TierQuestionOut(
-                id=q.id, text=q.text, hint=q.hint, active=q.active, sort_order=q.sort_order
-            )
+            dto.TierQuestionOut(id=q.id, text=q.text, hint=q.hint, sort_order=q.sort_order)
             for q in cfg.tier_questions(db, active_only=False)
         ],
-        rules=[
-            dto.TierRuleOut(
-                id=r.id,
-                sort_order=r.sort_order,
-                label=r.label,
-                result_tier=r.result_tier,
-                match=r.match,  # type: ignore[arg-type]
-                conditions=[dto.TierConditionIn(**c) for c in r.conditions],
-                active=r.active,
-            )
-            for r in cfg.tier_rules(db, active_only=False)
-        ],
-        sources=sources,
     )
 
 
@@ -506,39 +541,6 @@ def thresholds_out(db: Session) -> dto.ThresholdsOut:
     return dto.ThresholdsOut(
         thresholds=dto.ThresholdsDoc(**cfg.thresholds(db)), rag_rule=cfg.rag_rule_text(db)
     )
-
-
-def labels_out(db: Session) -> dto.LabelsOut:
-    return dto.LabelsOut(
-        labels=cfg.labels(db), defaults=cfg_defaults.seed_config()["settings"]["cfg.labels"]
-    )
-
-
-def gates_out(db: Session) -> dto.GatesOut:
-    texts = cfg.gates_doc(db)
-    mock = cfg.mock_approver(db)
-    return dto.GatesOut(
-        gates=[
-            dto.GateTextOut(
-                code=code,
-                order=GATE_ORDER[code],
-                type=GATE_TYPE[code],
-                label=texts.get(code, {}).get("label") or code,
-                short=texts.get(code, {}).get("short") or code,
-                description=texts.get(code, {}).get("description") or "",
-            )
-            for code in GATE_ORDER
-        ],
-        outcome_labels=cfg.gate_outcome_labels(db),
-        outcomes={k: list(v) for k, v in GATE_OUTCOMES.items()},
-        chain=cfg.gate_chain(db),
-        mock_role=mock["mock_role"],
-        mock_approver_role=mock["approver_role"],
-    )
-
-
-def lenses_out(db: Session) -> dto.LensesOut:
-    return dto.LensesOut(lenses={k: dto.LensCfgIn(**v) for k, v in cfg.lenses(db).items()})
 
 
 # --------------------------------------------------------------------------- templates
@@ -626,45 +628,7 @@ def preview_template(db: Session, key: str, body: dto.TemplatePreviewIn) -> dto.
     )
 
 
-# --------------------------------------------------------------------------- export, usage
-
-
-def _row_dict(row: Any) -> dict[str, Any]:
-    return {
-        c.key: getattr(row, c.key)
-        for c in row.__table__.columns
-        if c.key not in ("created_at", "updated_at")
-    }
-
-
-def config_export(db: Session) -> dto.ConfigExportOut:
-    from app import db as database
-
-    def rows(model: Any, *order: Any) -> list[dict[str, Any]]:
-        return [_row_dict(r) for r in db.scalars(select(model).order_by(*order)).all()]
-
-    settings = {
-        s.key: s.value
-        for s in db.scalars(select(AppSetting).where(AppSetting.key.like("cfg.%"))).all()
-    }
-    return dto.ConfigExportOut(
-        schema_version=database.SCHEMA_VERSION,
-        sections={
-            "checklists": rows(Checklist, Checklist.sort_order),
-            "project_types": rows(FlavourRule, FlavourRule.sort_order),
-            "portfolios": rows(Portfolio, Portfolio.sort_order),
-            "option_lists": rows(OptionList, OptionList.sort_order),
-            "option_items": rows(OptionItem, OptionItem.list_key, OptionItem.sort_order),
-            "intake_fields": rows(IntakeField, IntakeField.sort_order),
-            "roles": rows(Role, Role.sort_order),
-            "role_permissions": rows(RolePermission, RolePermission.perm, RolePermission.role_code),
-            "permission_texts": rows(PermissionText, PermissionText.perm),
-            "tier_questions": rows(TierQuestion, TierQuestion.sort_order),
-            "tier_rules": rows(TierRule, TierRule.sort_order),
-            "message_templates": rows(MessageTemplate, MessageTemplate.key),
-            "settings": settings,
-        },
-    )
+# --------------------------------------------------------------------------- usage
 
 
 def usage(db: Session, kind: str, key: str) -> dto.UsageOut:

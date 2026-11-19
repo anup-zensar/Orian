@@ -22,28 +22,13 @@ import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import type { ActorType } from '../../theme/tokens';
+import { useOptions } from '../reference/options';
 import { useTransitions } from '../transitions/api';
 import { useUsers } from '../users/api';
 import { useAudit, type AuditEventOut, type AuditQuery } from '../workspace/api';
 import { AuditDiff } from './AuditDiff';
 
 const PAGE_SIZE = 100;
-const ACTOR_TYPES: ActorType[] = ['Human', 'Workflow rule', 'Orion agent', 'System'];
-const ENTITIES = [
-  'Transition',
-  'TransitionItem',
-  'TierAssessment',
-  'Condition',
-  'Exception',
-  'Evidence',
-  'Action',
-  'Risk',
-  'GateReview',
-  'ApprovalRequest',
-  'Draft',
-  'Ocet',
-  'SupportModel',
-];
 
 const useStyles = makeStyles({
   bar: {
@@ -161,6 +146,10 @@ export function AuditExplorer({ transitionId }: { transitionId?: string }) {
   const { get, set } = useAuditUrl();
   const users = useUsers();
   const transitions = useTransitions({});
+  const actorTypes = useOptions('actor_types');
+  // Entity names come from the events themselves (new record kinds such as config:<section> appear
+  // automatically); names seen once stay in the list while a filter narrows the page.
+  const [entities, setEntities] = useState<string[]>([]);
 
   const entityId = get('entityId');
   const offset = Number(get('offset')) || 0;
@@ -181,6 +170,13 @@ export function AuditExplorer({ transitionId }: { transitionId?: string }) {
     const all = audit.data?.items ?? [];
     return entityId ? all.filter((e) => e.entity_id === entityId) : all;
   }, [audit.data, entityId]);
+  // Adjust state while rendering when a new page arrives (cheaper than an effect).
+  const [seenPage, setSeenPage] = useState<typeof audit.data>(undefined);
+  if (audit.data !== seenPage) {
+    setSeenPage(audit.data);
+    const seen = (audit.data?.items ?? []).map((e) => e.entity);
+    setEntities([...new Set([...entities, ...seen])].sort());
+  }
   const total = entityId ? rows.length : (audit.data?.total ?? 0);
   const dateError = !!query.from && !!query.to && query.from > query.to;
 
@@ -193,9 +189,9 @@ export function AuditExplorer({ transitionId }: { transitionId?: string }) {
             onChange={(_, d) => set({ actor_type: d.value || undefined })}
           >
             <option value="">All</option>
-            {ACTOR_TYPES.map((a) => (
-              <option key={a} value={a}>
-                {a}
+            {actorTypes.map((a) => (
+              <option key={a.value} value={a.value}>
+                {a.label}
               </option>
             ))}
           </Select>
@@ -203,7 +199,7 @@ export function AuditExplorer({ transitionId }: { transitionId?: string }) {
         <Field label="Entity" className={s.field}>
           <Select value={get('entity')} onChange={(_, d) => set({ entity: d.value || undefined })}>
             <option value="">All</option>
-            {Array.from(new Set([...ENTITIES, get('entity')].filter(Boolean))).map((e) => (
+            {Array.from(new Set([...entities, get('entity')].filter(Boolean))).map((e) => (
               <option key={e} value={e}>
                 {e}
               </option>

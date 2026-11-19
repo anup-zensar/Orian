@@ -6,7 +6,8 @@ import { LoadingState } from '../../components/LoadingState';
 import { WorkspaceHeader } from '../workspace/header/WorkspaceHeader';
 import { TAB_COMPONENTS } from '../workspace/tabRegistry';
 import { useTransition } from '../transition/api';
-import { WORKSPACE_TABS, visibleTabs } from './workspaceTabs';
+import { useTypeFlags } from './typeFlags';
+import { WORKSPACE_TABS, showsAiPlaybook, visibleTabs } from './workspaceTabs';
 
 const useStyles = makeStyles({
   tabs: {
@@ -48,6 +49,7 @@ export function TransitionWorkspace() {
   const { id = '', tab = 'overview' } = useParams();
   const { search, hash } = useLocation();
   const { data: detail, error, isPending } = useTransition(id);
+  const flags = useTypeFlags(detail);
   const current = WORKSPACE_TABS.find((t) => t.key === tab);
   const TabComponent = current ? TAB_COMPONENTS[current.key] : undefined;
   const redirect = (
@@ -57,10 +59,10 @@ export function TransitionWorkspace() {
     />
   );
   if (!current || !TabComponent) return redirect;
-  // The AI playbook tab is hidden (and its URL redirected) unless the project type requires tiering.
-  if (detail && 'requiresTiering' in current && !detail.requires_tiering) return redirect;
+  // The AI playbook tab is hidden (and its URL redirected) unless the project type switches it on.
+  if (detail && 'aiOnly' in current && !showsAiPlaybook(flags)) return redirect;
 
-  const tabs = visibleTabs(detail?.requires_tiering ?? false);
+  const tabs = visibleTabs(flags);
 
   return (
     <>

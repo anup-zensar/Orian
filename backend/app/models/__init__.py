@@ -28,7 +28,6 @@ from app.models.reference import (
     Role,
     RolePermission,
     TierQuestion,
-    TierRule,
     User,
 )
 from app.models.transition import AIProfile, TierAssessment, Transition, TransitionItem
@@ -83,7 +82,6 @@ __all__ = [
     "SupportModel",
     "TierAssessment",
     "TierQuestion",
-    "TierRule",
     "Transition",
     "TransitionItem",
     "User",

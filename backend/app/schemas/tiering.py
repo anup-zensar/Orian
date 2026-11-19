@@ -47,7 +47,7 @@ class TierSetIn(BaseModel):
 
 
 class TierConfirmIn(BaseModel):
-    tier: int = Field(ge=1, le=4)
+    tier: int = Field(ge=1)  # must be a configured tier (checked in the domain)
     reason: str | None = Field(
         default=None, max_length=4000
     )  # required when tier differs from the proposal ("Change tier")

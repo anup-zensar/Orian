@@ -99,7 +99,9 @@ export function ControlTowerPage() {
             <SectionCard title="Heatmap: portfolio by gate">
               {filters.portfolio && filters.gate && (
                 <Caption1 role="status" style={{ display: 'block', marginBottom: 6 }}>
-                  Selected: {filters.portfolio} at {filters.gate} (click the cell again to clear)
+                  Selected: {filters.portfolio} at{' '}
+                  {d.heatmap.gates.find((g) => g.code === filters.gate)?.short ?? filters.gate}{' '}
+                  (click the cell again to clear)
                 </Caption1>
               )}
               <Heatmap

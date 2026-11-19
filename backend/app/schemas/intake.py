@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -56,6 +57,8 @@ class TransitionCreateIn(BaseModel):
     olm_user_id: str | None = Field(default=None, max_length=20)
     irm_user_id: str | None = Field(default=None, max_length=20)
     next_decision_date: date | None = None
+    # Values of the "Additional details" fields an Admin added: {field key: value}.
+    custom_fields: dict[str, Any] = Field(default_factory=dict, max_length=100)
 
 
 class TransitionUpdateIn(BaseModel):
@@ -82,6 +85,8 @@ class TransitionUpdateIn(BaseModel):
     irm_user_id: str | None = Field(default=None, max_length=20)
     next_decision_date: date | None = None
     blocker_note: str | None = Field(default=None, max_length=4000)
+    # Only the keys sent are changed; a blank value clears that field.
+    custom_fields: dict[str, Any] | None = Field(default=None, max_length=100)
 
 
 class AutonomousModeIn(BaseModel):
@@ -121,6 +126,7 @@ class ItemCountsOut(BaseModel):
     golden_set_applies: int
     golden_set_to_confirm: int
     common: int
+    other: int = 0  # applicable items of checklists an Admin added
     total: int
 
 
@@ -185,7 +191,12 @@ class TransitionDetailOut(BaseModel):
     sites: list[SiteOut]
     roles: RolesOut
     flavour_label: str  # e.g. "Agentic AI · GCC · Global"
+    # Project-type switches (Admin: Project types) - the UI shows tiering, the AI profile and the eval
+    # table from these, never from the project type's name.
     requires_tiering: bool
+    has_ai_profile: bool = False
+    has_eval_metrics: bool = False
+    custom_fields: dict[str, Any] = {}  # values of the "Additional details" fields
     tier: TierInfoOut | None
     checklist_banner: str | None  # "Checklist based on proposed Tier 2 — confirm tier to finalise"
     item_counts: ItemCountsOut | None  # None before launch

@@ -12,7 +12,7 @@ from app.schemas.common import ORMModel
 ADMIN_NOTICE = "Changes affect new transitions; existing transitions keep their items."
 
 Lens = Literal["Business", "Technical", "Compliance"]
-ChecklistSource = Literal["FRAMEWORK", "AI_PLAYBOOK", "PORTFOLIO", "COMMON"]
+ChecklistSource = str  # a checklist code; checked against the checklist registry (cfg)
 Operator = Literal[">=", "<=", "<", ">", "==", "abs<="]
 ChainType = Literal["OCET", "AtD", "AtO", "SUPPORT_MODEL", "EXCEPTION"]
 
@@ -59,10 +59,19 @@ class PlaybookItemUpdateIn(BaseModel):
 
 
 class FlavourRuleOut(ORMModel):
+    """A project type. The first four fields are the original contract; the rest is CR-01."""
+
     project_type: str
     checklists: list[str]
     requires_tiering: bool = False
     note: str | None = None
+    label: str = ""
+    description: str = ""
+    active: bool = True
+    has_ai_profile: bool = False
+    has_eval_metrics: bool = False
+    required_intake_fields: list[str] = []
+    synonyms: list[str] = []
 
 
 class FlavourRuleIn(BaseModel):
@@ -159,13 +168,17 @@ class EvalTargetsIn(BaseModel):
 
 class ChainStep(BaseModel):
     step: int = Field(ge=1)
-    role: str = Field(max_length=30)  # a Role value or CISO_BISO (422 otherwise)
+    role: str = Field(max_length=30)  # a role code (can_approve) or CISO_BISO (422 otherwise)
     label: str = Field(max_length=100)
+    is_mock: bool = False  # a mocked step: IRM acts for it in demo mode
 
 
 class ApprovalChainOut(BaseModel):
     type: ChainType
     steps: list[ChainStep]
+    label: str | None = Field(
+        default=None, max_length=80
+    )  # display name, e.g. "Agreement to Deploy"
 
 
 class ApprovalChainsOut(BaseModel):
@@ -192,7 +205,8 @@ class ReminderRuleIn(BaseModel):
     enabled: bool
     params: dict[str, Any] = Field(
         default={}, max_length=20
-    )  # numeric thresholds must be positive ints (422 otherwise)
+    )  # numeric thresholds must be positive ints (422 otherwise); R6 also item_ids / category
+    autonomous_eligible: bool | None = None  # None = unchanged; it can only be switched OFF
 
 
 class ReminderRulesIn(BaseModel):

@@ -75,7 +75,7 @@ FORBIDDEN_MODULES = {
 # the only domain functions the Orion modules may import (reads, or drafts / proposals / updates)
 ALLOWED = {
     "app/domain/nl_intake.py": {
-        "app.domain.intake": {"RETAIL_PORTFOLIO", "ROLE_FIELDS", "lookup_servicenow"},
+        "app.domain.intake": {"REQUIRED_FIELDS", "ROLE_FIELDS", "lookup_servicenow"},
         "app.domain.proposals": {"create_proposal", "proposal_out"},
         "app.domain.tiering": {"reference"},
     },

@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
+from app.domain import cfg
 from app.domain.metrics import (
     TransitionMetrics,
     compute_metrics,
@@ -41,33 +42,10 @@ from app.schemas.control_tower import (
 from app.schemas.transitions import TransitionFilters
 
 CALENDAR_GATES = {"SG4_ATD": "AtD decision", "SG6_ATO": "AtO decision", "CLOSURE": "Closure"}
-CALENDAR_HORIZON_DAYS = 45
 _RAG_SEVERITY = {RED: 3, AMBER: 2, GREEN: 1, GREY: 0}
 
 TILE_FILTER_KEYS = ("status", "rag", "decision_within_days", "has_critical", "compliance_below")
 HEATMAP_FILTER_KEYS = ("portfolio", "gate")
-
-OPERATING_RHYTHM = [
-    ("OR team stand-up", "Weekly", "Red/amber transitions, overdue deliverables", "Owners and dates for blockers"),
-    (
-        "Portfolio / regional SME review",
-        "Fortnightly",
-        'Portfolio heatmap, "to confirm" applicability',
-        "Golden-set updates, confirmed scope",
-    ),
-    (
-        "IRM checkpoint",
-        "Before each gate",
-        "Open compliance controls, exceptions",
-        "IRM attestation or exception",
-    ),
-    (
-        "Leadership update",
-        "Monthly",
-        "LT brief, escalations, decisions due",
-        "Decisions, support, risk acceptance",
-    ),
-]  # fmt: skip
 
 
 def worst_rag(rags: list[str]) -> str | None:
@@ -208,15 +186,15 @@ def build_escalations(rows: list[TransitionMetrics]) -> list[EscalationOut]:
     ]
 
 
-def build_calendar(rows: list[TransitionMetrics]) -> list[CalendarEntryOut]:
-    """AtD / AtO / Closure decisions at most 45 days ahead (overdue ones first), sorted by date."""
+def build_calendar(rows: list[TransitionMetrics], horizon_days: int) -> list[CalendarEntryOut]:
+    """AtD / AtO / Closure decisions at most ``horizon_days`` ahead (overdue ones first), by date."""
     entries = []
     for m in rows:
         t = m.transition
         days = m.days_to_next_decision
         if t.current_gate not in CALENDAR_GATES or t.next_decision_date is None or days is None:
             continue
-        if days > CALENDAR_HORIZON_DAYS:
+        if days > horizon_days:
             continue
         entries.append(
             CalendarEntryOut(
@@ -249,9 +227,14 @@ def build_control_tower(db: Session, user: User, filters: TransitionFilters) -> 
         readiness_by_region=build_regions(rows, ref),
         transitions=[to_summary(m) for m in rows],
         escalations=build_escalations(rows),
-        calendar=build_calendar(rows),
+        calendar=build_calendar(rows, cfg.thresholds(db)["calendar_horizon_days"]),
         operating_rhythm=[
-            OperatingRhythmRowOut(forum=a, frequency=b, input=c, output=d)
-            for a, b, c, d in OPERATING_RHYTHM
+            OperatingRhythmRowOut(
+                forum=o.label,
+                frequency=o.meta.get("cadence", ""),
+                input=o.meta.get("looks_at", ""),
+                output=o.meta.get("produces", ""),
+            )
+            for o in cfg.options(db, "operating_rhythm")
         ],
     )

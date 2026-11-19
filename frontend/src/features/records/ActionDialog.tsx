@@ -14,9 +14,11 @@ import {
 } from '@fluentui/react-components';
 import { useApiErrorToast } from '../../hooks/useApiErrorToast';
 import { useAuth } from '../../auth/useAuth';
+import { useOptions } from '../reference/options';
 import {
   useCreateAction,
   usePatchAction,
+  type ActionCreate,
   type ActionPatch,
   type ActionRow,
   type Item,
@@ -30,9 +32,6 @@ export interface ActionPrefill {
   ownerId?: string;
   dueDate?: string;
 }
-
-const PRIORITIES = ['High', 'Medium', 'Low'] as const;
-const STATUSES = ['Open', 'In progress', 'Done', 'Cancelled'] as const;
 
 /** Create (action = undefined) or edit an action. Mount it only while open so state starts fresh. */
 export function ActionDialog(props: {
@@ -55,7 +54,12 @@ export function ActionDialog(props: {
   const [due, setDue] = useState(
     a?.due_date ?? p?.dueDate ?? dayjs().add(7, 'day').format('YYYY-MM-DD'),
   );
-  const [priority, setPriority] = useState<string>(a?.priority ?? 'Medium');
+  const priorities = useOptions('action_priorities', { include: a?.priority });
+  const statuses = useOptions('action_statuses');
+  // A new action starts at the middle priority of the list (Medium today).
+  const [priority, setPriority] = useState<string>(
+    a?.priority ?? priorities[Math.floor(priorities.length / 2)]?.value ?? '',
+  );
   const [status, setStatus] = useState<string>(a?.status ?? 'Open');
 
   const valid = title.trim() && owner && due;
@@ -84,7 +88,7 @@ export function ActionDialog(props: {
           item_ids: itemId ? [itemId] : [],
           owner_user_id: owner,
           due_date: due,
-          priority: priority as (typeof PRIORITIES)[number],
+          priority: priority as ActionCreate['priority'],
         },
         done,
       );
@@ -116,16 +120,20 @@ export function ActionDialog(props: {
             </Field>
             <Field label="Priority">
               <Select value={priority} onChange={(_, d) => setPriority(d.value)}>
-                {PRIORITIES.map((x) => (
-                  <option key={x}>{x}</option>
+                {priorities.map((x) => (
+                  <option key={x.value} value={x.value}>
+                    {x.label}
+                  </option>
                 ))}
               </Select>
             </Field>
             {a && (
               <Field label="Status">
                 <Select value={status} onChange={(_, d) => setStatus(d.value)}>
-                  {STATUSES.map((x) => (
-                    <option key={x}>{x}</option>
+                  {statuses.map((x) => (
+                    <option key={x.value} value={x.value}>
+                      {x.label}
+                    </option>
                   ))}
                 </Select>
               </Field>

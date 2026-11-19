@@ -13,20 +13,16 @@ export type GoldenSetItemIn = S['GoldenSetItemIn'];
 export type EvalTargets = S['EvalTargetsOut'];
 export type EvalTargetsIn = S['EvalTargetsIn'];
 export type EvalMetric = S['EvalMetricOut'];
-export type EvalTierTarget = S['EvalTierTargetOut'];
 export type ApprovalChains = S['ApprovalChainsOut'];
 export type ApprovalChainsIn = S['ApprovalChainsIn'];
 export type ChainStep = S['ChainStep'];
 export type ReminderRule = S['app__schemas__admin__ReminderRuleOut'];
 export type ReminderRulesIn = S['ReminderRulesIn'];
-export type AdminUser = S['UserOut'];
 export type DemoResetOut = S['DemoResetOut'];
 export type FastForwardOut = S['FastForwardOut'];
 export type TodayOut = S['TodayOut'];
 
-export const ADMIN_NOTICE =
-  'Changes affect new transitions; existing transitions keep their items.';
-export const SOURCES = ['FRAMEWORK', 'AI_PLAYBOOK', 'PORTFOLIO', 'COMMON'] as const;
+// The three areas are fixed on purpose: the allowed statuses and the readiness maths depend on them.
 export const LENSES = ['Business', 'Technical', 'Compliance'] as const;
 export const OPERATORS = ['>=', '<=', '<', '>', '==', 'abs<='] as const;
 
@@ -62,19 +58,6 @@ export const useUpdatePlaybookItem = () =>
   useAdminPut<{ id: string; body: PlaybookItemUpdate }, PlaybookItem>(
     (i) => `/admin/playbook-items/${encodeURIComponent(i.id)}`,
     (i) => i.body,
-  );
-
-export function useFlavourRules() {
-  return useQuery({
-    queryKey: ['admin', 'flavour-rules'],
-    queryFn: ({ signal }) =>
-      apiFetch<{ rules: FlavourRule[]; notice: string }>('/admin/flavour-rules', { signal }),
-  });
-}
-export const usePutFlavourRules = () =>
-  useAdminPut<FlavourRulesIn, unknown>(
-    () => '/admin/flavour-rules',
-    (b) => b,
   );
 
 export function useGoldenSet(portfolio: string) {
@@ -128,13 +111,6 @@ export const usePutReminderRules = () =>
     () => '/admin/reminder-rules',
     (b) => b,
   );
-
-export function useAdminUsers() {
-  return useQuery({
-    queryKey: ['admin', 'users'],
-    queryFn: ({ signal }) => apiFetch<AdminUser[]>('/admin/users', { signal }),
-  });
-}
 
 export function useDemoToday(enabled: boolean) {
   return useQuery({

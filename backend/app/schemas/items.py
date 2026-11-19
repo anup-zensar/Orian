@@ -16,8 +16,8 @@ from app.deps import MAX_BULK
 from app.schemas.common import PersonRef
 
 Lens = Literal["Business", "Technical", "Compliance"]
-ItemSource = Literal["FRAMEWORK", "AI_PLAYBOOK", "PORTFOLIO", "COMMON"]
-Severity = Literal["Critical", "Major", "Minor"]
+ItemSource = str  # a checklist code (checked in the domain)
+Severity = str  # a value of "severities" (checked in the domain)
 DesignEffectiveness = Literal["–", "Yes", "No", "N/A"]
 Applicability = Literal["Applies", "Not applicable", "To confirm"]
 ApplicabilityFilter = Literal["applies", "excluded", "to_confirm", "all"]

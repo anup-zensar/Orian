@@ -13,12 +13,10 @@ import {
   Textarea,
 } from '@fluentui/react-components';
 import { useApiErrorToast } from '../../hooks/useApiErrorToast';
+import { useOptions } from '../reference/options';
 import { useAddEvidence, useReviewEvidence, type Evidence, type Item } from './api';
 import { ItemSelect } from './common';
 import { useRecordStyles } from './hooks';
-
-const TYPES = ['Document', 'Link', 'Email sign-off', 'Recording'] as const;
-type Kind = (typeof TYPES)[number];
 
 /** "Add evidence": file upload (multipart), link URL or email sign-off text (spec 8.7 d). */
 export function AddEvidenceDialog(props: {
@@ -32,14 +30,19 @@ export function AddEvidenceDialog(props: {
   const add = useAddEvidence(props.transitionId);
   const showError = useApiErrorToast();
   const [title, setTitle] = useState('');
-  const [type, setType] = useState<Kind>('Document');
+  // Types a person can add; system types (Generated) are created by Orion tools only.
+  const types = useOptions('evidence_types').filter((o) => !o.meta.system);
+  const [chosen, setType] = useState('');
+  const type = chosen || types[0]?.value || '';
+  // What the type needs: a file, a link URL or pasted text (list setting 'needs').
+  const needs = types.find((o) => o.value === type)?.meta.needs;
   const [itemId, setItemId] = useState(props.initialItem ?? '');
   const [url, setUrl] = useState('');
   const [text, setText] = useState('');
   const [file, setFile] = useState<File | null>(null);
 
-  const isLink = type === 'Link';
-  const isEmail = type === 'Email sign-off';
+  const isLink = needs === 'url';
+  const isEmail = needs === 'text';
   const valid =
     title.trim().length > 0 &&
     (isLink ? url.trim().length > 0 : isEmail ? text.trim().length > 0 : file !== null);
@@ -74,10 +77,10 @@ export function AddEvidenceDialog(props: {
               <Input value={title} onChange={(_, d) => setTitle(d.value)} />
             </Field>
             <Field label="Type" required>
-              <Select value={type} onChange={(_, d) => setType(d.value as Kind)}>
-                {TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
+              <Select value={type} onChange={(_, d) => setType(d.value)}>
+                {types.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
                   </option>
                 ))}
               </Select>

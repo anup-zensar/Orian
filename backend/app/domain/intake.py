@@ -1,11 +1,15 @@
 """Intake: create / edit transitions, ServiceNow prefill, autonomous mode (FR-020, FR-081; AC-05).
 
-Validation produces one reason per problem (422 ``reasons``). Option lists come from reference data
-(intake options, regions), ``FlavourRule`` (project types) and ``Portfolio``.
+Validation produces one reason per problem (422 ``reasons``). Everything an Admin can change comes from
+configuration (``app.domain.cfg``): the project types and portfolios on offer, the dropdown lists, which
+intake fields are required for which project type, and the custom "Additional details" fields (stored
+in ``Transition.custom_fields``).
 """
 
 from __future__ import annotations
 
+import math
+from datetime import date
 from typing import Any
 
 from sqlalchemy import select
@@ -13,12 +17,11 @@ from sqlalchemy.orm import Session
 
 from app.access import ensure_admin_or_assigned, ensure_open, ensure_transition_role
 from app.deps import ensure
-from app.domain import audit
+from app.domain import audit, cfg
 from app.domain import scope as scope_domain
 from app.domain.ids import next_id
-from app.domain.tiering import reference
 from app.errors import BadRequest, Conflict, Forbidden, NotFound
-from app.models import FlavourRule, Portfolio, Transition, User
+from app.models import Transition, User
 from app.permissions import Perm
 from app.rules.constants import ACTOR_HUMAN
 from app.schemas.intake import (
@@ -28,8 +31,11 @@ from app.schemas.intake import (
 )
 from app.services.factory import get_servicenow_service
 
-RETAIL_PORTFOLIO = "Retail Site Systems"
-AI_REQUIRED_FIELDS = ("audience", "write_actions", "sensitive_data")
+# Built-in fields that must always be filled in (the Admin cannot make them optional).
+REQUIRED_FIELDS = ("name", "project_type", "portfolio", "region", "or_focal_user_id")
+# Longest text an Additional-details text field accepts unless the Admin sets another limit.
+DEFAULT_TEXT_LIMIT = 2000
+# Built-in dropdown fields: the field key is also the key of its dropdown list.
 OPTION_FIELDS = (
     "audience",
     "write_actions",
@@ -38,17 +44,8 @@ OPTION_FIELDS = (
     "investment_type",
     "delivery_method",
 )
-FIELD_LABELS = {
-    "name": "Solution / transition name",
-    "project_type": "Project type",
-    "portfolio": "Portfolio",
-    "region": "Region",
-    "or_focal_user_id": "OR focal",
-    "audience": "Audience",
-    "write_actions": "Write actions",
-    "sensitive_data": "Sensitive data",
-}
-# Role pickers: Transition column -> (required user role, label)
+# Role pickers: Transition column -> (required user role, default label). The label shown in messages
+# is the role's phrase label from configuration (``cfg.role_phrase_label``).
 ROLE_FIELDS: dict[str, tuple[str, str]] = {
     "or_focal_user_id": ("OR_FOCAL", "OR focal"),
     "pm_user_id": ("PM", "Project manager"),
@@ -70,6 +67,7 @@ DESCRIPTIVE_FIELDS = (
     "description",
     "next_decision_date",
     "blocker_note",
+    "custom_fields",
 )
 ASSIGN_LOW_FIELDS = ("pm_user_id", "architect_user_id", "olm_user_id")  # the OR focal (or an Admin)
 ASSIGN_HIGH_FIELDS = ("or_focal_user_id", "irm_user_id")  # Admin only
@@ -85,7 +83,6 @@ EDITABLE_FIELDS = (
     *ASSIGN_HIGH_FIELDS,
     *ASSIGN_LOW_FIELDS,
 )
-REQUIRED_FIELDS = ("name", "project_type", "portfolio", "region", "or_focal_user_id")
 AUDIT_FIELDS = (*EDITABLE_FIELDS, "current_gate", "status", "autonomous_mode")
 
 
@@ -107,9 +104,117 @@ def _clean(value: Any) -> Any:
     return value
 
 
-def _normalise_sites(raw: list[dict[str, str]], portfolio: str | None) -> list[dict[str, str]]:
-    """Sites are only kept for Retail Site Systems."""
-    return [dict(row) for row in raw] if portfolio == RETAIL_PORTFOLIO else []
+def _normalise_sites(
+    db: Session, raw: list[dict[str, str]], portfolio: str | None
+) -> list[dict[str, str]]:
+    """Sites are only kept for portfolios that require sites (e.g. Retail Site Systems)."""
+    return [dict(row) for row in raw] if cfg.portfolio_requires_sites(db, portfolio) else []
+
+
+def _label(db: Session, key: str) -> str:
+    """The label of an intake field as the Admin configured it."""
+    field = cfg.intake_field(db, key)
+    return field.label if field is not None else key
+
+
+def _check_choice(
+    reasons: list[str], name: str, allowed: list[str], value: Any, current: Any
+) -> None:
+    """One reason when ``value`` is not on offer. An unchanged value stays valid (it may have been
+    deactivated since the record was saved)."""
+    if value and allowed and value != current and value not in allowed:
+        reasons.append(f"{name} '{value}' is not one of: {', '.join(allowed)}")
+
+
+def _clean_custom_value(
+    db: Session, field: cfg.IntakeFieldCfg, value: Any, current: Any
+) -> tuple[Any, str | None]:
+    """(clean value, problem) for one custom field. Blank values become None (= clear the field)."""
+    if value is None or value == "" or value == []:
+        return None, None
+    name = field.label
+    kind = field.type
+    if kind in ("text", "textarea"):
+        if not isinstance(value, (str, int, float)) or isinstance(value, bool):
+            return None, f"{name} must be text"
+        text = str(value).strip()
+        limit = field.max_length or DEFAULT_TEXT_LIMIT
+        if len(text) > limit:
+            return None, f"{name} is longer than {limit} characters"
+        return text or None, None
+    if kind == "number":
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            try:
+                value = float(str(value))
+            except ValueError:
+                return None, f"{name} must be a number"
+        if not math.isfinite(value):
+            return None, f"{name} must be a number"
+        if field.min is not None and value < field.min:
+            return None, f"{name} must be at least {field.min:g}"
+        if field.max is not None and value > field.max:
+            return None, f"{name} must be at most {field.max:g}"
+        return value, None
+    if kind == "date":
+        try:
+            return date.fromisoformat(str(value)).isoformat(), None
+        except ValueError:
+            return None, f"{name} must be a date (YYYY-MM-DD)"
+    if kind == "boolean":
+        if not isinstance(value, bool):
+            return None, f"{name} must be Yes or No"
+        return value, None
+    if kind in ("select", "multiselect"):
+        allowed = cfg.option_values(db, field.option_list or "")
+        chosen = value if kind == "multiselect" and isinstance(value, list) else [value]
+        kept = current if isinstance(current, list) else [current]
+        for one in chosen:
+            if one not in allowed and one not in kept:
+                return None, f"{name} '{one}' is not one of: {', '.join(allowed)}"
+        return (list(chosen) if kind == "multiselect" else value), None
+    if kind == "user":
+        person = db.get(User, str(value))
+        if person is None:
+            return None, f"{name}: unknown user '{value}'"
+        if field.option_list and person.role != field.option_list:
+            return None, f"{name}: {person.name} does not have the {field.option_list} role"
+        return person.id, None
+    return None, f"{name} has an unsupported type '{kind}'"
+
+
+def _merge_custom_fields(
+    db: Session, sent: dict[str, Any] | None, stored: dict[str, Any] | None
+) -> tuple[dict[str, Any], set[str], list[str]]:
+    """Overlay the custom values in ``sent`` on the ``stored`` ones.
+
+    Returns (merged values, keys that were sent, reasons). A blank value clears the field; keys of
+    unknown or retired fields are refused.
+    """
+    fields = {f.key: f for f in cfg.intake_fields(db) if not f.builtin}
+    merged = dict(stored or {})
+    reasons: list[str] = []
+    for key, value in (sent or {}).items():
+        field = fields.get(key)
+        if field is None:
+            reasons.append(f"'{key}' is not an additional detail field of this form")
+            continue
+        clean, problem = _clean_custom_value(db, field, value, merged.get(key))
+        if problem:
+            reasons.append(problem)
+        elif clean is None:
+            merged.pop(key, None)
+        else:
+            merged[key] = clean
+    return merged, set(sent or {}), reasons
+
+
+def _required_keys(db: Session, project_type: str | None) -> list[str]:
+    """Fields that must be filled in for ``project_type``: the always-required built-ins plus what the
+    Admin required for this type (field rules and the type's own required list)."""
+    keys = list(REQUIRED_FIELDS)
+    if cfg.project_type(db, project_type) is not None:
+        keys += [k for k in cfg.required_fields_for(db, project_type) if k not in keys]
+    return keys
 
 
 def _validate(
@@ -118,64 +223,81 @@ def _validate(
     touched: set[str],
     *,
     raw_sites: list[dict[str, str]],
+    custom: dict[str, Any],
+    current: Transition | None = None,
 ) -> list[str]:
-    """Reasons for the merged ``values``; only ``touched`` fields get option / conditional checks
-    (so unrelated edits on legacy seeded rows never fail)."""
+    """Reasons for the merged ``values`` (+ ``custom`` values); only ``touched`` fields get option /
+    conditional checks (so unrelated edits on legacy seeded rows never fail). ``current`` is the saved
+    record on an update: an unchanged value stays valid even if it was deactivated since."""
+
+    def saved(field: str) -> Any:
+        return getattr(current, field, None) if current is not None else None
+
     reasons: list[str] = []
-    ref = reference(db)
-    options = ref.get("intake_options", {})
-
-    for field in REQUIRED_FIELDS:
-        if field in touched and not values.get(field):
-            reasons.append(f"{FIELD_LABELS[field]} is required")
-
-    project_types = [r.project_type for r in db.scalars(select(FlavourRule))]
-    portfolios = [p.name for p in db.scalars(select(Portfolio))]
     project_type = values.get("project_type")
-    if project_type and "project_type" in touched and project_type not in project_types:
-        reasons.append(f"Project type '{project_type}' is not one of: {', '.join(project_types)}")
-    if values.get("portfolio") and "portfolio" in touched and values["portfolio"] not in portfolios:
-        reasons.append(f"Portfolio '{values['portfolio']}' is not one of: {', '.join(portfolios)}")
-    regions = ref.get("regions", [])
-    if values.get("region") and "region" in touched and regions and values["region"] not in regions:
-        reasons.append(f"Region '{values['region']}' is not one of: {', '.join(regions)}")
-    for field in OPTION_FIELDS:
-        allowed = options.get(field, [])
-        value = values.get(field)
-        if field in touched and value is not None and allowed and value not in allowed:
-            reasons.append(f"{field} '{value}' is not one of: {', '.join(allowed)}")
+    portfolio = values.get("portfolio")
 
-    needs_ai_fields = (
-        project_type in project_types
-        and bool(touched & {"project_type", *AI_REQUIRED_FIELDS})
-        and scope_domain.requires_tiering(db, project_type)
-    )
-    if needs_ai_fields:
-        for field in AI_REQUIRED_FIELDS:
-            if not values.get(field):
-                reasons.append(f"{FIELD_LABELS[field]} is required for {project_type}")
+    # Changing the project type or portfolio re-checks every required field.
+    retest = bool(touched & {"project_type", "portfolio"})
+    for key in _required_keys(db, project_type):
+        field = cfg.intake_field(db, key)
+        if field is not None and not (
+            field.active and cfg.field_applies(field, project_type, portfolio)
+        ):
+            continue
+        if key not in touched and not retest:
+            continue
+        value = values[key] if key in values else custom.get(key)
+        if value is None or value == "" or value == []:
+            reason = f"{_label(db, key)} is required"
+            if key not in REQUIRED_FIELDS:
+                reason += f" for {cfg.project_type_label(db, project_type)}"
+            reasons.append(reason)
 
-    if values.get("portfolio") == RETAIL_PORTFOLIO and touched & {"portfolio", "sites"}:
+    if project_type and "project_type" in touched:
+        codes = [p.code for p in cfg.project_types(db)]
+        _check_choice(reasons, "Project type", codes, project_type, saved("project_type"))
+    if portfolio and "portfolio" in touched:
+        names = [p.name for p in cfg.portfolios(db)]
+        _check_choice(reasons, "Portfolio", names, portfolio, saved("portfolio"))
+    if values.get("region") and "region" in touched:
+        regions = cfg.option_values(db, "regions")
+        _check_choice(reasons, "Region", regions, values["region"], saved("region"))
+    for key in OPTION_FIELDS:
+        if key not in touched:
+            continue
+        field = cfg.intake_field(db, key)
+        list_key = (field.option_list if field is not None else None) or key
+        _check_choice(reasons, key, cfg.option_values(db, list_key), values.get(key), saved(key))
+
+    if cfg.portfolio_requires_sites(db, portfolio) and touched & {"portfolio", "sites"}:
+        label = cfg.portfolio_label(db, portfolio)
         if not raw_sites:
-            reasons.append("Add at least one site (Site ID and Site key) for Retail Site Systems")
+            reasons.append(f"Add at least one site (Site ID and Site key) for {label}")
         for index, row in enumerate(raw_sites, start=1):
             if not row["site_id"] or not row["site_key"]:
                 reasons.append(f"Site row {index}: both Site ID and Site key are required")
 
-    for field, (role, label) in ROLE_FIELDS.items():
+    for field, (role, default_label) in ROLE_FIELDS.items():
         user_id = values.get(field)
         if field not in touched or not user_id:
             continue
+        phrase = cfg.role_phrase_label(db, role) or default_label
+        label = phrase[:1].upper() + phrase[1:]
         user = db.get(User, user_id)
         if user is None:
             reasons.append(f"{label}: unknown user '{user_id}'")
         elif user.role != role:
             reasons.append(f"{label}: {user.name} does not have the {role} role")
+        elif user.active is False and user_id != saved(field):
+            reasons.append(f"{label}: {user.name} is deactivated")
     return reasons
 
 
 def _default_role_user(db: Session, role: str) -> str | None:
-    return db.scalar(select(User.id).where(User.role == role).order_by(User.id))
+    return db.scalar(
+        select(User.id).where(User.role == role, User.active.isnot(False)).order_by(User.id)
+    )
 
 
 # --- create --------------------------------------------------------------------------------------
@@ -185,6 +307,7 @@ def create_transition(db: Session, user: User, body: TransitionCreateIn) -> Tran
     ensure(user, Perm.CREATE_TRANSITION)
     data = body.model_dump()
     confirm_duplicate = data.pop("confirm_duplicate", False)
+    sent_custom = data.pop("custom_fields", None)
     values: dict[str, Any] = {k: _clean(v) for k, v in data.items() if k != "sites"}
     # An OR focal creates only transitions they will own (default: themselves); PM / Admin pick any.
     if user.role == "OR_FOCAL":
@@ -202,7 +325,10 @@ def create_transition(db: Session, user: User, body: TransitionCreateIn) -> Tran
         if field != "or_focal_user_id" and field not in body.model_fields_set:
             values[field] = _default_role_user(db, role)
     raw_sites = _normalise_sites_raw(data["sites"])
-    reasons = _validate(db, values, set(EDITABLE_FIELDS), raw_sites=raw_sites)
+    custom, custom_keys, custom_reasons = _merge_custom_fields(db, sent_custom, None)
+    reasons = custom_reasons + _validate(
+        db, values, set(EDITABLE_FIELDS) | custom_keys, raw_sites=raw_sites, custom=custom
+    )
     if reasons:
         raise BadRequest("Validation failed", reasons)
 
@@ -237,11 +363,12 @@ def create_transition(db: Session, user: User, body: TransitionCreateIn) -> Tran
         **{
             k: values.get(k)
             for k in EDITABLE_FIELDS
-            if k not in ("sites", "blocker_note", "description", "market")
+            if k not in ("sites", "blocker_note", "description", "market", "custom_fields")
         },
         description=values["description"],
         market=values["market"],
-        sites=_normalise_sites(raw_sites, values["portfolio"]),
+        sites=_normalise_sites(db, raw_sites, values["portfolio"]),
+        custom_fields=custom or None,
     )
     db.add(t)
     db.flush()
@@ -278,6 +405,11 @@ def _person_name(db: Session, user_id: str | None) -> str:
     return person.name if person is not None else "none"
 
 
+def _saved(t: Transition, field: str) -> Any:
+    """The stored value of an editable field (custom fields: an empty dict when nothing is stored)."""
+    return (t.custom_fields or {}) if field == "custom_fields" else getattr(t, field)
+
+
 def _check_update_access(
     db: Session,
     user: User,
@@ -287,8 +419,8 @@ def _check_update_access(
     raw_sites: list[dict[str, str]],
 ) -> None:
     """Per-group access of PATCH (BE#2). Only fields whose value really changes are checked."""
-    changing = {f for f in sent - {"sites"} if values[f] != getattr(t, f)}
-    if "sites" in sent and _normalise_sites(raw_sites, values["portfolio"]) != (t.sites or []):
+    changing = {f for f in sent - {"sites"} if values[f] != _saved(t, f)}
+    if "sites" in sent and _normalise_sites(db, raw_sites, values["portfolio"]) != (t.sites or []):
         changing.add("sites")  # sites are workflow data: an Admin may not edit them (A-75)
     people = set(ASSIGN_LOW_FIELDS) | set(ASSIGN_HIGH_FIELDS)
     if user.role == "ADMIN" and changing - people:
@@ -355,8 +487,12 @@ def update_transition(db: Session, user: User, t: Transition, body: TransitionUp
     sent = {f for f in body.model_fields_set if f in EDITABLE_FIELDS}
     data = body.model_dump()
 
-    values: dict[str, Any] = {f: getattr(t, f) for f in EDITABLE_FIELDS}
-    for field in sent - {"sites"}:
+    values: dict[str, Any] = {f: _saved(t, f) for f in EDITABLE_FIELDS}
+    custom, custom_keys, custom_reasons = _merge_custom_fields(
+        db, data["custom_fields"] if "custom_fields" in sent else None, t.custom_fields
+    )
+    values["custom_fields"] = custom
+    for field in sent - {"sites", "custom_fields"}:
         value = _clean(data[field])
         if field in ("description", "market"):
             value = (data[field] or "").strip()
@@ -371,7 +507,14 @@ def update_transition(db: Session, user: User, t: Transition, body: TransitionUp
     _check_update_access(db, user, t, values, sent, raw_sites)
     ensure_open(t)
 
-    reasons = _validate(db, values, sent, raw_sites=raw_sites)
+    reasons = custom_reasons + _validate(
+        db,
+        values,
+        (sent - {"custom_fields"}) | custom_keys,
+        raw_sites=raw_sites,
+        custom=custom,
+        current=t,
+    )
     if reasons:
         raise BadRequest("Validation failed", reasons)
 
@@ -381,18 +524,24 @@ def update_transition(db: Session, user: User, t: Transition, body: TransitionUp
     people: list[str] = []
     for field in sent:
         new_value = (
-            _normalise_sites(raw_sites, values["portfolio"]) if field == "sites" else values[field]
+            _normalise_sites(db, raw_sites, values["portfolio"])
+            if field == "sites"
+            else values[field]
         )
-        old_value = getattr(t, field)
+        old_value = _saved(t, field)
         if old_value != new_value:
             if field in ROLE_FIELDS:
                 people.append(
                     f"{ROLE_FIELDS[field][1]}: {_person_name(db, old_value)} -> "
                     f"{_person_name(db, new_value)}"
                 )
-            setattr(t, field, new_value)
+            setattr(t, field, (new_value or None) if field == "custom_fields" else new_value)
             changed.append(field)
-    if "portfolio" in changed and "sites" not in sent and t.portfolio != RETAIL_PORTFOLIO:
+    if (
+        "portfolio" in changed
+        and "sites" not in sent
+        and not cfg.portfolio_requires_sites(db, t.portfolio)
+    ):
         t.sites = []
         changed.append("sites")
     if not changed:

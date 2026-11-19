@@ -11,6 +11,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app import clock
+from app.domain import cfg
 from app.domain.dashboard import is_gap, is_open_item, open_actions, pending_approvals
 from app.domain.metrics import TransitionMetrics, compute_metrics, decision_phrase
 from app.domain.transitions import filter_transitions, my_transitions
@@ -22,18 +23,20 @@ from app.schemas.orion import InsightOut, InsightsOut
 from app.schemas.transitions import TransitionFilters
 from app.services.factory import get_ai_service
 
-LOW_READINESS_BELOW = 70
-LOW_READINESS_WITHIN_DAYS = 45
-_SEVERITY_RANK = {"Critical": 0, "Major": 1, "Minor": 2}
+
+def _severity_rank(db: Session) -> dict[str, int]:
+    """Position of each severity in the "Gap severities" list (the first one is the most serious)."""
+    return {v: i for i, v in enumerate(cfg.option_values(db, "severities", active_only=False))}
 
 
-def _gap_items(m: TransitionMetrics) -> list[dict[str, Any]]:
-    """Open gaps at the current gate, critical first, then by due gate and item id."""
+def _gap_items(db: Session, m: TransitionMetrics) -> list[dict[str, Any]]:
+    """Open gaps at the current gate, most serious first, then by due gate and item id."""
+    rank = _severity_rank(db)
     gate = m.transition.current_gate
     gaps = [i for i in m.items if is_gap(i) and is_open_item(i, gate)]
     gaps.sort(
         key=lambda i: (
-            _SEVERITY_RANK.get(i.gap_severity or "", 3),
+            rank.get(i.gap_severity or "", len(rank)),
             GATE_ORDER[i.due_gate],
             i.playbook_item_id,
         )
@@ -44,7 +47,7 @@ def _gap_items(m: TransitionMetrics) -> list[dict[str, Any]]:
     ]
 
 
-def _transition_facts(m: TransitionMetrics) -> dict[str, Any]:
+def _transition_facts(db: Session, m: TransitionMetrics) -> dict[str, Any]:
     t = m.transition
     lens, pct = m.lowest_lens()
     return {
@@ -63,7 +66,7 @@ def _transition_facts(m: TransitionMetrics) -> dict[str, Any]:
         "lowest_lens": lens,
         "lowest_lens_pct": pct,
         "blocker_note": t.blocker_note,
-        "gaps": _gap_items(m),
+        "gaps": _gap_items(db, m),
     }
 
 
@@ -73,9 +76,11 @@ def _urgency(f: dict[str, Any]) -> tuple[bool, int, str]:
 
 def dashboard_facts(db: Session, user: User) -> dict[str, Any]:
     mine = my_transitions(db, user)
-    facts = [_transition_facts(m) for m in mine]
+    facts = [_transition_facts(db, m) for m in mine]
     names = {m.id: m.transition.name for m in mine}
     today = clock.today()
+    low_below = cfg.thresholds(db)["insights"]["low_readiness_below"]
+    within_days = cfg.thresholds(db)["insights"]["within_days"]
 
     critical = sorted((f for f in facts if f["critical_gaps"] > 0), key=_urgency)
     low = sorted(
@@ -83,9 +88,9 @@ def dashboard_facts(db: Session, user: User) -> dict[str, Any]:
             f
             for f in facts
             if f["launched"]
-            and f["lowest_lens_pct"] < LOW_READINESS_BELOW
+            and f["lowest_lens_pct"] < low_below
             and f["days"] is not None
-            and 0 <= f["days"] <= LOW_READINESS_WITHIN_DAYS
+            and 0 <= f["days"] <= within_days
         ),
         key=_urgency,
     )
@@ -142,7 +147,9 @@ def control_tower_facts(db: Session, user: User, filters: TransitionFilters) -> 
         "today": clock.today().isoformat(),
         "transitions": len(rows),
         "red": sum(1 for m in rows if m.rag == RED),
-        "top_risks": [_transition_facts(m) for m in risky[:3]],
+        "top_risks": [
+            _transition_facts(db, m) for m in risky[: cfg.thresholds(db)["narrative_top"]]
+        ],
     }
 
 
@@ -155,7 +162,7 @@ def transition_facts(db: Session, user: User, transition_id: str) -> dict[str, A
         "scope": "transition",
         "user": {"id": user.id, "name": user.name, "role": user.role},
         "today": clock.today().isoformat(),
-        "transition": _transition_facts(m),
+        "transition": _transition_facts(db, m),
         "has_items": bool(m.items),
     }
 

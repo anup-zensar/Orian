@@ -28,13 +28,14 @@ import {
 } from '../api';
 import {
   APP_NODE_ID,
-  DIRECTIONS,
   directionOf,
   nextComponentId,
   targetNameOf,
+  useDirections,
   withEdge,
   type Direction,
 } from '../graph';
+import { useOptions } from '../../reference/options';
 import { statusColor } from '../status';
 import { LandscapeCanvas, type CanvasSelection } from './LandscapeCanvas';
 import { LandscapePanels } from './LandscapePanels';
@@ -88,7 +89,11 @@ export function ReviewStep(props: {
   }
   const [selection, setSelection] = useState<CanvasSelection>(null);
   const [newName, setNewName] = useState('');
-  const [newType, setNewType] = useState('Integration');
+  // Component types are suggestions from the support_component_types list; free text is still allowed.
+  const typeOptions = useOptions('support_component_types');
+  const directions = useDirections();
+  const [chosenType, setNewType] = useState<string | null>(null);
+  const newType = chosenType ?? typeOptions[0]?.value ?? '';
 
   const editable = model.can_edit && model.status === 'Draft';
   const dirty = JSON.stringify(draft) !== JSON.stringify(base);
@@ -149,7 +154,7 @@ export function ReviewStep(props: {
         {
           id,
           name,
-          type: newType.trim() || 'Integration',
+          type: newType.trim() || typeOptions[0]?.value || 'Other',
           relation: 'bidirectional',
           target: null,
         },
@@ -333,8 +338,14 @@ export function ReviewStep(props: {
                   />
                 </Field>
                 <Field label="Type">
+                  <datalist id="support-component-types">
+                    {typeOptions.map((o) => (
+                      <option key={o.value} value={o.value} />
+                    ))}
+                  </datalist>
                   <Input
                     value={selComp.type}
+                    input={{ list: 'support-component-types' }}
                     disabled={!editable}
                     onChange={(_, d) => setComponent(selComp.id, (c) => ({ ...c, type: d.value }))}
                   />
@@ -372,7 +383,7 @@ export function ReviewStep(props: {
                 </Field>
                 <Field label="Direction">
                   <Dropdown
-                    value={DIRECTIONS.find((d) => d.value === directionOf(selEdge))?.label ?? ''}
+                    value={directions.find((d) => d.value === directionOf(selEdge))?.label ?? ''}
                     selectedOptions={[directionOf(selEdge)]}
                     disabled={!editable}
                     onOptionSelect={(_, d) =>
@@ -382,7 +393,7 @@ export function ReviewStep(props: {
                       )
                     }
                   >
-                    {DIRECTIONS.map((d) => (
+                    {directions.map((d) => (
                       <Option key={d.value} value={d.value}>
                         {d.label}
                       </Option>
@@ -423,6 +434,7 @@ export function ReviewStep(props: {
                 />
                 <Input
                   placeholder="Type"
+                  input={{ list: 'support-component-types' }}
                   aria-label="New component type"
                   value={newType}
                   onChange={(_, d) => setNewType(d.value)}

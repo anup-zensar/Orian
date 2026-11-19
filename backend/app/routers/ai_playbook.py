@@ -23,8 +23,8 @@ def get_eval_metrics(
 ) -> EvalTableOut:
     """Eval metrics table for the transition's tier (spec 7.5, 8.7 j).
 
-    * 404 unknown transition. 409 when ``project_type`` is not an AI flavour (``AI_PROJECT_TYPES``:
-      Agentic AI, Combined): "Eval metrics apply to AI flavours only".
+    * 404 unknown transition. 409 when the project type has no eval metrics (its "Has eval metrics"
+      switch is off; Agentic AI and Combined have it on): "Eval metrics apply to AI flavours only".
     * Tier = confirmed tier if confirmed, else the proposed tier, else ``null`` (then the lowest tier's
       targets are shown and ``tier`` is null). Rows = EvalTarget for that tier ordered by sort_order, joined
       with the EvalResult of the transition.

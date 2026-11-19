@@ -31,7 +31,7 @@ class ApprovalStepOut(BaseModel):
 class ApprovalRequestOut(BaseModel):
     id: str  # APR-0001
     type: ApprovalType
-    type_label: str  # "OCET approval" | "Authority to Deploy" | "Authority to Operate" | ...
+    type_label: str  # "OCET approval" | "Agreement to Deploy" | "Agreement to Operate" | ...
     transition_id: str
     transition_name: str
     gate: str | None  # SG4_ATD ... for AtD/AtO

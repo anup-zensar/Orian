@@ -68,10 +68,8 @@ class Transition(TimestampMixin, Base):
     # Scope page before launch (applied to TransitionItem.applicability at launch)
     scope_decisions: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    # CR-01 (design 1.5 / 1.6): values of admin-defined intake fields {key: value}, and the people
-    # holding admin-created slot roles {role_code: user_id}. NULL = none.
+    # CR-01: values of admin-defined intake fields {key: value}. NULL = none.
     custom_fields: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-    role_assignments: Mapped[dict[str, str] | None] = mapped_column(JSON, nullable=True)
 
 
 class TierAssessment(TimestampMixin, Base):

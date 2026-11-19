@@ -17,7 +17,8 @@ import { useApiErrorToast } from '../../hooks/useApiErrorToast';
 import { ApprovalDraftDialog } from './ApprovalDraftDialog';
 import { useTransitionAccess } from '../transition/api';
 import { ReasonButton } from './ReasonButton';
-import { roleLabel } from './useSuccessToast';
+import { useReference } from '../reference/api';
+import { itemStatusList, useOptionLabel, useRoleLabel } from '../reference/options';
 import type { Readiness, RecommendedAction } from './api';
 import { useDraftApprovalRequest, useDraftChaser, type Draft } from '../drafts/api';
 import type { Lens } from '../../theme/tokens';
@@ -97,6 +98,13 @@ const ACTION_PERM: Record<string, string> = {
   create_support_model: 'edit_support_model',
 };
 
+/** The severity that counts as critical (severities list setting; Critical today). */
+function useCriticalSeverity(): string {
+  const { data } = useReference();
+  const found = data?.lists?.severities?.find((o) => o.meta?.counts_as_critical === true);
+  return found?.value ?? 'Critical';
+}
+
 /** Readiness check card (FR-050, spec 8.9): verdict, why, Orion narrative and recommended actions. */
 export function ReadinessCard(props: {
   transitionId: string;
@@ -105,6 +113,9 @@ export function ReadinessCard(props: {
 }) {
   const s = useStyles();
   const r = props.readiness;
+  const roleLabel = useRoleLabel();
+  const optionLabel = useOptionLabel();
+  const criticalSeverity = useCriticalSeverity();
   const navigate = useNavigate();
   const showError = useApiErrorToast();
   const base = `/transitions/${props.transitionId}`;
@@ -173,7 +184,7 @@ export function ReadinessCard(props: {
 
   const criticalIds = new Set(
     [...r.blocking.flatMap((g) => g.items), ...r.critical_gaps]
-      .filter((i) => i.gap_severity === 'Critical' || i.status === 'Non-compliant')
+      .filter((i) => i.gap_severity === criticalSeverity || i.status === 'Non-compliant')
       .map((i) => i.item_id),
   );
   const rank = (a: RecommendedAction) => {
@@ -253,7 +264,7 @@ export function ReadinessCard(props: {
                   <li key={i.item_id}>
                     <AppLink to={itemLink(i.item_id)}>{i.item_id}</AppLink> {i.title} ·{' '}
                     <Caption1>
-                      {i.status}
+                      {optionLabel(itemStatusList(g.lens), i.status)}
                       {i.owner ? ` · ${i.owner.name}` : ''} · {i.reason}
                     </Caption1>
                   </li>
@@ -304,7 +315,8 @@ export function ReadinessCard(props: {
               <li key={c.condition_id}>
                 <AppLink to={itemLink(c.item_id)}>{c.item_id}</AppLink> {c.title} ·{' '}
                 <Caption1>
-                  {c.status} · {c.condition_id} set at {c.set_at_gate}, due {c.due_gate}
+                  {optionLabel('condition_statuses', c.status)} · {c.condition_id} set at{' '}
+                  {c.set_at_gate}, due {c.due_gate}
                 </Caption1>
               </li>
             ))}
@@ -319,7 +331,8 @@ export function ReadinessCard(props: {
             {r.pending_exceptions.map((e) => (
               <li key={e.ref}>
                 <AppLink to={`${base}/conditions`}>{e.ref}</AppLink>
-                {e.item_id ? ` on ${e.item_id}` : ''} · <Caption1>{e.status}</Caption1>
+                {e.item_id ? ` on ${e.item_id}` : ''} ·{' '}
+                <Caption1>{optionLabel('exception_statuses', e.status)}</Caption1>
               </li>
             ))}
           </ul>

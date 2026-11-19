@@ -112,6 +112,9 @@ class GateContext:
     failed_evals: list[FailedEval] = field(default_factory=list)  # AI flavours only
     unevaluated_evals: int = 0  # warning only
     ai_flavour: bool = False
+    critical_value: str = (
+        "Critical"  # the gap severity that counts as critical (cfg.critical_severity)
+    )
     tier_confirmed: bool = True
     chain_status: str | None = None  # None | Pending | Approved | Rejected | Cancelled
     chain_pending_step: str | None = None  # label of the Pending step, e.g. "OLM approval"
@@ -224,7 +227,7 @@ def _blocking_facts(ctx: GateContext) -> list[GateItemFact]:
         rows,
         key=lambda i: (
             LENSES.index(i.lens) if i.lens in LENSES else len(LENSES),
-            0 if i.gap_severity == "Critical" else 1,
+            0 if i.gap_severity == ctx.critical_value else 1,
             i.item_id,
         ),
     )
@@ -238,7 +241,7 @@ def _critical_facts(ctx: GateContext) -> list[GateItemFact]:
             for i in ctx.items
             if _in_scope(ctx, i)
             and is_open_status(i.status)
-            and i.gap_severity == "Critical"
+            and i.gap_severity == ctx.critical_value
             and not i.under_approved_exception
         ),
         key=lambda i: i.item_id,
@@ -418,11 +421,12 @@ def _validate_conditions(
             )
         elif (
             ctx.gate_type == "decision"
-            and item.gap_severity == "Critical"
+            and item.gap_severity == ctx.critical_value
             and is_open_status(item.status)
         ):
             reasons.append(
-                f"Condition for {c.item_id} rejected: a Critical gap cannot be covered by a condition"
+                f"Condition for {c.item_id} rejected: a {ctx.critical_value} gap cannot be covered "
+                "by a condition"
             )
         elif c.item_id not in needed_ids:
             reasons.append(
@@ -542,7 +546,8 @@ def validate_decision(
     for i in _critical_facts(ctx):
         if i.lens != "Compliance":
             reasons.append(
-                f"Critical gap {i.item_id} is open - only an approved exception can cover it"
+                f"{ctx.critical_value} gap {i.item_id} is open - only an approved exception can "
+                "cover it"
             )
     for e in _eval_blockers(ctx):
         reasons.append(_eval_reason(e))
@@ -553,7 +558,9 @@ def validate_decision(
         if conditions:
             reasons.append("Conditions can only be added with 'Approve with conditions'")
     else:
-        needed = [i for i in facts if i.lens != "Compliance" and i.gap_severity != "Critical"]
+        needed = [
+            i for i in facts if i.lens != "Compliance" and i.gap_severity != ctx.critical_value
+        ]
         if not needed and not conditions:
             reasons.append("No open item needs a condition - use Approve")
         reasons.extend(_validate_conditions(ctx, conditions, needed))

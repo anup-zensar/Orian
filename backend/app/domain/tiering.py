@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app import clock
 from app.access import ensure_transition_role
-from app.domain import audit
+from app.domain import audit, cfg
 from app.domain import scope as scope_domain
 from app.errors import BadRequest, Conflict
 from app.models import AIProfile, ReferenceData, TierAssessment, Transition, User
@@ -50,9 +50,10 @@ def reference(db: Session) -> dict[str, Any]:
 
 
 def tier_card(db: Session, tier: int | None) -> TierCardOut | None:
+    """The definition card of ``tier`` (name, definition, examples, builder persona) as configured."""
     if tier is None:
         return None
-    for card in reference(db).get("tiers", []):
+    for card in cfg.tiers(db):
         if card.get("tier") == tier:
             return TierCardOut(
                 tier=card["tier"],
@@ -65,7 +66,7 @@ def tier_card(db: Session, tier: int | None) -> TierCardOut | None:
 
 
 def tier_dimensions(db: Session) -> list[str]:
-    return list(reference(db).get("tier_dimensions", []))
+    return cfg.tier_dimensions(db)
 
 
 def validate_inputs(
@@ -74,17 +75,23 @@ def validate_inputs(
     write_actions: str | None,
     sensitive_data: str | None,
     answers: dict[str, bool],
+    current: Transition | None = None,
 ) -> None:
-    """422 when an answers key is not TQ1..TQ5 or an intake value is not a reference option."""
-    options = reference(db).get("intake_options", {})
-    reasons = [f"Unknown tier question '{k}' (use TQ1..TQ5)" for k in unknown_question_ids(answers)]
+    """422 when an answers key is not a tiering question or an intake value is not an option.
+    A value the transition already holds stays valid even if the Admin retired it since."""
+    question_ids = [q.id for q in cfg.tier_questions(db, active_only=False)]
+    reasons = [
+        f"Unknown tier question '{k}' (use {', '.join(question_ids)})"
+        for k in unknown_question_ids(answers, question_ids)
+    ]
     for field, value in (
         ("audience", audience),
         ("write_actions", write_actions),
         ("sensitive_data", sensitive_data),
     ):
-        allowed = options.get(field, [])
-        if value is not None and allowed and value not in allowed:
+        allowed = cfg.option_values(db, field)
+        unchanged = current is not None and value == getattr(current, field)
+        if value is not None and allowed and value not in allowed and not unchanged:
             reasons.append(f"{field} '{value}' is not one of: {', '.join(allowed)}")
     if reasons:
         raise BadRequest("Validation failed", reasons)
@@ -95,7 +102,13 @@ def validate_inputs(
 
 def propose(db: Session, body: TierProposeIn) -> TierProposalOut:
     validate_inputs(db, body.audience, body.write_actions, body.sensitive_data, body.answers)
-    result = propose_tier(body.audience, body.write_actions, body.sensitive_data, body.answers)
+    result = propose_tier(
+        body.audience,
+        body.write_actions,
+        body.sensitive_data,
+        body.answers,
+        default_tier=cfg.default_tier(db),
+    )
     card = tier_card(db, result.tier)
     if card is None:
         card = TierCardOut(
@@ -168,7 +181,14 @@ def assessment_out(
 
 
 def require_ai_flavour(db: Session, t: Transition, message: str) -> None:
+    """409 unless the project type requires tiering (the tiering wizard and tier proposal)."""
     if not scope_domain.requires_tiering(db, t.project_type):
+        raise Conflict(message)
+
+
+def require_ai_profile(db: Session, t: Transition, message: str) -> None:
+    """409 unless the project type has an AI profile (the AI profile questionnaire)."""
+    if not scope_domain.has_ai_profile(db, t.project_type):
         raise Conflict(message)
 
 
@@ -181,8 +201,10 @@ def set_proposal(
     assessment = scope_domain.get_assessment(db, t.id)
     if assessment is not None and assessment.confirmed_tier is not None:
         raise Conflict("Tier already confirmed – IRM must change it")
-    validate_inputs(db, t.audience, t.write_actions, t.sensitive_data, answers)
-    result = propose_tier(t.audience, t.write_actions, t.sensitive_data, answers)
+    validate_inputs(db, t.audience, t.write_actions, t.sensitive_data, answers, current=t)
+    result = propose_tier(
+        t.audience, t.write_actions, t.sensitive_data, answers, default_tier=cfg.default_tier(db)
+    )
 
     before = audit.snapshot(assessment, TIER_FIELDS) if assessment is not None else None
     if assessment is None:
@@ -225,6 +247,13 @@ def confirm(db: Session, user: User, t: Transition, body: TierConfirmIn) -> Tier
     assessment = scope_domain.get_assessment(db, t.id)
     if assessment is None or assessment.proposed_tier is None:
         raise Conflict("No tier proposed yet")
+    if body.tier not in cfg.tier_numbers(db):
+        raise BadRequest(
+            "Validation failed",
+            [
+                f"Tier {body.tier} is not defined (use one of: {', '.join(map(str, cfg.tier_numbers(db)))})"
+            ],
+        )
     changed = body.tier != assessment.proposed_tier
     reason = (body.reason or "").strip()
     if changed and not reason:
@@ -288,7 +317,7 @@ def profile_out(db: Session, t: Transition) -> AIProfileOut:
 
 def save_profile(db: Session, user: User, t: Transition, body: AIProfileIn) -> AIProfileOut:
     ensure_transition_role(db, user, t, Perm.EDIT_AI_PROFILE)
-    require_ai_flavour(db, t, "AI profile applies to AI project types only")
+    require_ai_profile(db, t, "AI profile applies to AI project types only")
     profile = _profile(db, t.id)
     before = audit.snapshot(profile, AI_PROFILE_FIELDS) if profile is not None else None
     if profile is None:

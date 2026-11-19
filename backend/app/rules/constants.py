@@ -26,16 +26,6 @@ GATE_SHORT: dict[str, str] = {
     "CLOSURE": "Closure",
 }
 DECISION_GATES: frozenset[str] = frozenset({"SG4_ATD", "SG6_ATO"})
-STAGE_REVIEW_GATES: frozenset[str] = frozenset({"SG0", "SG2", "SG3", "SG5_HYPERCARE"})
-
-# Intake "Target gate" option -> gate code (reference.json -> intake_options.target_gate)
-TARGET_GATE_TO_CODE: dict[str, str] = {
-    "SG0-SG2": "SG2",
-    "SG3": "SG3",
-    "AtD": "SG4_ATD",
-    "AtO": "SG6_ATO",
-    "Closure": "CLOSURE",
-}
 
 GATE_OUTCOMES: dict[str, tuple[str, ...]] = {
     "stage_review": ("Proceed", "Proceed with conditions", "Hold"),
@@ -91,10 +81,6 @@ def is_open_status(status: str) -> bool:
     """Open = not done and not N/A (Not started, In progress/review, Gap, Non-compliant)."""
     return status not in DONE_STATUSES and status not in NA_STATUSES
 
-
-# Project types (reference.json -> project_types). Admin can edit the flavour rules in the DB.
-PROJECT_TYPES: tuple[str, ...] = ("Agentic AI", "Normal", "Combined", "Infrastructure")
-AI_PROJECT_TYPES: frozenset[str] = frozenset({"Agentic AI", "Combined"})
 
 # Linked modules (BR-030, PLAN.md A-10)
 OCET_LINKED_ITEMS: frozenset[str] = frozenset({"FW-008", "S45-006"})

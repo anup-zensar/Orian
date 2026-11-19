@@ -28,7 +28,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Users */
+        /**
+         * List Users
+         * @description The login list: active people only (an Admin deactivates, never deletes).
+         */
         get: operations["list_users_api_v1_users_get"];
         put?: never;
         post?: never;
@@ -66,6 +69,9 @@ export interface paths {
          * List Transitions
          * @description All transitions matching ``filters`` with live readiness per lens, gaps, RAG and next decision
          *     (FR-012, BR-020, BR-021). Sorted by days to next decision (soonest first, no date last), then name.
+         *
+         *     Besides the named filters, ``?cf_<key>=value`` keeps transitions whose custom field ``cf_<key>``
+         *     (an "Additional details" field added by the Admin) equals ``value`` (for a multiselect field: contains it).
          */
         get: operations["list_transitions_api_v1_transitions_get"];
         put?: never;
@@ -75,13 +81,16 @@ export interface paths {
          *
          *     Validations (422 with one reason per problem, listed in ``reasons``):
          *     - project_type, portfolio, region, audience, write_actions, sensitive_data, target_gate,
-         *       investment_type, delivery_method must be options from reference.json (project types come from
-         *       FlavourRule, portfolios from Portfolio).
-         *     - Project type Agentic AI or Combined (FlavourRule.requires_tiering): audience, write_actions and
-         *       sensitive_data are required.
-         *     - Portfolio Retail Site Systems (AC-05): at least one ``sites`` row and every row must have both
-         *       Site ID and Site key (trimmed, non-empty). Fully blank rows are dropped first; for other
-         *       portfolios sites are ignored (stored as []).
+         *       investment_type, delivery_method must be active options of the configuration (Admin: Project
+         *       types, Portfolios, Forms & dropdowns).
+         *     - Fields the Admin required for the project type (by default audience, write_actions and
+         *       sensitive_data for the AI project types) are required, as are required custom fields.
+         *     - ``custom_fields`` ({"cf_<key>": value}) holds the "Additional details" fields of the form; every
+         *       key must be an active custom field and its value is checked against the field type, range and
+         *       dropdown list. A blank value clears the field.
+         *     - Portfolio with "Requires sites" (AC-05, Retail Site Systems by default): at least one ``sites``
+         *       row and every row must have both Site ID and Site key (trimmed, non-empty). Fully blank rows are
+         *       dropped first; for other portfolios sites are ignored (stored as []).
          *     - or_focal_user_id is required; every role picker must reference an existing user whose role matches
          *       (or_focal -> OR_FOCAL, pm -> PM, architect -> ARCHITECT, olm -> OLM, irm -> IRM).
          *     - name is trimmed and non-empty.
@@ -127,7 +136,7 @@ export interface paths {
          *     OR focal / IRM can only be re-assigned by an Admin; tier inputs (audience, write actions, sensitive
          *     data, project type) only by the OR focal and are locked (409) once the IRM confirmed the tier (before
          *     that a change clears the tier proposal); 404 unknown id; 409 "Transition is closed" when status is
-         *     Closed; 422 with the same option / role / site validations as create, evaluated on the merged
+         *     Closed; 422 with the same option / role / site / custom-field validations as create, evaluated on the merged
          *     result (a field explicitly set to null clears an optional field; required fields cannot be null).
          *
          *     BR-010 re-assembly: if the assessment is launched and project_type or portfolio changes, rebuild
@@ -229,8 +238,9 @@ export interface paths {
          *     "External" or sensitive_data "Personal sensitive" or write_actions "Yes" -> Tier 3; TQ5 yes ->
          *     Tier 1; TQ4 yes -> Tier 2; else Tier 3. Rationale lists the facts that applied ("Internal
          *     audience", "No write actions", "TQ4 = yes -> Tier 2"). ``tier`` is the definition card from
-         *     reference tiers, ``dimensions`` the three tier dimensions. 422 when an answers key is not TQ1..TQ5
-         *     or an intake value is not a reference option.
+         *     the configured tier definitions, ``dimensions`` the tier dimensions. 422 when an answers key is not
+         *     a tiering question or an intake value is not an option. The question wording and tier definitions
+         *     are configuration (Admin: Rules & thresholds); the rule itself is fixed.
          */
         post: operations["propose_tier_api_v1_tiering_propose_post"];
         delete?: never;
@@ -254,7 +264,7 @@ export interface paths {
          *     accepted.
          *
          *     403 without PROPOSE_TIER; 404 unknown id; 409 "Tiering applies to AI project types only" when the
-         *     flavour does not require tiering; 409 "Tier already confirmed – IRM must change it" when the
+         *     project type does not require tiering; 409 "Tier already confirmed – IRM must change it" when the
          *     tier is already Confirmed (the OR focal may not overwrite a confirmed tier).
          *     Upserts TierAssessment (answers, proposed_tier, rationale, proposed_by = user), sets
          *     Transition.risk_tier = proposed and tier_status "Proposed". If the assessment is already launched
@@ -307,13 +317,13 @@ export interface paths {
         /**
          * Get Ai Profile
          * @description AI profile questionnaire (spec §8.5 step 3). 404 unknown id; 409 "AI profile applies to AI
-         *     project types only" for non-AI flavours. Returns empty defaults when none was saved yet.
+         *     project types only" when the project type's "Has AI profile" switch is off. Returns empty defaults when none was saved yet.
          */
         get: operations["get_ai_profile_api_v1_transitions__transition_id__ai_profile_get"];
         /**
          * Put Ai Profile
-         * @description Replace the AI profile (upsert). 403 without EDIT_AI_PROFILE; 404 unknown id; 409 for non-AI
-         *     flavours. Audit Human "AI profile updated".
+         * @description Replace the AI profile (upsert). 403 without EDIT_AI_PROFILE; 404 unknown id; 409 when the project
+         *     type has no AI profile. Audit Human "AI profile updated".
          */
         put: operations["put_ai_profile_api_v1_transitions__transition_id__ai_profile_put"];
         post?: never;
@@ -878,8 +888,8 @@ export interface paths {
          * Get Eval Metrics
          * @description Eval metrics table for the transition's tier (spec 7.5, 8.7 j).
          *
-         *     * 404 unknown transition. 409 when ``project_type`` is not an AI flavour (``AI_PROJECT_TYPES``:
-         *       Agentic AI, Combined): "Eval metrics apply to AI flavours only".
+         *     * 404 unknown transition. 409 when the project type has no eval metrics (its "Has eval metrics"
+         *       switch is off; Agentic AI and Combined have it on): "Eval metrics apply to AI flavours only".
          *     * Tier = confirmed tier if confirmed, else the proposed tier, else ``null`` (then the lowest tier's
          *       targets are shown and ``tier`` is null). Rows = EvalTarget for that tier ordered by sort_order, joined
          *       with the EvalResult of the transition.
@@ -1106,7 +1116,7 @@ export interface paths {
          *       == user role; IRM also sees the CISO_BISO mock step), plus the user's finished ones when
          *       ``status`` is given.
          *     * requested: requests created_by the user.
-         *     * all: every request; only OR_FOCAL and ADMIN, else 403 "Only the OR focal or Admin can see
+         *     * all: every request; only roles with "view all approvals" (OR_FOCAL, ADMIN), else 403 "Only the OR focal or Admin can see
          *       all approvals".
          *     ``can_act``, ``act_denied_reason``, ``is_mock_step`` are computed for the calling user.
          */
@@ -2067,11 +2077,9 @@ export interface paths {
         put?: never;
         /**
          * Create Playbook Item
-         * @description Create a library item in ANY checklist (``source`` = checklist code; GET / PUT of items
-         *     already exist). Validates: checklist exists and is active; ``portfolio`` required for a
-         *     ``portfolio_golden`` checklist and must exist; gate is a gate code; lens one of the three;
-         *     tiers within ``cfg.tier_numbers``; ``default_owner_role`` an active role; id unique. New
-         *     transitions only. Audit ``config:playbook_items``.
+         * @description Create a library item in ANY checklist (``source`` = checklist code). A golden-set checklist
+         *     needs its ``portfolio``; gate, tiers, owner role and project types are validated. New
+         *     transitions only. 404 unknown checklist; 409 duplicate id.
          */
         post: operations["create_playbook_item_api_v1_admin_playbook_items_post"];
         delete?: never;
@@ -2195,8 +2203,9 @@ export interface paths {
         };
         /**
          * Get Approval Chains
-         * @description Steps per approval type (OCET, AtD, AtO, SUPPORT_MODEL, EXCEPTION) plus the allowed roles
-         *     (role list + CISO_BISO). 403 non-admin.
+         * @description Steps (with their labels and mock flag) and the display name per approval type (OCET, AtD, AtO,
+         *     SUPPORT_MODEL, EXCEPTION) plus the allowed roles (roles that can approve + CISO_BISO). 403
+         *     non-admin.
          */
         get: operations["get_approval_chains_api_v1_admin_approval_chains_get"];
         /**
@@ -2249,37 +2258,12 @@ export interface paths {
         get: operations["list_reminder_rules_api_v1_admin_reminder_rules_get"];
         /**
          * Put Reminder Rules
-         * @description Update enabled + params per rule (name/description/autonomous_eligible are read-only).
-         *     Audited (ReminderRule). 403; 422 unknown rule id, unknown param key, or non-positive
-         *     threshold.
+         * @description Update enabled + params per rule (R6 also item_ids / category) and switch autonomous_eligible
+         *     OFF (never on). Name and description are read-only. Audited (ReminderRule). 403; 422 unknown
+         *     rule id, unknown param key, non-positive threshold, or autonomy switched on.
          */
         put: operations["put_reminder_rules_api_v1_admin_reminder_rules_put"];
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/users": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Admin Users
-         * @description Read-only list of demo users and roles (role_label filled). 403 non-admin.
-         */
-        get: operations["list_admin_users_api_v1_admin_users_get"];
-        put?: never;
-        /**
-         * Create User
-         * @description Create a user (id from ``ID_FORMATS["U"]``: U17, U18 ...). Validates: role is an ACTIVE role;
-         *     e-mail unique; name not Orion / agent / bot / ai. Audit ``config:users``.
-         */
-        post: operations["create_user_api_v1_admin_users_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2371,10 +2355,10 @@ export interface paths {
         put?: never;
         /**
          * Create Project Type
-         * @description Create a project type (no code change needed). Validates: code unique (case-insensitive) and
-         *     printable; every checklist exists and is a ``library`` checklist; required intake fields exist;
-         *     ``has_ai_profile`` / ``requires_tiering`` are plain flags. New transitions only. Audit
-         *     ``config:project_types``. 422 reasons per problem; 409 duplicate code. Returns the list.
+         * @description Create a project type (no code change needed). Checklists must be active library checklists
+         *     and the required intake fields must exist (written to both sides, see
+         *     ``write_type_requirements``). New transitions only. 422 reasons per problem; 409 duplicate code.
+         *     Returns the list.
          */
         post: operations["create_project_type_api_v1_admin_project_types_post"];
         delete?: never;
@@ -2395,18 +2379,15 @@ export interface paths {
         post?: never;
         /**
          * Delete Project Type
-         * @description Delete a project type nobody uses. 409 "Used by N transitions - deactivate instead" when any
-         *     transition has it. Returns the list.
+         * @description Delete a project type nobody uses. 409 "Used by N transitions - deactivate instead".
          */
         delete: operations["delete_project_type_api_v1_admin_project_types__code__delete"];
         options?: never;
         head?: never;
         /**
          * Update Project Type
-         * @description Edit label, description, flags, checklists, required intake fields (written to both sides:
-         *     the type's list and the fields' ``required_for_project_types``), synonyms, order, active.
-         *     Guardrails: the last active project type cannot be deactivated (guardrail 5); a checklist must
-         *     exist and be active. The code never changes. Returns the list. 404 unknown code.
+         * @description Edit label, description, flags, checklists, required intake fields, synonyms, order, active.
+         *     The last active project type cannot be deactivated. The code never changes. 404 unknown code.
          */
         patch: operations["update_project_type_api_v1_admin_project_types__code__patch"];
         trace?: never;
@@ -2447,8 +2428,7 @@ export interface paths {
         put?: never;
         /**
          * Create Checklist
-         * @description Create a ``library`` checklist (code ``^[A-Z][A-Z0-9_]{1,39}$``, unique). Audit
-         *     ``config:checklists``. 409 duplicate code. Returns the list.
+         * @description Create a ``library`` checklist (code ``^[A-Z][A-Z0-9_]{1,39}$``, unique). 409 duplicate code.
          */
         post: operations["create_checklist_api_v1_admin_checklists_post"];
         delete?: never;
@@ -2469,16 +2449,15 @@ export interface paths {
         post?: never;
         /**
          * Delete Checklist
-         * @description Delete a custom checklist with no items and no project type. Built-ins cannot be deleted
-         *     (409); 409 when it has items or is listed by a project type. Returns the list.
+         * @description Delete a custom checklist with no items and no project type; 409 otherwise (built-ins too).
          */
         delete: operations["delete_checklist_api_v1_admin_checklists__code__delete"];
         options?: never;
         head?: never;
         /**
          * Update Checklist
-         * @description Edit label, description, order, ``tier_filtered`` and active. ``kind`` never changes;
-         *     deactivating is refused (409) while an active project type lists the checklist. Returns the list.
+         * @description Edit label, description, order, ``tier_filtered`` and active. Deactivating is refused (409)
+         *     while an active project type lists the checklist.
          */
         patch: operations["update_checklist_api_v1_admin_checklists__code__patch"];
         trace?: never;
@@ -2493,14 +2472,14 @@ export interface paths {
         /**
          * List Portfolios
          * @description All portfolios (active and inactive) with golden-set size and ``used_by``. The golden-set
-         *     routes (``/admin/portfolios/{name}/golden-set``) are unchanged.
+         *     routes (``/admin/portfolios/{name}/golden-set``) are in the playbook admin API.
          */
         get: operations["list_portfolios_api_v1_admin_portfolios_get"];
         put?: never;
         /**
          * Create Portfolio
-         * @description Create a portfolio (name immutable and unique, short ``code``). ``requires_sites`` turns on
-         *     the site rows at intake. Audit ``config:portfolios``. 409 duplicate name. Returns the list.
+         * @description Create a portfolio (name unique, short ``code`` unique). ``requires_sites`` turns on the site
+         *     rows at intake. 409 duplicate name.
          */
         post: operations["create_portfolio_api_v1_admin_portfolios_post"];
         delete?: never;
@@ -2522,7 +2501,7 @@ export interface paths {
         /**
          * Delete Portfolio
          * @description Delete an unused portfolio and its golden set. 409 "Used by N transitions - deactivate
-         *     instead". Returns the list.
+         *     instead".
          */
         delete: operations["delete_portfolio_api_v1_admin_portfolios__name__delete"];
         options?: never;
@@ -2530,7 +2509,7 @@ export interface paths {
         /**
          * Update Portfolio
          * @description Edit code, label, description, focus areas, ``requires_sites``, ``sites_label``, synonyms,
-         *     order, active. The last active portfolio cannot be deactivated. Returns the list.
+         *     order, active. The last active portfolio cannot be deactivated.
          */
         patch: operations["update_portfolio_api_v1_admin_portfolios__name__patch"];
         trace?: never;
@@ -2545,14 +2524,14 @@ export interface paths {
         /**
          * List Option Lists
          * @description Every list (built-in and custom) with ``group``, ``structural`` (lock icon), declared meta
-         *     fields and counts. Items: ``GET /admin/option-lists/{key}/items``.
+         *     columns and counts. Items: ``GET /admin/option-lists/{key}/items``.
          */
         get: operations["list_option_lists_api_v1_admin_option_lists_get"];
         put?: never;
         /**
          * Create Option List
-         * @description Create a custom list (key unique, ``^[a-z][a-z0-9_]{1,39}$``) for custom fields. Audit
-         *     ``config:option_lists``. 409 duplicate key. Returns the list of lists.
+         * @description Create a custom list (key unique, ``^[a-z][a-z0-9_]{1,39}$``) for custom fields. 409
+         *     duplicate key.
          */
         post: operations["create_option_list_api_v1_admin_option_lists_post"];
         delete?: never;
@@ -2573,16 +2552,15 @@ export interface paths {
         post?: never;
         /**
          * Delete Option List
-         * @description Delete a custom list not used by any intake field. Built-in and structural lists cannot be
-         *     deleted (409); 409 while a field uses it.
+         * @description Delete a custom list not used by any field. Built-in lists cannot be deleted (409).
          */
         delete: operations["delete_option_list_api_v1_admin_option_lists__key__delete"];
         options?: never;
         head?: never;
         /**
          * Update Option List
-         * @description Edit label, description, group, declared meta fields. A structural list accepts label and
-         *     description only (422 "Behaviour depends on these values - only the labels can change").
+         * @description Edit label, description, group, meta columns. A structural list accepts label and description
+         *     only (422 "Behaviour depends on these values - only the labels can change").
          */
         patch: operations["update_option_list_api_v1_admin_option_lists__key__patch"];
         trace?: never;
@@ -2601,37 +2579,14 @@ export interface paths {
         get: operations["get_option_items_api_v1_admin_option_lists__key__items_get"];
         /**
          * Put Option Items
-         * @description Replace the ORDERED items (position = ``sort_order``). Existing values keep their identity
-         *     (the value never changes); new values are added; a used value missing from the body or sent
-         *     ``active=false`` is DEACTIVATED (warning with the count), an unused one is removed. Structural
-         *     lists: labels / descriptions only (add / remove / recode refused with a reason). Validates meta
-         *     against the declared meta fields; ``severities``: exactly one ``counts_as_critical``;
-         *     ``evidence_types`` ``needs`` in file / url / text / none; the last active value of ``regions``
-         *     cannot be deactivated. Returns the items.
+         * @description Replace the ORDERED items (position = ``sort_order``). The value of a row never changes; a new
+         *     value adds a row; a used value that is missing or sent ``active=false`` is DEACTIVATED (see
+         *     ``warnings``), an unused one is removed. Structural lists: labels and descriptions only.
+         *     ``severities``: exactly one active ``counts_as_critical``; ``evidence_types`` ``needs`` in
+         *     file / url / text / none; a built-in list keeps one active value.
          */
         put: operations["put_option_items_api_v1_admin_option_lists__key__items_put"];
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/config/reset": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Reset Config Section
-         * @description EXTENSION of design 4 ("Reset section to defaults"): restore one editor from seed/config.json.
-         *     409 when it would remove a value that is in use. Audit ``config:<section>``.
-         */
-        post: operations["reset_config_section_api_v1_admin_config_reset_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2654,11 +2609,9 @@ export interface paths {
         put?: never;
         /**
          * Create Intake Field
-         * @description Create a custom field. Key ``cf_<slug>`` from the label (unique, ``^[a-z][a-z0-9_]{1,40}$``
-         *     after the prefix). select / multiselect need an existing option list (``option_list``); number
-         *     accepts ``min`` / ``max``; text ``max_length``. ``required_mode`` by_project_type needs project
-         *     types that exist. Values live in ``Transition.custom_fields`` (``AIProfile.extra`` for the
-         *     ai_profile form). Audit ``config:intake_fields``.
+         * @description Create a custom field. The key ``cf_<slug>`` is made from the label. select / multiselect need
+         *     an existing option list; number accepts ``min`` / ``max``; text ``max_length``. Values live on
+         *     the transition (``custom_fields``).
          */
         post: operations["create_intake_field_api_v1_admin_intake_fields_post"];
         delete?: never;
@@ -2700,19 +2653,16 @@ export interface paths {
         /**
          * Delete Intake Field
          * @description Delete an UNUSED custom field. Built-in fields cannot be deleted (409); a used custom field
-         *     answers 409 "Used by N transitions - deactivate instead" (deactivating hides it; stored values
-         *     stay readable under "Retired fields").
+         *     answers 409 "Used by N transitions - deactivate instead".
          */
         delete: operations["delete_intake_field_api_v1_admin_intake_fields__key__delete"];
         options?: never;
         head?: never;
         /**
          * Update Intake Field
-         * @description Edit a field. Label / help / section are editable everywhere. Structural fields (name,
-         *     project_type, portfolio, region, or_focal_user_id) refuse hide, optional and deactivate; the
-         *     ``type`` is refused once any transition holds a value and always for built-ins; a used option
-         *     removal becomes deactivation. ``required_for_project_types`` and the project types'
-         *     ``required_intake_fields`` are written through one function so they cannot diverge.
+         * @description Edit a field. Built-in fields: label, help and (optional ones) visibility only. Custom
+         *     fields: everything, but the ``type`` is refused once any transition holds a value. Required-for-
+         *     project-types is written to the project types too.
          */
         patch: operations["update_intake_field_api_v1_admin_intake_fields__key__patch"];
         trace?: never;
@@ -2726,18 +2676,11 @@ export interface paths {
         };
         /**
          * List Roles
-         * @description All roles (active and inactive) with ``user_count`` and lock reasons.
+         * @description The eight built-in roles with ``user_count`` and lock reasons.
          */
         get: operations["list_roles_api_v1_admin_roles_get"];
         put?: never;
-        /**
-         * Create Role
-         * @description Create a role (code immutable, unique). Refused: names or codes containing Orion / agent /
-         *     bot / ai (reserved, BR-050). A role with a transition slot gets a person per transition in
-         *     ``Transition.role_assignments``. A new role holds only ``view`` until the matrix is edited.
-         *     Audit ``config:roles``.
-         */
-        post: operations["create_role_api_v1_admin_roles_post"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2754,21 +2697,41 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /**
-         * Delete Role
-         * @description Delete an unused custom role (no users, no approval step, no assignment). Built-in roles
-         *     cannot be deleted (409).
-         */
-        delete: operations["delete_role_api_v1_admin_roles__code__delete"];
+        delete?: never;
         options?: never;
         head?: never;
         /**
          * Update Role
-         * @description Edit labels, description, colour, order, ``can_approve``, ``has_transition_slot`` (ADMIN is
-         *     locked false; a built-in slot cannot be turned off), active. Deactivating needs no active user
-         *     left with the role (409) and is refused for ADMIN.
+         * @description Rename a role (label, short label, phrase, description). Codes are fixed; the reserved words
+         *     Orion / agent / bot / ai are refused (BR-050).
          */
         patch: operations["update_role_api_v1_admin_roles__code__patch"];
+        trace?: never;
+    };
+    "/api/v1/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Users
+         * @description Everybody (inactive included) with the number of active transitions each person is assigned
+         *     to. The login list (``GET /users``) shows active people only.
+         */
+        get: operations["list_users_api_v1_admin_users_get"];
+        put?: never;
+        /**
+         * Create User
+         * @description Create a user (next id U17, U18 ...). The role must be active, the e-mail unique, the name not
+         *     Orion / agent / bot / ai.
+         */
+        post: operations["create_user_api_v1_admin_users_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/admin/users/{user_id}": {
@@ -2786,8 +2749,8 @@ export interface paths {
         head?: never;
         /**
          * Update User
-         * @description Edit name, e-mail, role, focal label, title. You cannot change your own role away from
-         *     Admin, and the last active Admin keeps the role (guardrail 4). 404 unknown user.
+         * @description Edit name, e-mail, role, focal label, title; ``active=true`` re-activates. You cannot move
+         *     yourself, or the last active Admin, away from Admin. 404 unknown user.
          */
         patch: operations["update_user_api_v1_admin_users__user_id__patch"];
         trace?: never;
@@ -2803,10 +2766,9 @@ export interface paths {
         put?: never;
         /**
          * Deactivate User
-         * @description Deactivate a user (never delete). Refused for yourself and for the last active Admin
-         *     (guardrail 4) and when it would leave nobody holding the ``admin`` permission. The response
-         *     warns "assigned on N active transitions"; ``reassign_to`` (an active user of the same role)
-         *     takes those slots over in the same audited action. Old records still resolve the name.
+         * @description Deactivate a user (never delete). Refused for yourself and for the last active Admin. The
+         *     answer says how many active transitions the person is assigned to; ``reassign_to`` (an active
+         *     user with the same role) takes those slots over in the same audited action.
          */
         post: operations["deactivate_user_api_v1_admin_users__user_id__deactivate_post"];
         delete?: never;
@@ -2824,18 +2786,15 @@ export interface paths {
         };
         /**
          * Get Permissions
-         * @description The permission matrix: rows = permissions grouped by ``area`` with scope (global /
-         *     transition), columns = active roles, locked cells with reasons, editable denial texts.
+         * @description The permission grid: rows = permissions grouped by ``area`` with scope (global / transition),
+         *     columns = roles, locked cells with reasons, editable denial texts.
          */
         get: operations["get_permissions_api_v1_admin_permissions_get"];
         /**
          * Put Permissions
-         * @description Replace the matrix and optionally the texts. Guardrails (422, one reason each): ADMIN keeps
-         *     ``admin`` and one ACTIVE user holds it; ``view`` includes every active role; unknown perm or
-         *     role codes; no Orion / agent role. A denial text left unedited is regenerated from the role
-         *     labels (``is_custom=false``) so it never names a role that lost the right. Effective at once
-         *     (``cfg.invalidate()`` rebuilds the permission cache). Audit ``config:permissions`` with the
-         *     before / after matrix.
+         * @description Replace the grid (every permission present) and optionally the wording. 422 when the Admin
+         *     role would lose ``admin``, nobody active could change configuration, a role loses ``view``, or a
+         *     code is unknown. A denial text nobody edited is regenerated from the role names. Applies at once.
          */
         put: operations["put_permissions_api_v1_admin_permissions_put"];
         post?: never;
@@ -2854,41 +2813,16 @@ export interface paths {
         };
         /**
          * Get Tiering
-         * @description Tier definitions, dimensions, default tier, questions and rules (evaluation order), plus the
-         *     intake / custom fields a rule condition may look at.
+         * @description Tier definitions and tiering question wording (the rules BR-011 stay in code).
          */
         get: operations["get_tiering_api_v1_admin_tiering_get"];
         /**
          * Put Tiering
-         * @description Replace the whole tiering configuration. Guardrails: tier numbers unique and contiguous from
-         *     1 (a tier is removed only when no tier assessment uses it); ``default_tier`` and every rule's
-         *     ``result_tier`` are defined; ``source: question`` conditions name an existing question;
-         *     ``intake`` / ``custom`` conditions name an existing field and (for select fields) a value of its
-         *     list; new questions get the next id (TQ6 ...). Audit ``config:tiering``.
+         * @description New wording for the tier definitions and the questions. The tier numbers and question ids must
+         *     be the existing ones (422 otherwise). Applies to new tier proposals.
          */
         put: operations["put_tiering_api_v1_admin_tiering_put"];
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/tiering/test": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Test Tiering
-         * @description Run the pure ``propose_tier(rules, questions, intake, answers)`` on a hypothetical project
-         *     (saved configuration, or the unsaved ``config`` in the body). Writes nothing, no audit.
-         */
-        post: operations["test_tiering_api_v1_admin_tiering_test_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2911,9 +2845,8 @@ export interface paths {
         put?: never;
         /**
          * Create Eval Metric
-         * @description Add a metric (id EV-nn = next free). One target row per ``cfg.tiers`` tier; ``targets_by_tier``
-         *     must cover every tier (422 otherwise); operator / value / unit only for ``auto`` metrics. New
-         *     transitions only. Audit ``config:eval_metrics``.
+         * @description Add a metric (id EV-nn = next free). ``targets_by_tier`` must cover every tier; operator and
+         *     value only for ``auto`` metrics. New transitions only.
          */
         post: operations["create_eval_metric_api_v1_admin_eval_metrics_post"];
         delete?: never;
@@ -2958,91 +2891,10 @@ export interface paths {
         get: operations["get_thresholds_api_v1_admin_thresholds_get"];
         /**
          * Put Thresholds
-         * @description Replace ``cfg.thresholds``. Guardrails: ranges (percent 0..100, days 0..365), amber not
-         *     stricter than red (``amber_critical_gaps`` <= ``red_critical_gaps``, ``amber_lens_below`` >=
-         *     ``red_lens_below``), ``default_tier`` is a defined tier, ``default_pricing_basis`` an active
-         *     ``ocet_pricing_basis``. Live: RAG recalculates for all active transitions. Audit
-         *     ``config:thresholds``.
+         * @description Replace the thresholds. 422 when amber is stricter than red, or the default tier / pricing
+         *     basis does not exist. Live: RAG recalculates for all active transitions.
          */
         put: operations["put_thresholds_api_v1_admin_thresholds_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/labels": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Labels
-         * @description Display overrides of workflow vocabulary (status words, RAG words, eval banner) with the
-         *     defaults.
-         */
-        get: operations["get_labels_api_v1_admin_labels_get"];
-        /**
-         * Put Labels
-         * @description Replace ``cfg.labels``. Keys must be known (422 for others); labels are non-empty and at
-         *     most 120 characters. Wording only: behaviour never depends on a label. Audit ``config:labels``.
-         */
-        put: operations["put_labels_api_v1_admin_labels_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/gates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Gates
-         * @description Gate label / short / description for every gate (codes, order and type are fixed in code),
-         *     outcome label overrides, the decision-gate -> approval-chain map and the mocked approver.
-         */
-        get: operations["get_gates_api_v1_admin_gates_get"];
-        /**
-         * Put Gates
-         * @description Replace the gate texts. Every gate code must be present and no unknown code (422);
-         *     ``chain`` values must be existing approval chain types and only decision gates may have one;
-         *     ``mock_approver_role`` must be an active role that ``can_approve``. Audit ``config:gates``.
-         */
-        put: operations["put_gates_api_v1_admin_gates_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/lenses": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Lenses
-         * @description The three lenses with question, colour hint, owner roles and sign-off role.
-         */
-        get: operations["get_lenses_api_v1_admin_lenses_get"];
-        /**
-         * Put Lenses
-         * @description Replace the lens texts. Exactly Business, Technical and Compliance (structural); owner and
-         *     sign-off roles must be active roles. Audit ``config:lenses``. Returns the document.
-         */
-        put: operations["put_lenses_api_v1_admin_lenses_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3065,9 +2917,8 @@ export interface paths {
         get: operations["list_message_templates_api_v1_admin_message_templates_get"];
         /**
          * Put Message Templates
-         * @description Save templates. Validates: known keys only; only the key's declared placeholders (an
-         *     unknown ``{{name}}`` refuses the save with the name in the reason); length caps. Cannot change
-         *     recipients or send policy (not part of a template). Audit ``config:message_templates``.
+         * @description Save templates. Only the key's own placeholders (an unknown ``{{name}}`` refuses the save with
+         *     the name in the reason); no scripts. Recipients and send policy are not part of a template.
          */
         put: operations["put_message_templates_api_v1_admin_message_templates_put"];
         post?: never;
@@ -3092,49 +2943,6 @@ export interface paths {
          *     are HTML-escaped, unknown placeholders are listed. Writes nothing, no audit.
          */
         post: operations["preview_message_template_api_v1_admin_message_templates__key__preview_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/config-export": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Export Config
-         * @description Stretch: every configuration section as JSON (settings, lists, fields, roles, matrix,
-         *     tiering, templates). Demo configuration made in the UI is lost on a schema bump unless exported.
-         */
-        get: operations["export_config_api_v1_admin_config_export_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/config-import": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Import Config
-         * @description Stretch: validate an export with the same rules as the editors and return the diff;
-         *     ``dry_run=true`` (default) writes nothing. 422 with reasons when a section is invalid, 409 when
-         *     ``schema_version`` differs from the server's.
-         */
-        post: operations["import_config_api_v1_admin_config_import_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3401,12 +3209,8 @@ export interface components {
              * Format: date
              */
             due_date: string;
-            /**
-             * Priority
-             * @default Medium
-             * @enum {string}
-             */
-            priority: "High" | "Medium" | "Low";
+            /** Priority */
+            priority?: string | null;
         };
         /** ActionOut */
         ActionOut: {
@@ -3428,11 +3232,8 @@ export interface components {
              * @enum {string}
              */
             status: "Open" | "In progress" | "Done" | "Cancelled";
-            /**
-             * Priority
-             * @enum {string}
-             */
-            priority: "High" | "Medium" | "Low";
+            /** Priority */
+            priority: string;
             /** Origin */
             origin: string;
             created_by: components["schemas"]["PersonRef"] | null;
@@ -3453,7 +3254,7 @@ export interface components {
             /** Status */
             status?: ("Open" | "In progress" | "Done" | "Cancelled") | null;
             /** Priority */
-            priority?: ("High" | "Medium" | "Low") | null;
+            priority?: string | null;
         };
         /** AppInfoOut */
         AppInfoOut: {
@@ -3487,6 +3288,8 @@ export interface components {
             type: "OCET" | "AtD" | "AtO" | "SUPPORT_MODEL" | "EXCEPTION";
             /** Steps */
             steps: components["schemas"]["ChainStep"][];
+            /** Label */
+            label?: string | null;
         };
         /** ApprovalChainStepOut */
         ApprovalChainStepOut: {
@@ -3657,11 +3460,8 @@ export interface components {
         Body_add_evidence_api_v1_transitions__transition_id__evidence_post: {
             /** Title */
             title: string;
-            /**
-             * Type
-             * @enum {string}
-             */
-            type: "Document" | "Link" | "Email sign-off" | "Recording" | "Generated";
+            /** Type */
+            type: string;
             /**
              * Item Id
              * @description Playbook item id, e.g. S45-014
@@ -3794,6 +3594,11 @@ export interface components {
             role: string;
             /** Label */
             label: string;
+            /**
+             * Is Mock
+             * @default false
+             */
+            is_mock: boolean;
         };
         /** ChaserDraftIn */
         ChaserDraftIn: {
@@ -4106,91 +3911,6 @@ export interface components {
             /** Text */
             text?: string | null;
         };
-        /**
-         * ConfigDiffOut
-         * @description POST /admin/config-import?dry_run=true: what the import would add, change and remove.
-         */
-        ConfigDiffOut: {
-            /** Dry Run */
-            dry_run: boolean;
-            /** Applied */
-            applied: boolean;
-            /**
-             * Added
-             * @default {}
-             */
-            added: {
-                [key: string]: string[];
-            };
-            /**
-             * Changed
-             * @default {}
-             */
-            changed: {
-                [key: string]: string[];
-            };
-            /**
-             * Removed
-             * @default {}
-             */
-            removed: {
-                [key: string]: string[];
-            };
-            /**
-             * Reasons
-             * @default []
-             */
-            reasons: string[];
-        };
-        /**
-         * ConfigExportOut
-         * @description GET /admin/config-export (stretch): every configuration section as JSON.
-         */
-        ConfigExportOut: {
-            /** Schema Version */
-            schema_version: number;
-            /** Sections */
-            sections: {
-                [key: string]: unknown;
-            };
-        };
-        /** ConfigImportIn */
-        ConfigImportIn: {
-            /** Schema Version */
-            schema_version: number;
-            /** Sections */
-            sections: {
-                [key: string]: unknown;
-            };
-        };
-        /**
-         * ConfigResetIn
-         * @description POST /admin/config/reset (extension of design 4): restore ONE editor to seed/config.json.
-         *     Refused (409) when it would remove a value that is in use. ``key`` selects a list / role / ...
-         */
-        ConfigResetIn: {
-            /**
-             * Section
-             * @enum {string}
-             */
-            section: "option_list" | "intake_fields" | "roles" | "permissions" | "tiering" | "thresholds" | "labels" | "gates" | "lenses" | "message_templates";
-            /** Key */
-            key?: string | null;
-        };
-        /** ConfigResetOut */
-        ConfigResetOut: {
-            /** Section */
-            section: string;
-            /** Key */
-            key?: string | null;
-            /** Restored */
-            restored: number;
-            /**
-             * Notice
-             * @default
-             */
-            notice: string;
-        };
         /** ConfirmNoDefectsIn */
         ConfirmNoDefectsIn: {
             /** Confirmed */
@@ -4323,11 +4043,8 @@ export interface components {
         DefectCreateIn: {
             /** Title */
             title: string;
-            /**
-             * Priority
-             * @enum {string}
-             */
-            priority: "P1" | "P2" | "P3" | "P4";
+            /** Priority */
+            priority: string;
             /** Owner User Id */
             owner_user_id?: string | null;
         };
@@ -4337,11 +4054,8 @@ export interface components {
             id: string;
             /** Title */
             title: string;
-            /**
-             * Priority
-             * @enum {string}
-             */
-            priority: "P1" | "P2" | "P3" | "P4";
+            /** Priority */
+            priority: string;
             /**
              * Status
              * @enum {string}
@@ -4354,7 +4068,7 @@ export interface components {
             /** Title */
             title?: string | null;
             /** Priority */
-            priority?: ("P1" | "P2" | "P3" | "P4") | null;
+            priority?: string | null;
             /** Status */
             status?: ("Open" | "Resolved") | null;
             /** Owner User Id */
@@ -4584,7 +4298,7 @@ export interface components {
             };
             /**
              * Notice
-             * @default Changes affect NEW transitions; existing transitions keep their items.
+             * @default Applies to all AI transitions straight away, including ones already running.
              */
             notice: string;
         };
@@ -4908,7 +4622,7 @@ export interface components {
             /** Project Type */
             project_type: string;
             /** Checklists */
-            checklists: ("FRAMEWORK" | "AI_PLAYBOOK" | "PORTFOLIO" | "COMMON")[];
+            checklists: string[];
             /**
              * Requires Tiering
              * @default false
@@ -4917,7 +4631,10 @@ export interface components {
             /** Note */
             note?: string | null;
         };
-        /** FlavourRuleOut */
+        /**
+         * FlavourRuleOut
+         * @description A project type. The first four fields are the original contract; the rest is CR-01.
+         */
         FlavourRuleOut: {
             /** Project Type */
             project_type: string;
@@ -4930,6 +4647,41 @@ export interface components {
             requires_tiering: boolean;
             /** Note */
             note?: string | null;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /**
+             * Has Ai Profile
+             * @default false
+             */
+            has_ai_profile: boolean;
+            /**
+             * Has Eval Metrics
+             * @default false
+             */
+            has_eval_metrics: boolean;
+            /**
+             * Required Intake Fields
+             * @default []
+             */
+            required_intake_fields: string[];
+            /**
+             * Synonyms
+             * @default []
+             */
+            synonyms: string[];
         };
         /**
          * FlavourRulesIn
@@ -5068,18 +4820,6 @@ export interface components {
             owner?: components["schemas"]["PersonRef"] | null;
             /** Reason */
             reason: string;
-        };
-        /** GateLabelOut */
-        GateLabelOut: {
-            /** Label */
-            label: string;
-            /** Short */
-            short: string;
-            /**
-             * Description
-             * @default
-             */
-            description: string;
         };
         /**
          * GateLensSummaryOut
@@ -5230,89 +4970,6 @@ export interface components {
             /** State */
             state: string;
         };
-        /** GateTextIn */
-        GateTextIn: {
-            /** Label */
-            label: string;
-            /** Short */
-            short: string;
-            /**
-             * Description
-             * @default
-             */
-            description: string;
-        };
-        /** GateTextOut */
-        GateTextOut: {
-            /** Label */
-            label: string;
-            /** Short */
-            short: string;
-            /**
-             * Description
-             * @default
-             */
-            description: string;
-            /** Code */
-            code: string;
-            /** Order */
-            order: number;
-            /** Type */
-            type: string;
-        };
-        /**
-         * GatesDoc
-         * @description Gate texts keyed by gate code (codes, order and type stay in code), outcome label overrides
-         *     ``{gate_type: {outcome: label}}`` and the decision-gate -> approval-chain map.
-         */
-        GatesDoc: {
-            /** Gates */
-            gates: {
-                [key: string]: components["schemas"]["GateTextIn"];
-            };
-            /** Outcome Labels */
-            outcome_labels?: {
-                [key: string]: {
-                    [key: string]: string;
-                };
-            };
-            /** Chain */
-            chain?: {
-                [key: string]: string;
-            };
-            /** Mock Role */
-            mock_role?: string | null;
-            /** Mock Approver Role */
-            mock_approver_role?: string | null;
-        };
-        /** GatesOut */
-        GatesOut: {
-            /** Gates */
-            gates: components["schemas"]["GateTextOut"][];
-            /** Outcome Labels */
-            outcome_labels: {
-                [key: string]: {
-                    [key: string]: string;
-                };
-            };
-            /** Outcomes */
-            outcomes: {
-                [key: string]: string[];
-            };
-            /** Chain */
-            chain: {
-                [key: string]: string;
-            };
-            /** Mock Role */
-            mock_role: string;
-            /** Mock Approver Role */
-            mock_approver_role: string;
-            /**
-             * Notice
-             * @default Codes, order and gate types are fixed; the wording is yours.
-             */
-            notice: string;
-        };
         /** GatesOverviewOut */
         GatesOverviewOut: {
             /** Current Gate */
@@ -5450,11 +5107,8 @@ export interface components {
         InputFileOut: {
             /** Filename */
             filename: string;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "recording" | "transcript" | "design" | "diagram" | "other";
+            /** Kind */
+            kind: string;
             /** Url */
             url: string;
             /** Size */
@@ -5619,9 +5273,9 @@ export interface components {
             /**
              * Form
              * @default intake
-             * @enum {string}
+             * @constant
              */
-            form: "intake" | "ai_profile";
+            form: "intake";
             /** Min */
             min?: number | null;
             /** Max */
@@ -5699,9 +5353,9 @@ export interface components {
             /**
              * Form
              * @default intake
-             * @enum {string}
+             * @constant
              */
-            form: "intake" | "ai_profile";
+            form: "intake";
             /** Min */
             min?: number | null;
             /** Max */
@@ -5933,6 +5587,11 @@ export interface components {
             golden_set_to_confirm: number;
             /** Common */
             common: number;
+            /**
+             * Other
+             * @default 0
+             */
+            other: number;
             /** Total */
             total: number;
         };
@@ -5965,11 +5624,8 @@ export interface components {
             description: string;
             /** Detail */
             detail: string;
-            /**
-             * Source
-             * @enum {string}
-             */
-            source: "FRAMEWORK" | "AI_PLAYBOOK" | "PORTFOLIO" | "COMMON";
+            /** Source */
+            source: string;
             /** Source Label */
             source_label: string;
             /** Source Sheet */
@@ -6009,7 +5665,7 @@ export interface components {
             /** Allowed Statuses */
             allowed_statuses: string[];
             /** Gap Severity */
-            gap_severity: ("Critical" | "Major" | "Minor") | null;
+            gap_severity: string | null;
             /** Design Effectiveness */
             design_effectiveness: ("–" | "Yes" | "No" | "N/A") | null;
             /** Note */
@@ -6048,7 +5704,7 @@ export interface components {
             /** Status */
             status?: string | null;
             /** Gap Severity */
-            gap_severity?: ("Critical" | "Major" | "Minor") | null;
+            gap_severity?: string | null;
             /** Note */
             note?: string | null;
             /** Owner User Id */
@@ -6093,36 +5749,6 @@ export interface components {
             };
             /** Link */
             link?: string | null;
-        };
-        /**
-         * LabelsDoc
-         * @description Display overrides of workflow vocabulary: ``{key: label}`` (e.g. ``"rag.Grey": "Not started"``).
-         *     Keys are the ones returned by GET (unknown keys are refused).
-         */
-        LabelsDoc: {
-            /** Labels */
-            labels: {
-                [key: string]: string;
-            };
-        };
-        /** LabelsOut */
-        LabelsOut: {
-            /** Labels */
-            labels: {
-                [key: string]: string;
-            };
-            /**
-             * Defaults
-             * @default {}
-             */
-            defaults: {
-                [key: string]: string;
-            };
-            /**
-             * Notice
-             * @default Changes the wording only; behaviour does not change.
-             */
-            notice: string;
         };
         /**
          * LandscapeIn
@@ -6353,17 +5979,6 @@ export interface components {
             /** Readiness Pct */
             readiness_pct: number;
         };
-        /** LensCfgIn */
-        LensCfgIn: {
-            /** Question */
-            question: string;
-            /** Color Hint */
-            color_hint: string;
-            /** Owner Roles */
-            owner_roles: string[];
-            /** Signoff Role */
-            signoff_role: string;
-        };
         /** LensOut */
         LensOut: {
             /** Code */
@@ -6389,28 +6004,6 @@ export interface components {
             Technical: number;
             /** Compliance */
             Compliance: number;
-        };
-        /**
-         * LensesDoc
-         * @description The three lenses (Business, Technical, Compliance - structural) keyed by code.
-         */
-        LensesDoc: {
-            /** Lenses */
-            lenses: {
-                [key: string]: components["schemas"]["LensCfgIn"];
-            };
-        };
-        /** LensesOut */
-        LensesOut: {
-            /** Lenses */
-            lenses: {
-                [key: string]: components["schemas"]["LensCfgIn"];
-            };
-            /**
-             * Notice
-             * @default The three lenses are fixed; their question, colour and owners are yours.
-             */
-            notice: string;
         };
         /** LinkMessage */
         LinkMessage: {
@@ -6685,11 +6278,8 @@ export interface components {
              * @default
              */
             vendor: string;
-            /**
-             * Pricing Basis
-             * @default Fixed (contract)
-             */
-            pricing_basis: string;
+            /** Pricing Basis */
+            pricing_basis?: string | null;
             /** Base Amount */
             base_amount?: number | null;
             /**
@@ -6978,6 +6568,11 @@ export interface components {
              * @default Applies immediately; RAG recalculates for all active transitions.
              */
             notice: string;
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
         };
         /** OptionListAdminOut */
         OptionListAdminOut: {
@@ -7692,8 +7287,6 @@ export interface components {
              * @default []
              */
             synonyms: string[];
-            /** Color */
-            color?: string | null;
             /** Note */
             note?: string | null;
             /**
@@ -7745,8 +7338,6 @@ export interface components {
             required_intake_fields?: string[];
             /** Synonyms */
             synonyms?: string[];
-            /** Color */
-            color?: string | null;
             /** Note */
             note?: string | null;
         };
@@ -7800,8 +7391,6 @@ export interface components {
              * @default []
              */
             synonyms: string[];
-            /** Color */
-            color?: string | null;
         };
         /**
          * ProjectTypePreviewOut
@@ -7856,8 +7445,6 @@ export interface components {
             required_intake_fields?: string[] | null;
             /** Synonyms */
             synonyms?: string[] | null;
-            /** Color */
-            color?: string | null;
             /** Note */
             note?: string | null;
         };
@@ -8140,25 +7727,11 @@ export interface components {
              */
             checklists: components["schemas"]["ChecklistRefOut"][];
             /**
-             * Labels
-             * @default {}
-             */
-            labels: {
-                [key: string]: string;
-            };
-            /**
              * Thresholds
              * @default {}
              */
             thresholds: {
                 [key: string]: unknown;
-            };
-            /**
-             * Gate Labels
-             * @default {}
-             */
-            gate_labels: {
-                [key: string]: components["schemas"]["GateLabelOut"];
             };
             /**
              * Approval Chain Labels
@@ -8190,6 +7763,8 @@ export interface components {
             params: {
                 [key: string]: unknown;
             };
+            /** Autonomous Eligible */
+            autonomous_eligible?: boolean | null;
         };
         /** ReminderRulesIn */
         ReminderRulesIn: {
@@ -8262,11 +7837,8 @@ export interface components {
         RiskCreateIn: {
             /** Title */
             title: string;
-            /**
-             * Rating
-             * @enum {string}
-             */
-            rating: "High" | "Medium" | "Low";
+            /** Rating */
+            rating: string;
             /**
              * Decision
              * @default
@@ -8284,11 +7856,8 @@ export interface components {
             id: string;
             /** Title */
             title: string;
-            /**
-             * Rating
-             * @enum {string}
-             */
-            rating: "High" | "Medium" | "Low";
+            /** Rating */
+            rating: string;
             /** Decision */
             decision: string;
             /** Item Ids */
@@ -8321,8 +7890,6 @@ export interface components {
             can_approve: boolean;
             /** Sort Order */
             sort_order: number;
-            /** Color */
-            color?: string | null;
             /**
              * User Count
              * @default 0
@@ -8330,43 +7897,6 @@ export interface components {
             user_count: number;
             /** Lock Reason */
             lock_reason?: string | null;
-        };
-        /**
-         * RoleCreateIn
-         * @description POST /admin/roles. ``code`` is immutable; "Orion", "agent", "bot", "ai" are reserved.
-         */
-        RoleCreateIn: {
-            /** Code */
-            code: string;
-            /** Label */
-            label: string;
-            /**
-             * Short Label
-             * @default
-             */
-            short_label: string;
-            /**
-             * Phrase Label
-             * @default
-             */
-            phrase_label: string;
-            /**
-             * Description
-             * @default
-             */
-            description: string;
-            /**
-             * Has Transition Slot
-             * @default false
-             */
-            has_transition_slot: boolean;
-            /**
-             * Can Approve
-             * @default false
-             */
-            can_approve: boolean;
-            /** Color */
-            color?: string | null;
         };
         /** RoleOut */
         RoleOut: {
@@ -8411,10 +7941,11 @@ export interface components {
              * @default 0
              */
             sort_order: number;
-            /** Color */
-            color?: string | null;
         };
-        /** RoleUpdateIn */
+        /**
+         * RoleUpdateIn
+         * @description PATCH /admin/roles/{code}: the eight roles are fixed; only their wording can change.
+         */
         RoleUpdateIn: {
             /** Label */
             label?: string | null;
@@ -8424,16 +7955,6 @@ export interface components {
             phrase_label?: string | null;
             /** Description */
             description?: string | null;
-            /** Active */
-            active?: boolean | null;
-            /** Has Transition Slot */
-            has_transition_slot?: boolean | null;
-            /** Can Approve */
-            can_approve?: boolean | null;
-            /** Sort Order */
-            sort_order?: number | null;
-            /** Color */
-            color?: string | null;
         };
         /** RolesOut */
         RolesOut: {
@@ -8457,6 +7978,11 @@ export interface components {
             golden_set_to_confirm: number;
             /** Common */
             common: number;
+            /**
+             * Other
+             * @default 0
+             */
+            other: number;
             /** Total */
             total: number;
         };
@@ -8586,11 +8112,8 @@ export interface components {
         };
         /** SourceIO */
         SourceIO: {
-            /**
-             * Type
-             * @enum {string}
-             */
-            type: "diagram" | "recording" | "document";
+            /** Type */
+            type: string;
             /** Ref */
             ref: string;
         };
@@ -8864,33 +8387,6 @@ export interface components {
             /** Builder Persona */
             builder_persona: string;
         };
-        /**
-         * TierConditionIn
-         * @description One condition of a rule. ``source`` question: ``key`` = a question id, op yes / no.
-         *     ``source`` intake / custom: ``key`` = field key (an audience-style option list or a custom
-         *     field), op equals / not_equals / in (``value`` = text, or a list for ``in``).
-         */
-        TierConditionIn: {
-            /**
-             * Source
-             * @enum {string}
-             */
-            source: "question" | "intake" | "custom";
-            /** Key */
-            key: string;
-            /**
-             * Op
-             * @enum {string}
-             */
-            op: "yes" | "no" | "equals" | "not_equals" | "in";
-            /** Value */
-            value?: string | string[] | null;
-            /**
-             * Rationale
-             * @default
-             */
-            rationale: string;
-        };
         /** TierConfirmIn */
         TierConfirmIn: {
             /** Tier */
@@ -8898,7 +8394,10 @@ export interface components {
             /** Reason */
             reason?: string | null;
         };
-        /** TierDefIn */
+        /**
+         * TierDefIn
+         * @description One tier definition. The tier number is fixed (BR-011 produces tiers 1-4); the wording is yours.
+         */
         TierDefIn: {
             /** Tier */
             tier: number;
@@ -8986,13 +8485,10 @@ export interface components {
         };
         /**
          * TierQuestionIn
-         * @description ``id`` empty = a new question (TQ6, TQ7 ... generated).
+         * @description One tiering question. ``id`` (TQ1 ...) is fixed because BR-011 reads the answers by id.
          */
         TierQuestionIn: {
-            /**
-             * Id
-             * @default
-             */
+            /** Id */
             id: string;
             /** Text */
             text: string;
@@ -9001,69 +8497,6 @@ export interface components {
              * @default
              */
             hint: string;
-            /**
-             * Active
-             * @default true
-             */
-            active: boolean;
-        };
-        /** TierRuleIn */
-        TierRuleIn: {
-            /**
-             * Id
-             * @default
-             */
-            id: string;
-            /**
-             * Label
-             * @default
-             */
-            label: string;
-            /** Result Tier */
-            result_tier: number;
-            /**
-             * Match
-             * @default any
-             * @enum {string}
-             */
-            match: "any" | "all";
-            /** Conditions */
-            conditions?: components["schemas"]["TierConditionIn"][];
-            /**
-             * Active
-             * @default true
-             */
-            active: boolean;
-        };
-        /** TierRuleOut */
-        TierRuleOut: {
-            /** Id */
-            id: string;
-            /**
-             * Label
-             * @default
-             */
-            label: string;
-            /** Result Tier */
-            result_tier: number;
-            /**
-             * Match
-             * @default any
-             * @enum {string}
-             */
-            match: "any" | "all";
-            /** Conditions */
-            conditions?: components["schemas"]["TierConditionIn"][];
-            /**
-             * Active
-             * @default true
-             */
-            active: boolean;
-            /**
-             * Sort Order
-             * @default 0
-             */
-            sort_order: number;
         };
         /**
          * TierSetIn
@@ -9077,89 +8510,27 @@ export interface components {
             };
         };
         /**
-         * TierSourceOut
-         * @description What a rule condition can look at: an intake field with its option values.
-         */
-        TierSourceOut: {
-            /** Key */
-            key: string;
-            /** Label */
-            label: string;
-            /**
-             * Source
-             * @enum {string}
-             */
-            source: "intake" | "custom";
-            /**
-             * Values
-             * @default []
-             */
-            values: string[];
-        };
-        /**
-         * TierTestIn
-         * @description POST /admin/tiering/test: runs the pure ``propose_tier`` on a hypothetical project.
-         */
-        TierTestIn: {
-            /** Intake */
-            intake?: {
-                [key: string]: string | null;
-            };
-            /** Answers */
-            answers?: {
-                [key: string]: boolean;
-            };
-            config?: components["schemas"]["TieringConfigIn"] | null;
-        };
-        /** TierTestOut */
-        TierTestOut: {
-            /** Tier */
-            tier: number;
-            /** Rationale */
-            rationale: string[];
-            /** Matched Rule Id */
-            matched_rule_id?: string | null;
-        };
-        /**
          * TieringConfigIn
-         * @description PUT: the whole tiering configuration (list order = evaluation order). Guardrails: tier numbers
-         *     unique and contiguous from 1, rules reference existing questions, ``default_tier`` is defined.
+         * @description PUT: the same tier numbers and question ids as today, with new wording.
          */
         TieringConfigIn: {
             /** Tiers */
             tiers: components["schemas"]["TierDefIn"][];
-            /** Dimensions */
-            dimensions: string[];
-            /** Default Tier */
-            default_tier: number;
             /** Questions */
             questions: components["schemas"]["TierQuestionIn"][];
-            /** Rules */
-            rules: components["schemas"]["TierRuleIn"][];
         };
         /**
          * TieringConfigOut
-         * @description GET / PUT /admin/tiering.
+         * @description GET / PUT /admin/tiering: tier definitions and question wording.
          */
         TieringConfigOut: {
             /** Tiers */
             tiers: components["schemas"]["TierDefIn"][];
-            /** Dimensions */
-            dimensions: string[];
-            /** Default Tier */
-            default_tier: number;
             /** Questions */
             questions: components["schemas"]["app__schemas__config_admin__TierQuestionOut"][];
-            /** Rules */
-            rules: components["schemas"]["TierRuleOut"][];
-            /**
-             * Sources
-             * @default []
-             */
-            sources: components["schemas"]["TierSourceOut"][];
             /**
              * Notice
-             * @default Applies to new tier proposals; confirmed tiers stay as they are.
+             * @default Changes the wording only; the tiering rules (BR-011) stay as they are.
              */
             notice: string;
         };
@@ -9234,6 +8605,10 @@ export interface components {
             irm_user_id?: string | null;
             /** Next Decision Date */
             next_decision_date?: string | null;
+            /** Custom Fields */
+            custom_fields?: {
+                [key: string]: unknown;
+            };
         };
         /** TransitionDetailOut */
         TransitionDetailOut: {
@@ -9306,6 +8681,23 @@ export interface components {
             flavour_label: string;
             /** Requires Tiering */
             requires_tiering: boolean;
+            /**
+             * Has Ai Profile
+             * @default false
+             */
+            has_ai_profile: boolean;
+            /**
+             * Has Eval Metrics
+             * @default false
+             */
+            has_eval_metrics: boolean;
+            /**
+             * Custom Fields
+             * @default {}
+             */
+            custom_fields: {
+                [key: string]: unknown;
+            };
             tier: components["schemas"]["TierInfoOut"] | null;
             /** Checklist Banner */
             checklist_banner: string | null;
@@ -9482,6 +8874,10 @@ export interface components {
             next_decision_date?: string | null;
             /** Blocker Note */
             blocker_note?: string | null;
+            /** Custom Fields */
+            custom_fields?: {
+                [key: string]: unknown;
+            } | null;
         };
         /**
          * UsageOut
@@ -9605,6 +9001,8 @@ export interface components {
             focal_label?: string | null;
             /** Title */
             title?: string | null;
+            /** Active */
+            active?: boolean | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -9756,11 +9154,6 @@ export interface components {
              * @default
              */
             hint: string;
-            /**
-             * Active
-             * @default true
-             */
-            active: boolean;
             /**
              * Sort Order
              * @default 0
@@ -10462,7 +9855,7 @@ export interface operations {
                 /** @description Ignore the gate cut-off (every gate) */
                 all_gates?: boolean;
                 lens?: ("Business" | "Technical" | "Compliance") | null;
-                source?: ("FRAMEWORK" | "AI_PLAYBOOK" | "PORTFOLIO" | "COMMON") | null;
+                source?: string | null;
                 /** @description Exact item status, e.g. 'Gap' */
                 status?: string | null;
                 /** @description Owner user id */
@@ -10581,7 +9974,7 @@ export interface operations {
             query?: {
                 /** @description Playbook item id, e.g. S45-014 */
                 item?: string | null;
-                type?: ("Document" | "Link" | "Email sign-off" | "Recording" | "Generated") | null;
+                type?: string | null;
                 status?: ("Submitted" | "Accepted" | "Rejected") | null;
             };
             header?: {
@@ -14293,117 +13686,6 @@ export interface operations {
             };
         };
     };
-    list_admin_users_api_v1_admin_users_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-Demo-User"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserOut"][];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
-    create_user_api_v1_admin_users_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-Demo-User"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UserCreateIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserAdminOut"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
     demo_reset_api_v1_admin_demo_reset_post: {
         parameters: {
             query?: never;
@@ -15714,68 +14996,6 @@ export interface operations {
             };
         };
     };
-    reset_config_section_api_v1_admin_config_reset_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-Demo-User"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ConfigResetIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ConfigResetOut"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
     list_intake_fields_api_v1_admin_intake_fields_get: {
         parameters: {
             query?: never;
@@ -16122,128 +15342,6 @@ export interface operations {
             };
         };
     };
-    create_role_api_v1_admin_roles_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-Demo-User"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RoleCreateIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoleAdminOut"][];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
-    delete_role_api_v1_admin_roles__code__delete: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-Demo-User"?: string | null;
-            };
-            path: {
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoleAdminOut"][];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
     update_role_api_v1_admin_roles__code__patch: {
         parameters: {
             query?: never;
@@ -16268,6 +15366,117 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RoleAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    list_users_api_v1_admin_users_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    create_user_api_v1_admin_users_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserAdminOut"];
                 };
             };
             /** @description Forbidden */
@@ -16658,59 +15867,6 @@ export interface operations {
             };
         };
     };
-    test_tiering_api_v1_admin_tiering_test_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-Demo-User"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TierTestIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TierTestOut"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
     list_eval_metrics_api_v1_admin_eval_metrics_get: {
         parameters: {
             query?: never;
@@ -16997,339 +16153,6 @@ export interface operations {
             };
         };
     };
-    get_labels_api_v1_admin_labels_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-Demo-User"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LabelsOut"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
-    put_labels_api_v1_admin_labels_put: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-Demo-User"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LabelsDoc"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LabelsOut"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
-    get_gates_api_v1_admin_gates_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-Demo-User"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GatesOut"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
-    put_gates_api_v1_admin_gates_put: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-Demo-User"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GatesDoc"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GatesOut"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
-    get_lenses_api_v1_admin_lenses_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-Demo-User"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LensesOut"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
-    put_lenses_api_v1_admin_lenses_put: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-Demo-User"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LensesDoc"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LensesDoc"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
     list_message_templates_api_v1_admin_message_templates_get: {
         parameters: {
             query?: never;
@@ -17478,119 +16301,6 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
-    export_config_api_v1_admin_config_export_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-Demo-User"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ConfigExportOut"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
-    import_config_api_v1_admin_config_import_post: {
-        parameters: {
-            query?: {
-                dry_run?: boolean;
-            };
-            header?: {
-                "X-Demo-User"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ConfigImportIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ConfigDiffOut"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Conflict */
-            409: {
                 headers: {
                     [name: string]: unknown;
                 };

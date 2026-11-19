@@ -204,3 +204,15 @@ def test_to_confirm_and_not_applicable_items_are_out_of_scope(client, headers, d
     gap.status = "N/A"  # removed from the denominator (BR-020)
     db.commit()
     assert pct() == mid
+
+
+def test_custom_field_filters_are_anded_with_the_named_filters(client, headers):
+    # no transition holds a custom value in the seed: a cf_ filter matches nothing, the rest is unchanged
+    everything = client.get(f"{API}/transitions", headers=headers("U15")).json()
+    assert client.get(f"{API}/transitions?cf_unknown=x", headers=headers("U15")).json() == []
+    same = client.get(f"{API}/transitions?portfolio=GCC", headers=headers("U15")).json()
+    assert same and len(same) < len(everything)
+    assert (
+        client.get(f"{API}/transitions?portfolio=GCC&cf_unknown=x", headers=headers("U15")).json()
+        == []
+    )

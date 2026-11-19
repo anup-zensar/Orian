@@ -20,6 +20,7 @@ import { RagChip } from '../../components/RagChip';
 import { daysLabel, formatDate, toRag } from '../../lib/format';
 import { lensColors, ragColors, type Lens } from '../../theme/tokens';
 import type { TransitionSummary } from '../../api/types';
+import { useReference } from '../reference/api';
 
 const useStyles = makeStyles({
   scroll: {
@@ -155,6 +156,14 @@ export function TransitionRegisterTable({ rows }: { rows: TransitionSummary[] })
   const s = useStyles();
   const navigate = useNavigate();
   const [sort, setSort] = useState<{ id: string; dir: 'ascending' | 'descending' } | null>(null);
+  // Names set in Admin, also for inactive types and portfolios (an unknown code shows itself).
+  const { data: reference } = useReference();
+  const typeLabels = new Map(
+    (reference?.project_types ?? []).map((p) => [p.code, p.label || p.code]),
+  );
+  const portfolioLabels = new Map(
+    (reference?.portfolio_details ?? []).map((p) => [p.name, p.label || p.name]),
+  );
 
   const sorted = useMemo(() => {
     const col = COLUMNS.find((c) => c.id === sort?.id);
@@ -222,14 +231,14 @@ export function TransitionRegisterTable({ rows }: { rows: TransitionSummary[] })
                     <Caption1>{t.id}</Caption1>
                   </div>
                 </TableCell>
-                <TableCell>{t.portfolio}</TableCell>
+                <TableCell>{portfolioLabels.get(t.portfolio) ?? t.portfolio}</TableCell>
                 <TableCell>
                   <div className={s.cell}>
                     <span>{t.region}</span>
                     <Caption1>{t.market}</Caption1>
                   </div>
                 </TableCell>
-                <TableCell>{t.project_type}</TableCell>
+                <TableCell>{typeLabels.get(t.project_type) ?? t.project_type}</TableCell>
                 <TableCell>{t.current_gate_short}</TableCell>
                 <TableCell>
                   <LensBars t={t} />

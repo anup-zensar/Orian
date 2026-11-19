@@ -56,8 +56,7 @@
       "has_ai_profile": false,
       "has_eval_metrics": false,
       "required_intake_fields": [],
-      "synonyms": [],
-      "color": null
+      "synonyms": []
     },
     {
       "code": "Infrastructure",
@@ -72,8 +71,7 @@
       "has_ai_profile": false,
       "has_eval_metrics": false,
       "required_intake_fields": [],
-      "synonyms": [],
-      "color": null
+      "synonyms": []
     },
     {
       "code": "Agentic AI",
@@ -93,8 +91,7 @@
         "write_actions",
         "sensitive_data"
       ],
-      "synonyms": [],
-      "color": null
+      "synonyms": []
     },
     {
       "code": "Combined",
@@ -114,8 +111,7 @@
         "write_actions",
         "sensitive_data"
       ],
-      "synonyms": [],
-      "color": null
+      "synonyms": []
     }
   ],
   "portfolios": [
@@ -2221,8 +2217,7 @@
       "has_transition_slot": true,
       "transition_column": "or_focal_user_id",
       "can_approve": true,
-      "sort_order": 0,
-      "color": null
+      "sort_order": 0
     },
     {
       "code": "PM",
@@ -2235,8 +2230,7 @@
       "has_transition_slot": true,
       "transition_column": "pm_user_id",
       "can_approve": true,
-      "sort_order": 1,
-      "color": null
+      "sort_order": 1
     },
     {
       "code": "ARCHITECT",
@@ -2249,8 +2243,7 @@
       "has_transition_slot": true,
       "transition_column": "architect_user_id",
       "can_approve": true,
-      "sort_order": 2,
-      "color": null
+      "sort_order": 2
     },
     {
       "code": "OLM",
@@ -2263,8 +2256,7 @@
       "has_transition_slot": true,
       "transition_column": "olm_user_id",
       "can_approve": true,
-      "sort_order": 3,
-      "color": null
+      "sort_order": 3
     },
     {
       "code": "PLANNER",
@@ -2277,8 +2269,7 @@
       "has_transition_slot": false,
       "transition_column": null,
       "can_approve": true,
-      "sort_order": 4,
-      "color": null
+      "sort_order": 4
     },
     {
       "code": "IRM",
@@ -2291,8 +2282,7 @@
       "has_transition_slot": true,
       "transition_column": "irm_user_id",
       "can_approve": true,
-      "sort_order": 5,
-      "color": null
+      "sort_order": 5
     },
     {
       "code": "LEADERSHIP",
@@ -2305,8 +2295,7 @@
       "has_transition_slot": false,
       "transition_column": null,
       "can_approve": true,
-      "sort_order": 6,
-      "color": null
+      "sort_order": 6
     },
     {
       "code": "ADMIN",
@@ -2319,8 +2308,7 @@
       "has_transition_slot": false,
       "transition_column": null,
       "can_approve": true,
-      "sort_order": 7,
-      "color": null
+      "sort_order": 7
     }
   ],
   "role_permissions": {
@@ -2673,111 +2661,6 @@
       "sort_order": 4
     }
   ],
-  "tier_rules": [
-    {
-      "id": "RULE-1",
-      "sort_order": 0,
-      "label": "Regulated, autonomous or SOX / MC",
-      "result_tier": 4,
-      "match": "any",
-      "active": true,
-      "conditions": [
-        {
-          "source": "question",
-          "key": "TQ2",
-          "op": "yes",
-          "value": null,
-          "rationale": "TQ2 = yes -> Tier 4"
-        },
-        {
-          "source": "question",
-          "key": "TQ3",
-          "op": "yes",
-          "value": null,
-          "rationale": "TQ3 = yes -> Tier 4"
-        },
-        {
-          "source": "intake",
-          "key": "sensitive_data",
-          "op": "equals",
-          "value": "SOX / MC",
-          "rationale": "Sensitive data SOX / MC -> Tier 4"
-        }
-      ]
-    },
-    {
-      "id": "RULE-2",
-      "sort_order": 1,
-      "label": "External, sensitive or write actions",
-      "result_tier": 3,
-      "match": "any",
-      "active": true,
-      "conditions": [
-        {
-          "source": "question",
-          "key": "TQ1",
-          "op": "yes",
-          "value": null,
-          "rationale": "TQ1 = yes -> Tier 3"
-        },
-        {
-          "source": "intake",
-          "key": "audience",
-          "op": "equals",
-          "value": "External",
-          "rationale": "External audience -> Tier 3"
-        },
-        {
-          "source": "intake",
-          "key": "sensitive_data",
-          "op": "equals",
-          "value": "Personal sensitive",
-          "rationale": "Personal sensitive data -> Tier 3"
-        },
-        {
-          "source": "intake",
-          "key": "write_actions",
-          "op": "equals",
-          "value": "Yes",
-          "rationale": "Write actions = Yes -> Tier 3"
-        }
-      ]
-    },
-    {
-      "id": "RULE-3",
-      "sort_order": 2,
-      "label": "Time-boxed and small",
-      "result_tier": 1,
-      "match": "any",
-      "active": true,
-      "conditions": [
-        {
-          "source": "question",
-          "key": "TQ5",
-          "op": "yes",
-          "value": null,
-          "rationale": "TQ5 = yes -> Tier 1"
-        }
-      ]
-    },
-    {
-      "id": "RULE-4",
-      "sort_order": 3,
-      "label": "Internal, bounded, advisory",
-      "result_tier": 2,
-      "match": "any",
-      "active": true,
-      "conditions": [
-        {
-          "source": "question",
-          "key": "TQ4",
-          "op": "yes",
-          "value": null,
-          "rationale": "TQ4 = yes -> Tier 2"
-        }
-      ]
-    }
-  ],
   "tiers": [
     {
       "tier": 1,
@@ -2838,44 +2721,6 @@
       "default_horizon_years": 5,
       "default_growth_pct": 0
     },
-    "cfg.gates": {
-      "SG0": {
-        "label": "SG0 – Initiate & tiering",
-        "short": "SG0",
-        "description": ""
-      },
-      "SG2": {
-        "label": "SG1–SG2 – Scope, blueprint & architecture",
-        "short": "SG0–SG2",
-        "description": ""
-      },
-      "SG3": {
-        "label": "SG3 – Build & test",
-        "short": "SG3",
-        "description": ""
-      },
-      "SG4_ATD": {
-        "label": "SG4 – Agreement to Deploy (AtD)",
-        "short": "AtD",
-        "description": ""
-      },
-      "SG5_HYPERCARE": {
-        "label": "SG4–SG5 – Hypercare",
-        "short": "Hypercare",
-        "description": ""
-      },
-      "SG6_ATO": {
-        "label": "SG6 – Agreement to Operate (AtO)",
-        "short": "AtO",
-        "description": ""
-      },
-      "CLOSURE": {
-        "label": "Project closure",
-        "short": "Closure",
-        "description": ""
-      }
-    },
-    "cfg.gate_outcome_labels": {},
     "cfg.gate_chain": {
       "SG4_ATD": "AtD",
       "SG6_ATO": "AtO"
@@ -2884,42 +2729,6 @@
       "mock_role": "CISO_BISO",
       "approver_role": "IRM",
       "mock_label": "CISO/BISO"
-    },
-    "cfg.labels": {
-      "status.Not started": "Not started",
-      "rag.Red": "Red",
-      "rag.Amber": "Amber",
-      "rag.Green": "Green",
-      "rag.Grey": "Not started",
-      "eval.banner": "Eval results are entered by the team; Orion never accepts them."
-    },
-    "cfg.lenses": {
-      "Business": {
-        "question": "Is the value, cost and commercial case sound?",
-        "color_hint": "amber",
-        "owner_roles": [
-          "OLM",
-          "PM"
-        ],
-        "signoff_role": "OLM"
-      },
-      "Technical": {
-        "question": "Is it built, tested and runnable to standard?",
-        "color_hint": "blue",
-        "owner_roles": [
-          "PM",
-          "ARCHITECT"
-        ],
-        "signoff_role": "OR_FOCAL"
-      },
-      "Compliance": {
-        "question": "Are policy and regulatory controls met?",
-        "color_hint": "teal",
-        "owner_roles": [
-          "IRM"
-        ],
-        "signoff_role": "IRM"
-      }
     }
   },
   "approval_chain_labels": {

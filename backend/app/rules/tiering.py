@@ -15,7 +15,7 @@ The rationale lists the intake facts followed by the facts that triggered the de
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field
 
 TIER_QUESTION_IDS: tuple[str, ...] = ("TQ1", "TQ2", "TQ3", "TQ4", "TQ5")
@@ -44,9 +44,12 @@ class TierProposal:
     rationale: list[str] = field(default_factory=list)
 
 
-def unknown_question_ids(answers: Mapping[str, bool]) -> list[str]:
-    """Answer keys that are not TQ1..TQ5 (callers turn these into a 422)."""
-    return [key for key in answers if key not in TIER_QUESTION_IDS]
+def unknown_question_ids(
+    answers: Mapping[str, bool], known_ids: Collection[str] = TIER_QUESTION_IDS
+) -> list[str]:
+    """Answer keys that are not question ids (callers turn these into a 422). ``known_ids`` are the
+    question ids from configuration (default TQ1..TQ5; the Admin edits the wording, not the ids)."""
+    return [key for key in answers if key not in known_ids]
 
 
 def _intake_facts(
@@ -67,8 +70,10 @@ def propose_tier(
     write_actions: str | None,
     sensitive_data: str | None,
     answers: Mapping[str, bool],
+    default_tier: int = 3,
 ) -> TierProposal:
-    """BR-011. Missing answer keys count as "no"."""
+    """BR-011. Missing answer keys count as "no". ``default_tier`` is the conservative fallback when
+    no rule matches (configurable, Tier 3 by default)."""
 
     def yes(key: str) -> bool:
         return bool(answers.get(key, False))
@@ -101,11 +106,11 @@ def propose_tier(
         return TierProposal(1, rationale + ["TQ5 = yes -> Tier 1"])
     if yes("TQ4"):
         return TierProposal(2, rationale + ["TQ4 = yes -> Tier 2"])
-    reasons = ["No rule matched -> Tier 3 (conservative default)"]
+    reasons = [f"No rule matched -> Tier {default_tier} (conservative default)"]
     if audience == "Internal department" and write_actions == WRITE_NO and sensitive_data == "No":
         # The intake answers alone cannot reach Tier 2 (rule 4 needs TQ4): say so, never guess it.
         reasons.append(
             "The intake answers look low risk - answer TQ4 (internal, bounded, advisory) with Yes "
             "if it applies to reach Tier 2"
         )
-    return TierProposal(3, rationale + reasons)
+    return TierProposal(default_tier, rationale + reasons)

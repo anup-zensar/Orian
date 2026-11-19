@@ -11,10 +11,14 @@
   same text, addressed to the first approver, with its own subject)
 * Reminder-engine variants (BR-060): Chaser with ``days_overdue``/``action_title`` (R2) or
   ``escalation`` + ``approver_name`` + ``days_pending`` (R3); Reminder with ``pending_step``
-  (R3), ``monitoring`` (R6) or ``support_model`` (R7) + ``subject``
+  (R3), ``monitoring`` (R6) or ``support_model`` (R7)
 * Leadership update: ``scope`` (title) and ``text`` (plain lines, blank line = new paragraph)
+* ``templates``: {key: TemplateCfg}, the message templates saved under Admin > Messages. Without it
+  the code defaults (``domain/cfg_defaults.py``) are used.
 
-The text is only a draft: nothing is sent until a human clicks Send (BR-050).
+Every message is a template: this module only works out the placeholder values (names, counts,
+links, the item list) and fills the template. The text is only a draft: nothing is sent until a
+human clicks Send (BR-050).
 """
 
 from __future__ import annotations
@@ -23,6 +27,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from app.config import get_settings
+from app.domain import cfg, cfg_defaults
 from app.domain.html_sanitize import escape_text as esc
 from app.services.interfaces import DraftText
 from app.services.mock._common import log_mock, simulate_latency
@@ -95,43 +100,59 @@ def _item_title(ctx: Mapping[str, Any]) -> str:
     return first if len(items) == 1 else f"{first} and {_s(len(items) - 1, 'other item')}"
 
 
-def _link_para(ctx: Mapping[str, Any], label: str = "Open in Orion") -> str:
-    return f'<p><a href="{esc(ctx.get("deep_link") or _base())}">{esc(label)}</a></p>'
+def _render(key: str, ctx: Mapping[str, Any], values: Mapping[str, Any]) -> DraftText:
+    """Fill the template ``key`` (the saved one from ``ctx["templates"]`` when it is switched on,
+    else the code default) with ``values`` plus the placeholders every message has."""
+    saved = (ctx.get("templates") or {}).get(key)
+    if saved is not None and saved.enabled:
+        subject, body = saved.subject, saved.body
+    else:
+        _name, subject, body, _source = cfg_defaults.DEFAULT_TEMPLATES[key]
+    common = {
+        "recipient_name": ctx.get("recipient_name") or "",
+        "transition_name": ctx.get("transition_name") or "",
+        "gate_short": ctx.get("gate_short") or "",
+        "days": ctx.get("days") if ctx.get("days") is not None else "",
+        "or_focal_name": ctx.get("or_focal_name") or "",
+        "orion_name": "Orion",
+        "greeting": _greeting(ctx),
+        "sign_off": _sign_off(ctx),
+        "deep_link": ctx.get("deep_link") or _base(),
+        "item_list": _item_list(ctx),
+    }
+    merged = {**common, **values}
+    html_names = [n for n, (_desc, is_html) in cfg_defaults.PLACEHOLDERS.items() if is_html]
+    return {
+        # the subject is plain text (nothing escaped); the body is HTML (only plain values escaped)
+        "subject": cfg.render(subject, merged, html_placeholders=list(merged)),
+        "body_html": cfg.render(body, merged, html_placeholders=html_names),
+    }
 
 
 def _overdue_action(ctx: Mapping[str, Any]) -> DraftText:
-    transition = str(ctx.get("transition_name", ""))
-    title = str(ctx.get("action_title") or "an action")
     days = int(ctx.get("days_overdue") or 0)
-    body = (
-        f"<p>{_greeting(ctx)}</p>"
-        f"<p>The action <strong>{esc(title)}</strong> for {esc(transition)} was due "
-        f"{esc(str(ctx.get('due_date') or ''))} and is now overdue by {_s(days, 'day')}. "
-        f"Could you please update it or let us know what is blocking you?</p>"
-        + _link_para(ctx)
-        + _sign_off(ctx)
+    return _render(
+        "overdue_action",
+        ctx,
+        {
+            "action_title": str(ctx.get("action_title") or "an action"),
+            "due_date": str(ctx.get("due_date") or ""),
+            "days_overdue_text": _s(days, "day"),
+        },
     )
-    return {
-        "subject": f"Overdue action: {title} for {transition} ({_s(days, 'day')} overdue)",
-        "body_html": body,
-    }
 
 
 def _escalation(ctx: Mapping[str, Any]) -> DraftText:
-    transition = str(ctx.get("transition_name", ""))
-    approver = str(ctx.get("approver_name") or "The approver")
-    gate = str(ctx.get("gate_short") or "the gate")
     days = int(ctx.get("days_pending") or 0)
-    body = (
-        f"<p>{_greeting(ctx)}</p>"
-        f"<p>{esc(approver)} has not yet decided the {esc(gate)} approval for "
-        f"{esc(transition)}; it has been pending for {_s(days, 'day')}. "
-        f"You may want to follow up with them directly.</p>" + _link_para(ctx) + _sign_off(ctx)
+    return _render(
+        "escalation",
+        ctx,
+        {
+            "approver_name": str(ctx.get("approver_name") or "The approver"),
+            "gate_short": str(ctx.get("gate_short") or "the gate"),
+            "days_pending_text": _s(days, "day"),
+        },
     )
-    return {
-        "subject": f"Escalation: {gate} approval for {transition} pending {_s(days, 'day')}",
-        "body_html": body,
-    }
 
 
 def _chaser(ctx: Mapping[str, Any]) -> DraftText:
@@ -139,109 +160,86 @@ def _chaser(ctx: Mapping[str, Any]) -> DraftText:
         return _escalation(ctx)
     if ctx.get("days_overdue") is not None:
         return _overdue_action(ctx)
-    transition = str(ctx.get("transition_name", ""))
     when = _when(ctx)
-    subject = f"Action needed: {_item_title(ctx)} for {transition}"
-    if when:
-        subject += f" ({when})"
-    n = len(_items(ctx))
-    intro = (
-        f"<p>{_greeting(ctx)}</p>"
-        f"<p>{esc(transition)} is heading to {esc(when or 'its next gate')}. "
-        f"Could you please update {'this item' if n == 1 else 'these items'} "
-        f"or let us know what is blocking you?</p>"
+    items = _items(ctx)
+    return _render(
+        "chaser",
+        ctx,
+        {
+            "item_title": _item_title(ctx),
+            "when_suffix": f" ({when})" if when else "",
+            "when_or_next_gate": when or "its next gate",
+            "item_phrase": "this item" if len(items) == 1 else "these items",
+            "deep_link": ctx.get("deep_link") or _item_link(ctx, items[0] if items else {}),
+        },
     )
-    link = esc(ctx.get("deep_link") or _item_link(ctx, _items(ctx)[0] if _items(ctx) else {}))
-    body = intro + _item_list(ctx) + f'<p><a href="{link}">Open in Orion</a></p>' + _sign_off(ctx)
-    return {"subject": subject, "body_html": body}
-
-
-def _simple_reminder(ctx: Mapping[str, Any], subject: str, text: str) -> DraftText:
-    body = (
-        f"<p>{_greeting(ctx)}</p><p>{text}</p>" + _item_list(ctx) + _link_para(ctx) + _sign_off(ctx)
-    )
-    return {"subject": subject, "body_html": body}
 
 
 def _reminder(ctx: Mapping[str, Any]) -> DraftText:
-    transition = str(ctx.get("transition_name", ""))
-    gate_short = str(ctx.get("gate_short") or "the gate")
     if ctx.get("pending_step"):
         days = int(ctx.get("days_pending") or 0)
-        return _simple_reminder(
+        return _render(
+            "pending_approval",
             ctx,
-            f"Reminder: {gate_short} approval for {transition} is waiting for you",
-            f"Your approval of {esc(gate_short)} for {esc(transition)} has been pending for "
-            f"{_s(days, 'day')}. Please review and decide in Orion.",
+            {
+                "gate_short": str(ctx.get("gate_short") or "the gate"),
+                "days_pending_text": _s(days, "day"),
+            },
         )
     if ctx.get("monitoring"):
-        return _simple_reminder(
-            ctx,
-            f"Monitoring requirements for {transition}",
-            f"{esc(transition)} is in the design stage. Please capture the monitoring "
-            f"requirements below with the team.",
-        )
+        return _render("monitoring_request", ctx, {})
     if ctx.get("support_model"):
-        return _simple_reminder(
-            ctx,
-            str(ctx.get("subject") or "Create support model now?"),
-            f"The support-model evidence for {esc(transition)} has been accepted. "
-            f"Orion can now prepare the support model.",
-        )
+        return _render("support_model_prompt", ctx, {})
     n = len(_items(ctx))
     when = _when(ctx)
-    subject = f"Reminder: {_s(n, 'open item')} for {transition}" + (f" ({when})" if when else "")
-    body = (
-        f"<p>{_greeting(ctx)}</p>"
-        f"<p>A friendly reminder that {_s(n, 'item')} for {esc(transition)} "
-        f"{'is' if n == 1 else 'are'} still open.</p>" + _item_list(ctx) + _sign_off(ctx)
+    return _render(
+        "reminder",
+        ctx,
+        {
+            "open_item_count_text": _s(n, "open item"),
+            "item_count_text": _s(n, "item"),
+            "when_suffix": f" ({when})" if when else "",
+            "is_are": "is" if n == 1 else "are",
+        },
     )
-    return {"subject": subject, "body_html": body}
 
 
 def _input_request(ctx: Mapping[str, Any]) -> DraftText:
-    transition = str(ctx.get("transition_name", ""))
-    n = len(_items(ctx))
-    subject = f"Input needed: {_s(n, 'input')} for {transition}"
-    body = (
-        f"<p>{_greeting(ctx)}</p>"
-        f"<p>To complete the estimate for {esc(transition)} we still need your input on:</p>"
-        + _item_list(ctx)
-        + "<p>Please reply with the figures or add them directly in Orion.</p>"
-        + _sign_off(ctx)
-    )
-    return {"subject": subject, "body_html": body}
+    return _render("input_request", ctx, {"input_count_text": _s(len(_items(ctx)), "input")})
 
 
 def _approval_request(ctx: Mapping[str, Any]) -> DraftText:
-    transition = str(ctx.get("transition_name", ""))
     gate = str(ctx.get("gate_short") or ctx.get("gate") or "gate")
     link = ctx.get("deep_link") or f"{_base()}/transitions/{ctx.get('transition_id', '')}/gates"
     verdict = str(ctx.get("verdict") or "").strip()
     role = str(ctx.get("approver_role") or "").strip()
     summary = str(ctx.get("summary") or "").strip()
-    body = (
-        f"<p>{_greeting(ctx)}</p>"
-        f"<p>{esc(transition)} is ready for your approval at {esc(gate)}"
-        + (f" (readiness: {esc(verdict)})" if verdict else "")
-        + ".</p>"
-        + (f"<p>{esc(summary)}</p>" if summary else "")
-        + (f"<p>First approver: {esc(role)}.</p>" if role else "")
-        + f'<p><a href="{esc(link)}">Review and approve in Orion</a></p>'
-        + _sign_off(ctx)
+    return _render(
+        "approval_request",
+        ctx,
+        {
+            "gate_short": gate,
+            "deep_link": link,
+            "verdict": verdict,
+            "approver_role": role,
+            "verdict_suffix": f" (readiness: {esc(verdict)})" if verdict else "",
+            "summary_html": f"<p>{esc(summary)}</p>" if summary else "",
+            "approver_line": f"<p>First approver: {esc(role)}.</p>" if role else "",
+        },
     )
-    return {"subject": f"Approval request: {gate} for {transition}", "body_html": body}
 
 
 def _leadership_update(ctx: Mapping[str, Any]) -> DraftText:
     scope = str(ctx.get("scope") or ctx.get("transition_name") or "all transitions")
     paragraphs = [p.strip() for p in str(ctx.get("text") or "").split("\n\n") if p.strip()]
-    body = (
-        f"<p>{_greeting(ctx)}</p>"
-        + "".join(f"<p>{esc(p).replace(chr(10), '<br>')}</p>" for p in paragraphs)
-        + _sign_off(ctx)
+    return _render(
+        "leadership_update",
+        ctx,
+        {
+            "scope": scope,
+            "paragraphs": "".join(f"<p>{esc(p).replace(chr(10), '<br>')}</p>" for p in paragraphs),
+        },
     )
-    return {"subject": f"Leadership update: {scope}", "body_html": body}
 
 
 _BUILDERS = {

@@ -19,6 +19,7 @@ ID_FORMATS: dict[str, int] = {
     "CR-": 2,
     "DEF-": 3,
     "APR-": 4,
+    "U": 2,  # users: U17, U18 ...
 }
 
 

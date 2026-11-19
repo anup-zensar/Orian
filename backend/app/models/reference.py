@@ -41,8 +41,7 @@ class AppSetting(TimestampMixin, Base):
     """Small key/value store (e.g. "today_override", "last_reminder_run", "schema_version").
 
     CR-01 settings documents (JSON, read through ``app.domain.cfg``): ``cfg.thresholds``,
-    ``cfg.gates``, ``cfg.gate_outcome_labels``, ``cfg.gate_chain``, ``cfg.mock_approver``,
-    ``cfg.labels``, ``cfg.lenses``, ``cfg.tiers``, ``cfg.tier_dimensions``.
+    ``cfg.gate_chain``, ``cfg.mock_approver``, ``cfg.tiers``, ``cfg.tier_dimensions``.
     """
 
     __tablename__ = "app_settings"
@@ -72,7 +71,6 @@ class FlavourRule(TimestampMixin, Base):
     # intake field keys that are required for this type (e.g. audience, write_actions)
     required_intake_fields: Mapped[list[str]] = mapped_column(JSON, default=list)
     synonyms: Mapped[list[str]] = mapped_column(JSON, default=list)  # Orion natural language
-    color: Mapped[str | None] = mapped_column(String(30), nullable=True)  # colour token
 
 
 class Portfolio(TimestampMixin, Base):
@@ -211,7 +209,7 @@ class IntakeField(TimestampMixin, Base):
 
 
 class Role(TimestampMixin, Base):
-    """A role (design 1.6): the eight built-ins plus admin-created ones. Orion is never a role."""
+    """One of the eight built-in roles; the Admin edits labels and description only. Orion is never a role."""
 
     __tablename__ = "roles"
 
@@ -224,7 +222,7 @@ class Role(TimestampMixin, Base):
     is_builtin: Mapped[bool] = mapped_column(Boolean, default=False)
     has_transition_slot: Mapped[bool] = mapped_column(
         Boolean, default=False
-    )  # a person per transition
+    )  # a person per transition (fixed: the five roles with a Transition column)
     transition_column: Mapped[str | None] = mapped_column(
         String(40), nullable=True
     )  # built-in slots
@@ -232,7 +230,6 @@ class Role(TimestampMixin, Base):
         Boolean, default=False
     )  # may be an approval-step role
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
-    color: Mapped[str | None] = mapped_column(String(30), nullable=True)
 
 
 class RolePermission(TimestampMixin, Base):
@@ -267,22 +264,6 @@ class TierQuestion(TimestampMixin, Base):
     hint: Mapped[str] = mapped_column(Text, default="")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
-
-
-class TierRule(TimestampMixin, Base):
-    """BR-011 as data. First matching active rule (by ``sort_order``) wins, otherwise the default tier.
-    ``conditions`` = [{source: question|intake|custom, key, op: yes|no|equals|not_equals|in,
-    value, rationale}]."""
-
-    __tablename__ = "tier_rules"
-
-    id: Mapped[str] = mapped_column(String(20), primary_key=True)  # RULE-1 ...
-    sort_order: Mapped[int] = mapped_column(Integer, default=0)
-    label: Mapped[str] = mapped_column(String(120), default="")
-    result_tier: Mapped[int] = mapped_column(Integer)
-    match: Mapped[str] = mapped_column(String(3), default="any")  # any | all
-    conditions: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
-    active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 class MessageTemplate(TimestampMixin, Base):

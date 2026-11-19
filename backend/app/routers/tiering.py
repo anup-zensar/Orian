@@ -33,8 +33,9 @@ def propose_tier(
     "External" or sensitive_data "Personal sensitive" or write_actions "Yes" -> Tier 3; TQ5 yes ->
     Tier 1; TQ4 yes -> Tier 2; else Tier 3. Rationale lists the facts that applied ("Internal
     audience", "No write actions", "TQ4 = yes -> Tier 2"). ``tier`` is the definition card from
-    reference tiers, ``dimensions`` the three tier dimensions. 422 when an answers key is not TQ1..TQ5
-    or an intake value is not a reference option.
+    the configured tier definitions, ``dimensions`` the tier dimensions. 422 when an answers key is not
+    a tiering question or an intake value is not an option. The question wording and tier definitions
+    are configuration (Admin: Rules & thresholds); the rule itself is fixed.
     """
     from app.domain import tiering as tiering_domain
 
@@ -53,7 +54,7 @@ def propose_transition_tier(
     accepted.
 
     403 without PROPOSE_TIER; 404 unknown id; 409 "Tiering applies to AI project types only" when the
-    flavour does not require tiering; 409 "Tier already confirmed – IRM must change it" when the
+    project type does not require tiering; 409 "Tier already confirmed – IRM must change it" when the
     tier is already Confirmed (the OR focal may not overwrite a confirmed tier).
     Upserts TierAssessment (answers, proposed_tier, rationale, proposed_by = user), sets
     Transition.risk_tier = proposed and tier_status "Proposed". If the assessment is already launched
@@ -102,12 +103,13 @@ def get_ai_profile(
     db: Session = Depends(get_db),
 ) -> AIProfileOut:
     """AI profile questionnaire (spec §8.5 step 3). 404 unknown id; 409 "AI profile applies to AI
-    project types only" for non-AI flavours. Returns empty defaults when none was saved yet."""
+    project types only" when the project type's "Has AI profile" switch is off. Returns empty defaults when none was saved yet.
+    """
     from app.domain import tiering as tiering_domain
     from app.domain.intake import get_transition
 
     t = get_transition(db, transition_id)
-    tiering_domain.require_ai_flavour(db, t, "AI profile applies to AI project types only")
+    tiering_domain.require_ai_profile(db, t, "AI profile applies to AI project types only")
     return tiering_domain.profile_out(db, t)
 
 
@@ -118,8 +120,8 @@ def put_ai_profile(
     user: User = Depends(require(Perm.EDIT_AI_PROFILE)),
     db: Session = Depends(get_db),
 ) -> AIProfileOut:
-    """Replace the AI profile (upsert). 403 without EDIT_AI_PROFILE; 404 unknown id; 409 for non-AI
-    flavours. Audit Human "AI profile updated"."""
+    """Replace the AI profile (upsert). 403 without EDIT_AI_PROFILE; 404 unknown id; 409 when the project
+    type has no AI profile. Audit Human "AI profile updated"."""
     from app.domain import tiering as tiering_domain
     from app.domain.intake import get_transition
 

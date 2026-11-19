@@ -38,6 +38,8 @@ def get_current_user(
     user = db.get(User, x_demo_user.strip())
     if user is None:
         raise Unauthorized(f"Unknown demo user '{x_demo_user}'")
+    if not user.active:
+        raise Unauthorized(f"{user.name} has been deactivated - pick another demo user")
     return user
 
 

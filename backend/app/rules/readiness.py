@@ -107,7 +107,10 @@ def in_scope(item: ReadinessItem, gate: str) -> bool:
     )
 
 
-def compute_readiness(items: Iterable[ReadinessItem], gate: str) -> Readiness:
+def compute_readiness(
+    items: Iterable[ReadinessItem], gate: str, critical_value: str = "Critical"
+) -> Readiness:
+    """``critical_value`` is the gap severity that counts as critical (``cfg.critical_severity``)."""
     if gate not in GATE_ORDER:
         raise ValueError(f"Unknown gate {gate!r}")
     buckets = {lens: [0, 0, 0, 0, 0, 0] for lens in LENSES}  # scope, done, prog, new, gaps, crit
@@ -120,7 +123,7 @@ def compute_readiness(items: Iterable[ReadinessItem], gate: str) -> Readiness:
             b[1] += 1
         elif item.status in GAP_STATUSES:
             b[4] += 1
-            if item.gap_severity == "Critical":
+            if item.gap_severity == critical_value:
                 b[5] += 1
         elif item.status in IN_PROGRESS_STATUSES:
             b[2] += 1

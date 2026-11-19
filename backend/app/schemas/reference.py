@@ -2,9 +2,9 @@
 roles, ocet config) – everything the UI needs for forms, chips and labels.
 
 CR-01: every existing key keeps its shape (additive changes only, tests/test_config_reference_compat.py).
-New keys: ``lists`` (all option lists), ``intake_fields``, ``checklists``, ``labels``, ``thresholds``,
-``gate_labels``, ``approval_chain_labels``; ``project_types``, ``portfolio_details``, ``roles``,
-``gates`` and ``approval_chains`` gain fields. Inactive values are left out unless the request has
+New keys: ``lists`` (all option lists), ``intake_fields``, ``checklists``, ``thresholds``,
+``approval_chain_labels``; ``project_types``, ``portfolio_details``, ``roles`` and
+``approval_chains`` gain fields. Inactive values are left out unless the request has
 ``?include_inactive=true`` (the UI's reference query does, and filters on ``active`` itself)."""
 
 from __future__ import annotations
@@ -45,7 +45,6 @@ class ProjectTypeOut(BaseModel):
     has_eval_metrics: bool = False
     required_intake_fields: list[str] = []
     synonyms: list[str] = []
-    color: str | None = None
 
 
 class IntakeExtraFieldOut(BaseModel):
@@ -120,7 +119,6 @@ class RoleOut(BaseModel):
     transition_column: str | None = None
     can_approve: bool = False
     sort_order: int = 0
-    color: str | None = None
 
 
 class OptionOut(BaseModel):
@@ -170,12 +168,6 @@ class ChecklistRefOut(BaseModel):
     is_builtin: bool = False
     active: bool = True
     sort_order: int = 0
-
-
-class GateLabelOut(BaseModel):
-    label: str
-    short: str
-    description: str = ""
 
 
 class ChecklistCountsOut(BaseModel):
@@ -245,9 +237,7 @@ class ReferenceOut(BaseModel):
     lists: dict[str, list[OptionOut]] = {}
     intake_fields: list[IntakeFieldRefOut] = []
     checklists: list[ChecklistRefOut] = []
-    labels: dict[str, str] = {}  # display overrides of workflow vocabulary
     thresholds: dict[str, Any] = (
         {}
     )  # display subset: rag, insights, calendar_horizon_days, default_tier ...
-    gate_labels: dict[str, GateLabelOut] = {}
     approval_chain_labels: dict[str, str] = {}

@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app import clock
 from app.access import ensure_transition_role, transition_denial
 from app.config import get_settings
-from app.domain import audit
+from app.domain import audit, cfg
 from app.domain.ids import next_id
 from app.domain.records import find_item, get_transition, person, users_by_id
 from app.errors import BadRequest, NotFound
@@ -162,24 +162,32 @@ def add_evidence(
     reasons: list[str] = []
     if not title:
         reasons.append("Evidence needs a title")
-    if type == "Generated":
-        reasons.append("'Generated' evidence is created by the system only")
-    has_file = content is not None and bool(filename)
-    link = _clean_url(url) if type in ("Document", "Recording", "Link") else None
-    if type in ("Document", "Recording") and not has_file and link is None:
-        reasons.append(f"{type} evidence needs a file (or a link)")
-    if type == "Link" and link is None:
-        reasons.append("Link evidence needs a url")
-    if type == "Email sign-off" and not (text or "").strip():
-        reasons.append("Email sign-off evidence needs the e-mail text")
-    if type not in ("Document", "Link", "Email sign-off", "Recording", "Generated"):
+    # What a type needs comes from the "Evidence types" dropdown list (meta.needs):
+    # file = a file or a link, url = a link, text = the e-mail text, none = system only.
+    known = type in cfg.option_values(db, "evidence_types", active_only=False)
+    meta = cfg.option_meta(db, "evidence_types", type)
+    needs = meta.get("needs")
+    label = cfg.option_label(db, "evidence_types", type)
+    if not known:
         reasons.append(f"Unknown evidence type '{type}'")
+    elif meta.get("system") or needs == "none":
+        reasons.append(f"'{label}' evidence is created by the system only")
+    elif type not in cfg.option_values(db, "evidence_types"):
+        reasons.append(f"Evidence type '{label}' is no longer offered")
+    has_file = content is not None and bool(filename)
+    link = _clean_url(url) if needs in ("file", "url") else None
+    if needs == "file" and not has_file and link is None:
+        reasons.append(f"{label} evidence needs a file (or a link)")
+    if needs == "url" and link is None:
+        reasons.append(f"{label} evidence needs a url")
+    if needs == "text" and not (text or "").strip():
+        reasons.append(f"{label} evidence needs the e-mail text")
     if reasons:
         raise BadRequest("Invalid evidence", reasons)
 
     stored_url = link or ""
     stored_path: str | None = None
-    if type in ("Document", "Recording") and content is not None and filename:
+    if needs == "file" and content is not None and filename:
         saved = get_document_store().save(transition.id, filename, content)
         stored_url = saved["url"]
         stored_path = saved["path"]
@@ -192,7 +200,7 @@ def add_evidence(
         type=type,
         url=stored_url,
         file_path=stored_path,
-        text=(text or "").strip() if type == "Email sign-off" else None,
+        text=(text or "").strip() if needs == "text" else None,
         submitted_by=user.id,
         status="Submitted",
     )

@@ -31,7 +31,6 @@ from app.models import (
 from app.permissions import DENIAL_REASONS, Perm, has_perm
 from app.rules import gates as rules
 from app.rules.constants import (
-    AI_PROJECT_TYPES,
     APPLIES,
     DONE_STATUSES,
     GATE_ORDER,
@@ -106,7 +105,7 @@ def _evals(db: Session, transition: Transition, gate: str) -> tuple[list[rules.F
     """(failed evals, unevaluated metric count) for AI flavours; failed only listed at AtD."""
     from app.domain import eval as eval_domain  # local import: eval imports records/access
 
-    if transition.project_type not in AI_PROJECT_TYPES or transition.risk_tier is None:
+    if not eval_domain.has_eval_metrics(db, transition) or transition.risk_tier is None:
         return [], 0
     # Always the CURRENT tier's targets and the shared pass rule (BE#5): a tier change or an Admin
     # edit of the targets changes the blockers without re-importing results.
@@ -137,6 +136,9 @@ def _evals(db: Session, transition: Transition, gate: str) -> tuple[list[rules.F
 
 def load_gate_inputs(db: Session, transition: Transition, gate: str) -> GateInputs:
     """Load the rule context for ``gate`` (a valid gate code)."""
+    from app.domain import eval as eval_domain  # local imports: they import records / access
+    from app.domain import scope as scope_domain
+
     gate_order = GATE_ORDER[gate]
     users = {u.id: u for u in db.scalars(select(User)).all()}
     rows = db.scalars(
@@ -210,10 +212,12 @@ def load_gate_inputs(db: Session, transition: Transition, gate: str) -> GateInpu
                 covered=covered_cond or covered_exc,
             )
         )
-    lens_pct = compute_readiness(readiness_items, gate).lens_pct
+    lens_pct = compute_readiness(readiness_items, gate, cfg.critical_severity(db)).lens_pct
 
-    ai = transition.project_type in AI_PROJECT_TYPES
-    failed, unevaluated = _evals(db, transition, gate) if ai else ([], 0)
+    # The tier gate check and the AtD eval check follow the project-type switches, not its name.
+    has_evals = eval_domain.has_eval_metrics(db, transition)
+    ai = has_evals or scope_domain.requires_tiering(db, transition.project_type)
+    failed, unevaluated = _evals(db, transition, gate) if has_evals else ([], 0)
 
     estimate = db.scalars(
         select(OcetEstimate).where(OcetEstimate.transition_id == transition.id)
@@ -347,7 +351,7 @@ def synthetic_conditions(ctx: rules.GateContext) -> list[rules.ConditionInput]:
             continue
         if ctx.gate == "SG3" and i.lens == "Compliance":
             continue
-        if critical_blocks and i.gap_severity == "Critical":
+        if critical_blocks and i.gap_severity == ctx.critical_value:
             continue
         if GATE_ORDER.get(i.due_gate, 99) > GATE_ORDER[ctx.gate]:
             continue
@@ -355,8 +359,8 @@ def synthetic_conditions(ctx: rules.GateContext) -> list[rules.ConditionInput]:
     return out
 
 
-def _priority(b: rules.BlockingItem, linked: dict[str, str | None]) -> int:
-    if b.gap_severity == "Critical":
+def _priority(b: rules.BlockingItem, linked: dict[str, str | None], critical_value: str) -> int:
+    if b.gap_severity == critical_value:
         return 0
     if linked.get(b.item_id):
         return 1
@@ -514,7 +518,9 @@ def compute_readiness_check(
     # Orion agent: actions + narrative (proposals only, BR-050)
     ordered = sorted(
         result.blocking,
-        key=lambda b: _priority(b, {k: v.linked_module for k, v in facts.items()}),
+        key=lambda b: _priority(
+            b, {k: v.linked_module for k, v in facts.items()}, ctx.critical_value
+        ),
     )
     gaps = [_gap(db, b, inputs, facts, transition, ctx) for b in ordered]
     if can_request:

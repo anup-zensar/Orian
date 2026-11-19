@@ -24,6 +24,12 @@ import { SectionCard } from '../../../components/SectionCard';
 import { useApiErrorToast } from '../../../hooks/useApiErrorToast';
 import { daysLabel, formatDate } from '../../../lib/format';
 import { useReference } from '../../reference/api';
+import {
+  colorForOption,
+  itemStatusList,
+  optionLabelFrom,
+  useOptionLabel,
+} from '../../reference/options';
 import { useTransition } from '../../transition/api';
 import { ActionDialog, type ActionPrefill } from '../../records/ActionDialog';
 import {
@@ -44,6 +50,7 @@ const DEFAULT_GAP_STATUSES = ['Gap', 'Non-compliant'];
 /** Gaps & actions tab (FR-032, spec 8.7 c): gaps with Orion recommendations, and the action table. */
 export function GapsTab({ transitionId }: TabProps) {
   const s = useRecordStyles();
+  const optionLabel = useOptionLabel();
   const navigate = useNavigate();
   const { params, set } = useUrlParams();
   const showError = useApiErrorToast();
@@ -126,9 +133,10 @@ export function GapsTab({ transitionId }: TabProps) {
                     </Subtitle2>
                     <Badge
                       appearance="tint"
-                      color={item.gap_severity === 'Critical' ? 'danger' : 'warning'}
+                      color={colorForOption(ref.data, 'severities', item.gap_severity)}
                     >
-                      {item.gap_severity ?? 'Unrated'} · {item.status}
+                      {optionLabelFrom(ref.data, 'severities', item.gap_severity) || 'Unrated'} ·{' '}
+                      {optionLabel(itemStatusList(item.lens), item.status)}
                     </Badge>
                     <LensChip lens={item.lens} />
                   </div>
@@ -236,8 +244,8 @@ export function GapsTab({ transitionId }: TabProps) {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell>{a.status}</TableCell>
-                    <TableCell>{a.priority}</TableCell>
+                    <TableCell>{optionLabel('action_statuses', a.status)}</TableCell>
+                    <TableCell>{optionLabel('action_priorities', a.priority)}</TableCell>
                     <TableCell>{a.origin}</TableCell>
                     <TableCell>
                       <div className={s.row}>

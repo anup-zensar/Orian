@@ -15,7 +15,8 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { Delete16Regular, Info16Regular } from '@fluentui/react-icons';
-import { fmtFull, OWNER_ROLES } from './format';
+import { useRoleLabel, useRoles } from '../reference/options';
+import { fmtFull } from './format';
 import { project, type EditLine } from './lineModel';
 
 const useStyles = makeStyles({
@@ -155,6 +156,9 @@ export function LinesGrid(props: {
   onRemove: (key: string) => void;
 }) {
   const s = useStyles();
+  // Any role except the Admin can own an input; labels and order are edited in Admin.
+  const ownerRoles = useRoles().filter((r) => r.code !== 'ADMIN');
+  const roleLabel = useRoleLabel();
   const { lines, years, editable } = props;
   return (
     <div className={s.wrap}>
@@ -311,12 +315,14 @@ export function LinesGrid(props: {
                         patch({ input_owner_role: d.value, input_owner_user_id: null })
                       }
                     >
-                      {OWNER_ROLES.map((r) => (
-                        <option key={r}>{r}</option>
+                      {ownerRoles.map((r) => (
+                        <option key={r.code} value={r.code}>
+                          {r.short_label}
+                        </option>
                       ))}
                     </Select>
                   ) : (
-                    l.input_owner_role
+                    roleLabel(l.input_owner_role, 'short')
                   )}
                 </td>
                 <td className={s.td}>

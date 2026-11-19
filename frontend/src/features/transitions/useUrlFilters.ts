@@ -22,12 +22,16 @@ export const FILTER_KEYS = [
 ] as const;
 
 export type FilterKey = (typeof FILTER_KEYS)[number];
+/** `?cf_<key>=value` filters on the custom fields an Admin marked "filterable". */
+export type CustomFilterKey = `cf_${string}`;
+type AnyKey = FilterKey | CustomFilterKey;
 interface RemovedFilter {
-  key: FilterKey;
+  key: AnyKey;
   value: string;
 }
 
-export type UrlFilters = Partial<Record<FilterKey, string>>;
+export type UrlFilters = Partial<Record<FilterKey, string>> &
+  Partial<Record<CustomFilterKey, string>>;
 
 const RAGS = ['Red', 'Amber', 'Green', 'Grey'];
 const STATUSES = ['Active', 'Closed'];
@@ -37,6 +41,16 @@ interface Known {
   gates?: string[];
   portfolios?: string[];
   regions?: string[];
+  /** Filterable custom fields by key with their type (undefined until the reference data loads). */
+  customFields?: Map<string, string>;
+}
+
+/** Is a `cf_<key>` value acceptable? The field must be a filterable one; yes/no needs true / false. */
+function isValidCustom(key: CustomFilterKey, value: string, known: Known): boolean {
+  if (!known.customFields) return true;
+  const type = known.customFields.get(key);
+  if (!type) return false;
+  return type !== 'boolean' || value === 'true' || value === 'false';
 }
 
 /** Is ``value`` acceptable for ``key``? Lists are undefined until the reference data loads. */
@@ -70,22 +84,40 @@ export function useUrlFilters() {
   const gates = ref.data?.gates.map((g) => g.code);
   const portfolios = ref.data?.portfolios;
   const regions = ref.data?.regions;
+  const intakeFields = ref.data?.intake_fields;
+  const customFields = useMemo(
+    () =>
+      intakeFields &&
+      new Map(
+        intakeFields
+          .filter((f) => !f.builtin && f.filterable && f.active)
+          .map((f) => [f.key, f.type] as const),
+      ),
+    [intakeFields],
+  );
   // The dropped keys travel in the (replaced) history entry's state; the next navigation clears them.
   const location = useLocation();
   const removed = ((location.state as { removedFilters?: RemovedFilter[] } | null)
     ?.removedFilters ?? []) as RemovedFilter[];
 
   const { filters, invalid } = useMemo(() => {
+    const known: Known = { gates, portfolios, regions, customFields };
     const out: UrlFilters = {};
     const bad: RemovedFilter[] = [];
     for (const key of FILTER_KEYS) {
       const value = params.get(key);
       if (!value) continue;
-      if (isValid(key, value, { gates, portfolios, regions })) out[key] = value;
+      if (isValid(key, value, known)) out[key] = value;
+      else bad.push({ key, value });
+    }
+    for (const [name, value] of params.entries()) {
+      if (!name.startsWith('cf_') || !value) continue;
+      const key = name as CustomFilterKey;
+      if (isValidCustom(key, value, known)) out[key] = value;
       else bad.push({ key, value });
     }
     return { filters: out, invalid: bad };
-  }, [params, gates, portfolios, regions]);
+  }, [params, gates, portfolios, regions, customFields]);
 
   // Drop the invalid values from the URL (replace: no extra history entry) and remember why.
   useEffect(() => {
@@ -102,7 +134,7 @@ export function useUrlFilters() {
 
   /** Merge a patch into the URL; undefined or '' removes the key. Other params are kept. */
   const update = useCallback(
-    (patch: Partial<Record<FilterKey, string | undefined>>, opts?: { replace?: boolean }) => {
+    (patch: Partial<Record<AnyKey, string | undefined>>, opts?: { replace?: boolean }) => {
       setParams(
         (prev) => {
           const next = new URLSearchParams(prev);
@@ -122,6 +154,7 @@ export function useUrlFilters() {
     setParams((prev) => {
       const next = new URLSearchParams(prev);
       for (const key of FILTER_KEYS) next.delete(key);
+      for (const key of [...next.keys()]) if (key.startsWith('cf_')) next.delete(key);
       return next;
     });
   }, [setParams]);

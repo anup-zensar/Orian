@@ -17,8 +17,9 @@ from app import clock
 from app.access import ensure_transition_role
 from app.config import get_settings
 from app.domain import audit
-from app.domain.approvals import default_approver
+from app.domain.approvals import chain_type_for_gate, default_approver
 from app.domain.html_sanitize import sanitize_html
+from app.domain.notify import message_templates
 from app.errors import BadRequest, Conflict, Forbidden
 from app.models import (
     ApprovalChainConfig,
@@ -447,6 +448,7 @@ def draft_chaser(
         "or_focal_name": focal.name if focal else "",
         "recipient_name": next(iter(owners.values())).name if len(owners) == 1 else "",
         "items": items_ctx,
+        "templates": message_templates(db),
     }
     text = get_ai_service().draft_message("chaser", ctx)
     return create_draft(
@@ -478,7 +480,7 @@ def draft_approval_request(
             "Approval cannot be requested yet",
             [check.request_denied_reason or f"{GATE_SHORT[gate]} is not ready for approval"],
         )
-    chain_type = "AtD" if gate == "SG4_ATD" else "AtO"
+    chain_type = chain_type_for_gate(db, gate) or ""
     pending = db.scalars(
         select(ApprovalRequest).where(
             ApprovalRequest.transition_id == transition.id,
@@ -523,7 +525,7 @@ def approval_request_message(
 
     if check is None:
         check = compute_readiness_check(db, transition, gate, user)
-    chain_type = "AtD" if gate == "SG4_ATD" else "AtO"
+    chain_type = chain_type_for_gate(db, gate) or ""
     config = db.get(ApprovalChainConfig, chain_type)
     first_role = sorted(config.steps, key=lambda s: s["step"])[0]["role"] if config else "OLM"
     approver_id = default_approver(db, transition, first_role)
@@ -543,5 +545,6 @@ def approval_request_message(
         "recipient_name": approver.name if approver else "",
         "or_focal_name": focal.name if focal else "",
         "summary": check.narrative,
+        "templates": message_templates(db),
     }
     return to, cc, get_ai_service().draft_message("approval request", ctx)

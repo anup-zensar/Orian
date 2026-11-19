@@ -57,6 +57,7 @@
           "users"
         ],
         "summary": "List Users",
+        "description": "The login list: active people only (an Admin deactivates, never deletes).",
         "operationId": "list_users_api_v1_users_get",
         "responses": {
           "200": {
@@ -131,7 +132,7 @@
           "transitions"
         ],
         "summary": "List Transitions",
-        "description": "All transitions matching ``filters`` with live readiness per lens, gaps, RAG and next decision\n(FR-012, BR-020, BR-021). Sorted by days to next decision (soonest first, no date last), then name.",
+        "description": "All transitions matching ``filters`` with live readiness per lens, gaps, RAG and next decision\n(FR-012, BR-020, BR-021). Sorted by days to next decision (soonest first, no date last), then name.\n\nBesides the named filters, ``?cf_<key>=value`` keeps transitions whose custom field ``cf_<key>``\n(an \"Additional details\" field added by the Admin) equals ``value`` (for a multiselect field: contains it).",
         "operationId": "list_transitions_api_v1_transitions_get",
         "parameters": [
           {
@@ -380,7 +381,7 @@
           "intake"
         ],
         "summary": "Create Transition",
-        "description": "Create a transition from the intake form (spec §8.4, FR-020). OR focal / PM / Admin only (403).\n\nValidations (422 with one reason per problem, listed in ``reasons``):\n- project_type, portfolio, region, audience, write_actions, sensitive_data, target_gate,\n  investment_type, delivery_method must be options from reference.json (project types come from\n  FlavourRule, portfolios from Portfolio).\n- Project type Agentic AI or Combined (FlavourRule.requires_tiering): audience, write_actions and\n  sensitive_data are required.\n- Portfolio Retail Site Systems (AC-05): at least one ``sites`` row and every row must have both\n  Site ID and Site key (trimmed, non-empty). Fully blank rows are dropped first; for other\n  portfolios sites are ignored (stored as []).\n- or_focal_user_id is required; every role picker must reference an existing user whose role matches\n  (or_focal -> OR_FOCAL, pm -> PM, architect -> ARCHITECT, olm -> OLM, irm -> IRM).\n- name is trimmed and non-empty.\n\nBehaviour: new id = ``app.domain.ids.next_id(db, Transition.id, \"TR-\")``; current_gate \"SG0\";\nstatus Active; autonomous_mode False; no items yet (assessment_launched_at None, scope_decisions\n{}); created_by = current user; no TierAssessment row yet. Audit event \"Transition created\" with\nactor source Human. Returns the full detail (201). The UI continues to the tiering wizard when\n``requires_tiering`` else to the Scope page.",
+        "description": "Create a transition from the intake form (spec §8.4, FR-020). OR focal / PM / Admin only (403).\n\nValidations (422 with one reason per problem, listed in ``reasons``):\n- project_type, portfolio, region, audience, write_actions, sensitive_data, target_gate,\n  investment_type, delivery_method must be active options of the configuration (Admin: Project\n  types, Portfolios, Forms & dropdowns).\n- Fields the Admin required for the project type (by default audience, write_actions and\n  sensitive_data for the AI project types) are required, as are required custom fields.\n- ``custom_fields`` ({\"cf_<key>\": value}) holds the \"Additional details\" fields of the form; every\n  key must be an active custom field and its value is checked against the field type, range and\n  dropdown list. A blank value clears the field.\n- Portfolio with \"Requires sites\" (AC-05, Retail Site Systems by default): at least one ``sites``\n  row and every row must have both Site ID and Site key (trimmed, non-empty). Fully blank rows are\n  dropped first; for other portfolios sites are ignored (stored as []).\n- or_focal_user_id is required; every role picker must reference an existing user whose role matches\n  (or_focal -> OR_FOCAL, pm -> PM, architect -> ARCHITECT, olm -> OLM, irm -> IRM).\n- name is trimmed and non-empty.\n\nBehaviour: new id = ``app.domain.ids.next_id(db, Transition.id, \"TR-\")``; current_gate \"SG0\";\nstatus Active; autonomous_mode False; no items yet (assessment_launched_at None, scope_decisions\n{}); created_by = current user; no TierAssessment row yet. Audit event \"Transition created\" with\nactor source Human. Returns the full detail (201). The UI continues to the tiering wizard when\n``requires_tiering`` else to the Scope page.",
         "operationId": "create_transition_api_v1_transitions_post",
         "parameters": [
           {
@@ -497,7 +498,7 @@
           "intake"
         ],
         "summary": "Update Transition",
-        "description": "Edit intake fields (only fields present in the body, via ``model_fields_set``).\n\n403 unless the transition's own OR focal (Perm.EDIT_TRANSITION; Admin may edit and re-assign); the\nOR focal / IRM can only be re-assigned by an Admin; tier inputs (audience, write actions, sensitive\ndata, project type) only by the OR focal and are locked (409) once the IRM confirmed the tier (before\nthat a change clears the tier proposal); 404 unknown id; 409 \"Transition is closed\" when status is\nClosed; 422 with the same option / role / site validations as create, evaluated on the merged\nresult (a field explicitly set to null clears an optional field; required fields cannot be null).\n\nBR-010 re-assembly: if the assessment is launched and project_type or portfolio changes, rebuild\nthe plan with ``rules.checklist.assemble_checklist`` (library = active PlaybookItems, flavour\nchecklists from FlavourRule of the new type, tier = confirmed or proposed tier, roles of the\ntransition) and persist ``rules.checklist.reassemble(existing, planned, library)`` (added items are\ncreated, excluded ones become Not applicable with excluded_by, existing statuses/evidence/notes of\nitems that still apply are kept, a human's own N/A is never overridden). Switching to a type that\nrequires tiering without a tier assessment keeps tier None (all AI items apply, A-35). Audit event\nwith the re-assembly counts {added, excluded, restored}. A change of pm/architect/olm/irm does not\nreassign existing item owners. Before launch only the fields change. Audit Human for every edit with\nthe changed field names in the note.",
+        "description": "Edit intake fields (only fields present in the body, via ``model_fields_set``).\n\n403 unless the transition's own OR focal (Perm.EDIT_TRANSITION; Admin may edit and re-assign); the\nOR focal / IRM can only be re-assigned by an Admin; tier inputs (audience, write actions, sensitive\ndata, project type) only by the OR focal and are locked (409) once the IRM confirmed the tier (before\nthat a change clears the tier proposal); 404 unknown id; 409 \"Transition is closed\" when status is\nClosed; 422 with the same option / role / site / custom-field validations as create, evaluated on the merged\nresult (a field explicitly set to null clears an optional field; required fields cannot be null).\n\nBR-010 re-assembly: if the assessment is launched and project_type or portfolio changes, rebuild\nthe plan with ``rules.checklist.assemble_checklist`` (library = active PlaybookItems, flavour\nchecklists from FlavourRule of the new type, tier = confirmed or proposed tier, roles of the\ntransition) and persist ``rules.checklist.reassemble(existing, planned, library)`` (added items are\ncreated, excluded ones become Not applicable with excluded_by, existing statuses/evidence/notes of\nitems that still apply are kept, a human's own N/A is never overridden). Switching to a type that\nrequires tiering without a tier assessment keeps tier None (all AI items apply, A-35). Audit event\nwith the re-assembly counts {added, excluded, restored}. A change of pm/architect/olm/irm does not\nreassign existing item owners. Before launch only the fields change. Audit Human for every edit with\nthe changed field names in the note.",
         "operationId": "update_transition_api_v1_transitions__transition_id__patch",
         "parameters": [
           {
@@ -932,7 +933,7 @@
           "tiering"
         ],
         "summary": "Propose Tier",
-        "description": "Pure BR-011 rule (spec §7.2), no persistence; used live by the wizard. Any signed-in role.\n\nEvaluated in order: TQ2 or TQ3 yes or sensitive_data \"SOX / MC\" -> Tier 4; TQ1 yes or audience\n\"External\" or sensitive_data \"Personal sensitive\" or write_actions \"Yes\" -> Tier 3; TQ5 yes ->\nTier 1; TQ4 yes -> Tier 2; else Tier 3. Rationale lists the facts that applied (\"Internal\naudience\", \"No write actions\", \"TQ4 = yes -> Tier 2\"). ``tier`` is the definition card from\nreference tiers, ``dimensions`` the three tier dimensions. 422 when an answers key is not TQ1..TQ5\nor an intake value is not a reference option.",
+        "description": "Pure BR-011 rule (spec §7.2), no persistence; used live by the wizard. Any signed-in role.\n\nEvaluated in order: TQ2 or TQ3 yes or sensitive_data \"SOX / MC\" -> Tier 4; TQ1 yes or audience\n\"External\" or sensitive_data \"Personal sensitive\" or write_actions \"Yes\" -> Tier 3; TQ5 yes ->\nTier 1; TQ4 yes -> Tier 2; else Tier 3. Rationale lists the facts that applied (\"Internal\naudience\", \"No write actions\", \"TQ4 = yes -> Tier 2\"). ``tier`` is the definition card from\nthe configured tier definitions, ``dimensions`` the tier dimensions. 422 when an answers key is not\na tiering question or an intake value is not an option. The question wording and tier definitions\nare configuration (Admin: Rules & thresholds); the rule itself is fixed.",
         "operationId": "propose_tier_api_v1_tiering_propose_post",
         "parameters": [
           {
@@ -992,7 +993,7 @@
           "tiering"
         ],
         "summary": "Propose Transition Tier",
-        "description": "OR focal proposes the tier. The server computes the proposal (BR-011) from the transition's\naudience / write_actions / sensitive_data and ``body.answers``; client-supplied tiers are not\naccepted.\n\n403 without PROPOSE_TIER; 404 unknown id; 409 \"Tiering applies to AI project types only\" when the\nflavour does not require tiering; 409 \"Tier already confirmed – IRM must change it\" when the\ntier is already Confirmed (the OR focal may not overwrite a confirmed tier).\nUpserts TierAssessment (answers, proposed_tier, rationale, proposed_by = user), sets\nTransition.risk_tier = proposed and tier_status \"Proposed\". If the assessment is already launched\nre-assemble (BR-010 step 7) with the new proposed tier and put counts in ``reassembly``.\nAudit Human \"Tier proposed\".",
+        "description": "OR focal proposes the tier. The server computes the proposal (BR-011) from the transition's\naudience / write_actions / sensitive_data and ``body.answers``; client-supplied tiers are not\naccepted.\n\n403 without PROPOSE_TIER; 404 unknown id; 409 \"Tiering applies to AI project types only\" when the\nproject type does not require tiering; 409 \"Tier already confirmed – IRM must change it\" when the\ntier is already Confirmed (the OR focal may not overwrite a confirmed tier).\nUpserts TierAssessment (answers, proposed_tier, rationale, proposed_by = user), sets\nTransition.risk_tier = proposed and tier_status \"Proposed\". If the assessment is already launched\nre-assemble (BR-010 step 7) with the new proposed tier and put counts in ``reassembly``.\nAudit Human \"Tier proposed\".",
         "operationId": "propose_transition_tier_api_v1_transitions__transition_id__tier_put",
         "parameters": [
           {
@@ -1130,7 +1131,7 @@
           "tiering"
         ],
         "summary": "Get Ai Profile",
-        "description": "AI profile questionnaire (spec §8.5 step 3). 404 unknown id; 409 \"AI profile applies to AI\nproject types only\" for non-AI flavours. Returns empty defaults when none was saved yet.",
+        "description": "AI profile questionnaire (spec §8.5 step 3). 404 unknown id; 409 \"AI profile applies to AI\nproject types only\" when the project type's \"Has AI profile\" switch is off. Returns empty defaults when none was saved yet.",
         "operationId": "get_ai_profile_api_v1_transitions__transition_id__ai_profile_get",
         "parameters": [
           {
@@ -1187,7 +1188,7 @@
           "tiering"
         ],
         "summary": "Put Ai Profile",
-        "description": "Replace the AI profile (upsert). 403 without EDIT_AI_PROFILE; 404 unknown id; 409 for non-AI\nflavours. Audit Human \"AI profile updated\".",
+        "description": "Replace the AI profile (upsert). 403 without EDIT_AI_PROFILE; 404 unknown id; 409 when the project\ntype has no AI profile. Audit Human \"AI profile updated\".",
         "operationId": "put_ai_profile_api_v1_transitions__transition_id__ai_profile_put",
         "parameters": [
           {
@@ -1511,12 +1512,6 @@
             "schema": {
               "anyOf": [
                 {
-                  "enum": [
-                    "FRAMEWORK",
-                    "AI_PLAYBOOK",
-                    "PORTFOLIO",
-                    "COMMON"
-                  ],
                   "type": "string"
                 },
                 {
@@ -1828,13 +1823,6 @@
             "schema": {
               "anyOf": [
                 {
-                  "enum": [
-                    "Document",
-                    "Link",
-                    "Email sign-off",
-                    "Recording",
-                    "Generated"
-                  ],
                   "type": "string"
                 },
                 {
@@ -3031,7 +3019,7 @@
           "ai-playbook"
         ],
         "summary": "Get Eval Metrics",
-        "description": "Eval metrics table for the transition's tier (spec 7.5, 8.7 j).\n\n* 404 unknown transition. 409 when ``project_type`` is not an AI flavour (``AI_PROJECT_TYPES``:\n  Agentic AI, Combined): \"Eval metrics apply to AI flavours only\".\n* Tier = confirmed tier if confirmed, else the proposed tier, else ``null`` (then the lowest tier's\n  targets are shown and ``tier`` is null). Rows = EvalTarget for that tier ordered by sort_order, joined\n  with the EvalResult of the transition.\n* ``status``: \"not evaluated\" when no result; for ``evaluation == \"auto\"`` pass/fail is computed from\n  ``operator`` / ``value`` vs ``result_number`` (abs<= means absolute value <= value); for manual\n  metrics from the stored ``passed`` toggle.\n* ``banner`` = \"Targets currently identical for all tiers - tier-specific thresholds to be confirmed\n  by the S&T team (editable in Admin).\" while ``targets_confirmed`` is false, else \"\".\n* ``failed_count`` counts fail rows (Technical blockers at SG4_ATD), ``not_evaluated_count`` the rest\n  (warning only).",
+        "description": "Eval metrics table for the transition's tier (spec 7.5, 8.7 j).\n\n* 404 unknown transition. 409 when the project type has no eval metrics (its \"Has eval metrics\"\n  switch is off; Agentic AI and Combined have it on): \"Eval metrics apply to AI flavours only\".\n* Tier = confirmed tier if confirmed, else the proposed tier, else ``null`` (then the lowest tier's\n  targets are shown and ``tier`` is null). Rows = EvalTarget for that tier ordered by sort_order, joined\n  with the EvalResult of the transition.\n* ``status``: \"not evaluated\" when no result; for ``evaluation == \"auto\"`` pass/fail is computed from\n  ``operator`` / ``value`` vs ``result_number`` (abs<= means absolute value <= value); for manual\n  metrics from the stored ``passed`` toggle.\n* ``banner`` = \"Targets currently identical for all tiers - tier-specific thresholds to be confirmed\n  by the S&T team (editable in Admin).\" while ``targets_confirmed`` is false, else \"\".\n* ``failed_count`` counts fail rows (Technical blockers at SG4_ATD), ``not_evaluated_count`` the rest\n  (warning only).",
         "operationId": "get_eval_metrics_api_v1_transitions__transition_id__eval_metrics_get",
         "parameters": [
           {
@@ -3703,7 +3691,7 @@
           "approvals"
         ],
         "summary": "List Approvals",
-        "description": "Approval requests, newest first (FR-070).\n\n* mine: requests with a Pending step the user can act on (step approver == user, or step role\n  == user role; IRM also sees the CISO_BISO mock step), plus the user's finished ones when\n  ``status`` is given.\n* requested: requests created_by the user.\n* all: every request; only OR_FOCAL and ADMIN, else 403 \"Only the OR focal or Admin can see\n  all approvals\".\n``can_act``, ``act_denied_reason``, ``is_mock_step`` are computed for the calling user.",
+        "description": "Approval requests, newest first (FR-070).\n\n* mine: requests with a Pending step the user can act on (step approver == user, or step role\n  == user role; IRM also sees the CISO_BISO mock step), plus the user's finished ones when\n  ``status`` is given.\n* requested: requests created_by the user.\n* all: every request; only roles with \"view all approvals\" (OR_FOCAL, ADMIN), else 403 \"Only the OR focal or Admin can see\n  all approvals\".\n``can_act``, ``act_denied_reason``, ``is_mock_step`` are computed for the calling user.",
         "operationId": "list_approvals_api_v1_approvals_get",
         "parameters": [
           {
@@ -7341,7 +7329,7 @@
           "admin config"
         ],
         "summary": "Create Playbook Item",
-        "description": "Create a library item in ANY checklist (``source`` = checklist code; GET / PUT of items\nalready exist). Validates: checklist exists and is active; ``portfolio`` required for a\n``portfolio_golden`` checklist and must exist; gate is a gate code; lens one of the three;\ntiers within ``cfg.tier_numbers``; ``default_owner_role`` an active role; id unique. New\ntransitions only. Audit ``config:playbook_items``.",
+        "description": "Create a library item in ANY checklist (``source`` = checklist code). A golden-set checklist\nneeds its ``portfolio``; gate, tiers, owner role and project types are validated. New\ntransitions only. 404 unknown checklist; 409 duplicate id.",
         "operationId": "create_playbook_item_api_v1_admin_playbook_items_post",
         "parameters": [
           {
@@ -8059,7 +8047,7 @@
           "admin"
         ],
         "summary": "Get Approval Chains",
-        "description": "Steps per approval type (OCET, AtD, AtO, SUPPORT_MODEL, EXCEPTION) plus the allowed roles\n(role list + CISO_BISO). 403 non-admin.",
+        "description": "Steps (with their labels and mock flag) and the display name per approval type (OCET, AtD, AtO,\nSUPPORT_MODEL, EXCEPTION) plus the allowed roles (roles that can approve + CISO_BISO). 403\nnon-admin.",
         "operationId": "get_approval_chains_api_v1_admin_approval_chains_get",
         "parameters": [
           {
@@ -8378,7 +8366,7 @@
           "admin"
         ],
         "summary": "Put Reminder Rules",
-        "description": "Update enabled + params per rule (name/description/autonomous_eligible are read-only).\nAudited (ReminderRule). 403; 422 unknown rule id, unknown param key, or non-positive\nthreshold.",
+        "description": "Update enabled + params per rule (R6 also item_ids / category) and switch autonomous_eligible\nOFF (never on). Name and description are read-only. Audited (ReminderRule). 403; 422 unknown\nrule id, unknown param key, non-positive threshold, or autonomy switched on.",
         "operationId": "put_reminder_rules_api_v1_admin_reminder_rules_put",
         "parameters": [
           {
@@ -8452,168 +8440,6 @@
               }
             },
             "description": "Unprocessable Content"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/users": {
-      "get": {
-        "tags": [
-          "admin"
-        ],
-        "summary": "List Admin Users",
-        "description": "Read-only list of demo users and roles (role_label filled). 403 non-admin.",
-        "operationId": "list_admin_users_api_v1_admin_users_get",
-        "parameters": [
-          {
-            "name": "X-Demo-User",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Demo-User"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/UserOut"
-                  },
-                  "title": "Response List Admin Users Api V1 Admin Users Get"
-                }
-              }
-            }
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "admin config"
-        ],
-        "summary": "Create User",
-        "description": "Create a user (id from ``ID_FORMATS[\"U\"]``: U17, U18 ...). Validates: role is an ACTIVE role;\ne-mail unique; name not Orion / agent / bot / ai. Audit ``config:users``.",
-        "operationId": "create_user_api_v1_admin_users_post",
-        "parameters": [
-          {
-            "name": "X-Demo-User",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Demo-User"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserCreateIn"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserAdminOut"
-                }
-              }
-            }
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Conflict"
           }
         }
       }
@@ -8994,7 +8820,7 @@
           "admin config"
         ],
         "summary": "Create Project Type",
-        "description": "Create a project type (no code change needed). Validates: code unique (case-insensitive) and\nprintable; every checklist exists and is a ``library`` checklist; required intake fields exist;\n``has_ai_profile`` / ``requires_tiering`` are plain flags. New transitions only. Audit\n``config:project_types``. 422 reasons per problem; 409 duplicate code. Returns the list.",
+        "description": "Create a project type (no code change needed). Checklists must be active library checklists\nand the required intake fields must exist (written to both sides, see\n``write_type_requirements``). New transitions only. 422 reasons per problem; 409 duplicate code.\nReturns the list.",
         "operationId": "create_project_type_api_v1_admin_project_types_post",
         "parameters": [
           {
@@ -9088,7 +8914,7 @@
           "admin config"
         ],
         "summary": "Update Project Type",
-        "description": "Edit label, description, flags, checklists, required intake fields (written to both sides:\nthe type's list and the fields' ``required_for_project_types``), synonyms, order, active.\nGuardrails: the last active project type cannot be deactivated (guardrail 5); a checklist must\nexist and be active. The code never changes. Returns the list. 404 unknown code.",
+        "description": "Edit label, description, flags, checklists, required intake fields, synonyms, order, active.\nThe last active project type cannot be deactivated. The code never changes. 404 unknown code.",
         "operationId": "update_project_type_api_v1_admin_project_types__code__patch",
         "parameters": [
           {
@@ -9189,7 +9015,7 @@
           "admin config"
         ],
         "summary": "Delete Project Type",
-        "description": "Delete a project type nobody uses. 409 \"Used by N transitions - deactivate instead\" when any\ntransition has it. Returns the list.",
+        "description": "Delete a project type nobody uses. 409 \"Used by N transitions - deactivate instead\".",
         "operationId": "delete_project_type_api_v1_admin_project_types__code__delete",
         "parameters": [
           {
@@ -9433,7 +9259,7 @@
           "admin config"
         ],
         "summary": "Create Checklist",
-        "description": "Create a ``library`` checklist (code ``^[A-Z][A-Z0-9_]{1,39}$``, unique). Audit\n``config:checklists``. 409 duplicate code. Returns the list.",
+        "description": "Create a ``library`` checklist (code ``^[A-Z][A-Z0-9_]{1,39}$``, unique). 409 duplicate code.",
         "operationId": "create_checklist_api_v1_admin_checklists_post",
         "parameters": [
           {
@@ -9527,7 +9353,7 @@
           "admin config"
         ],
         "summary": "Update Checklist",
-        "description": "Edit label, description, order, ``tier_filtered`` and active. ``kind`` never changes;\ndeactivating is refused (409) while an active project type lists the checklist. Returns the list.",
+        "description": "Edit label, description, order, ``tier_filtered`` and active. Deactivating is refused (409)\nwhile an active project type lists the checklist.",
         "operationId": "update_checklist_api_v1_admin_checklists__code__patch",
         "parameters": [
           {
@@ -9628,7 +9454,7 @@
           "admin config"
         ],
         "summary": "Delete Checklist",
-        "description": "Delete a custom checklist with no items and no project type. Built-ins cannot be deleted\n(409); 409 when it has items or is listed by a project type. Returns the list.",
+        "description": "Delete a custom checklist with no items and no project type; 409 otherwise (built-ins too).",
         "operationId": "delete_checklist_api_v1_admin_checklists__code__delete",
         "parameters": [
           {
@@ -9721,7 +9547,7 @@
           "admin config"
         ],
         "summary": "List Portfolios",
-        "description": "All portfolios (active and inactive) with golden-set size and ``used_by``. The golden-set\nroutes (``/admin/portfolios/{name}/golden-set``) are unchanged.",
+        "description": "All portfolios (active and inactive) with golden-set size and ``used_by``. The golden-set\nroutes (``/admin/portfolios/{name}/golden-set``) are in the playbook admin API.",
         "operationId": "list_portfolios_api_v1_admin_portfolios_get",
         "parameters": [
           {
@@ -9793,7 +9619,7 @@
           "admin config"
         ],
         "summary": "Create Portfolio",
-        "description": "Create a portfolio (name immutable and unique, short ``code``). ``requires_sites`` turns on\nthe site rows at intake. Audit ``config:portfolios``. 409 duplicate name. Returns the list.",
+        "description": "Create a portfolio (name unique, short ``code`` unique). ``requires_sites`` turns on the site\nrows at intake. 409 duplicate name.",
         "operationId": "create_portfolio_api_v1_admin_portfolios_post",
         "parameters": [
           {
@@ -9887,7 +9713,7 @@
           "admin config"
         ],
         "summary": "Update Portfolio",
-        "description": "Edit code, label, description, focus areas, ``requires_sites``, ``sites_label``, synonyms,\norder, active. The last active portfolio cannot be deactivated. Returns the list.",
+        "description": "Edit code, label, description, focus areas, ``requires_sites``, ``sites_label``, synonyms,\norder, active. The last active portfolio cannot be deactivated.",
         "operationId": "update_portfolio_api_v1_admin_portfolios__name__patch",
         "parameters": [
           {
@@ -9988,7 +9814,7 @@
           "admin config"
         ],
         "summary": "Delete Portfolio",
-        "description": "Delete an unused portfolio and its golden set. 409 \"Used by N transitions - deactivate\ninstead\". Returns the list.",
+        "description": "Delete an unused portfolio and its golden set. 409 \"Used by N transitions - deactivate\ninstead\".",
         "operationId": "delete_portfolio_api_v1_admin_portfolios__name__delete",
         "parameters": [
           {
@@ -10081,7 +9907,7 @@
           "admin config"
         ],
         "summary": "List Option Lists",
-        "description": "Every list (built-in and custom) with ``group``, ``structural`` (lock icon), declared meta\nfields and counts. Items: ``GET /admin/option-lists/{key}/items``.",
+        "description": "Every list (built-in and custom) with ``group``, ``structural`` (lock icon), declared meta\ncolumns and counts. Items: ``GET /admin/option-lists/{key}/items``.",
         "operationId": "list_option_lists_api_v1_admin_option_lists_get",
         "parameters": [
           {
@@ -10153,7 +9979,7 @@
           "admin config"
         ],
         "summary": "Create Option List",
-        "description": "Create a custom list (key unique, ``^[a-z][a-z0-9_]{1,39}$``) for custom fields. Audit\n``config:option_lists``. 409 duplicate key. Returns the list of lists.",
+        "description": "Create a custom list (key unique, ``^[a-z][a-z0-9_]{1,39}$``) for custom fields. 409\nduplicate key.",
         "operationId": "create_option_list_api_v1_admin_option_lists_post",
         "parameters": [
           {
@@ -10247,7 +10073,7 @@
           "admin config"
         ],
         "summary": "Update Option List",
-        "description": "Edit label, description, group, declared meta fields. A structural list accepts label and\ndescription only (422 \"Behaviour depends on these values - only the labels can change\").",
+        "description": "Edit label, description, group, meta columns. A structural list accepts label and description\nonly (422 \"Behaviour depends on these values - only the labels can change\").",
         "operationId": "update_option_list_api_v1_admin_option_lists__key__patch",
         "parameters": [
           {
@@ -10348,7 +10174,7 @@
           "admin config"
         ],
         "summary": "Delete Option List",
-        "description": "Delete a custom list not used by any intake field. Built-in and structural lists cannot be\ndeleted (409); 409 while a field uses it.",
+        "description": "Delete a custom list not used by any field. Built-in lists cannot be deleted (409).",
         "operationId": "delete_option_list_api_v1_admin_option_lists__key__delete",
         "parameters": [
           {
@@ -10518,7 +10344,7 @@
           "admin config"
         ],
         "summary": "Put Option Items",
-        "description": "Replace the ORDERED items (position = ``sort_order``). Existing values keep their identity\n(the value never changes); new values are added; a used value missing from the body or sent\n``active=false`` is DEACTIVATED (warning with the count), an unused one is removed. Structural\nlists: labels / descriptions only (add / remove / recode refused with a reason). Validates meta\nagainst the declared meta fields; ``severities``: exactly one ``counts_as_critical``;\n``evidence_types`` ``needs`` in file / url / text / none; the last active value of ``regions``\ncannot be deactivated. Returns the items.",
+        "description": "Replace the ORDERED items (position = ``sort_order``). The value of a row never changes; a new\nvalue adds a row; a used value that is missing or sent ``active=false`` is DEACTIVATED (see\n``warnings``), an unused one is removed. Structural lists: labels and descriptions only.\n``severities``: exactly one active ``counts_as_critical``; ``evidence_types`` ``needs`` in\nfile / url / text / none; a built-in list keeps one active value.",
         "operationId": "put_option_items_api_v1_admin_option_lists__key__items_put",
         "parameters": [
           {
@@ -10564,96 +10390,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OptionItemsOut"
-                }
-              }
-            }
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/config/reset": {
-      "post": {
-        "tags": [
-          "admin config"
-        ],
-        "summary": "Reset Config Section",
-        "description": "EXTENSION of design 4 (\"Reset section to defaults\"): restore one editor from seed/config.json.\n409 when it would remove a value that is in use. Audit ``config:<section>``.",
-        "operationId": "reset_config_section_api_v1_admin_config_reset_post",
-        "parameters": [
-          {
-            "name": "X-Demo-User",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Demo-User"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConfigResetIn"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConfigResetOut"
                 }
               }
             }
@@ -10779,7 +10515,7 @@
           "admin config"
         ],
         "summary": "Create Intake Field",
-        "description": "Create a custom field. Key ``cf_<slug>`` from the label (unique, ``^[a-z][a-z0-9_]{1,40}$``\nafter the prefix). select / multiselect need an existing option list (``option_list``); number\naccepts ``min`` / ``max``; text ``max_length``. ``required_mode`` by_project_type needs project\ntypes that exist. Values live in ``Transition.custom_fields`` (``AIProfile.extra`` for the\nai_profile form). Audit ``config:intake_fields``.",
+        "description": "Create a custom field. The key ``cf_<slug>`` is made from the label. select / multiselect need\nan existing option list; number accepts ``min`` / ``max``; text ``max_length``. Values live on\nthe transition (``custom_fields``).",
         "operationId": "create_intake_field_api_v1_admin_intake_fields_post",
         "parameters": [
           {
@@ -10967,7 +10703,7 @@
           "admin config"
         ],
         "summary": "Update Intake Field",
-        "description": "Edit a field. Label / help / section are editable everywhere. Structural fields (name,\nproject_type, portfolio, region, or_focal_user_id) refuse hide, optional and deactivate; the\n``type`` is refused once any transition holds a value and always for built-ins; a used option\nremoval becomes deactivation. ``required_for_project_types`` and the project types'\n``required_intake_fields`` are written through one function so they cannot diverge.",
+        "description": "Edit a field. Built-in fields: label, help and (optional ones) visibility only. Custom\nfields: everything, but the ``type`` is refused once any transition holds a value. Required-for-\nproject-types is written to the project types too.",
         "operationId": "update_intake_field_api_v1_admin_intake_fields__key__patch",
         "parameters": [
           {
@@ -11068,7 +10804,7 @@
           "admin config"
         ],
         "summary": "Delete Intake Field",
-        "description": "Delete an UNUSED custom field. Built-in fields cannot be deleted (409); a used custom field\nanswers 409 \"Used by N transitions - deactivate instead\" (deactivating hides it; stored values\nstay readable under \"Retired fields\").",
+        "description": "Delete an UNUSED custom field. Built-in fields cannot be deleted (409); a used custom field\nanswers 409 \"Used by N transitions - deactivate instead\".",
         "operationId": "delete_intake_field_api_v1_admin_intake_fields__key__delete",
         "parameters": [
           {
@@ -11161,7 +10897,7 @@
           "admin config"
         ],
         "summary": "List Roles",
-        "description": "All roles (active and inactive) with ``user_count`` and lock reasons.",
+        "description": "The eight built-in roles with ``user_count`` and lock reasons.",
         "operationId": "list_roles_api_v1_admin_roles_get",
         "parameters": [
           {
@@ -11227,98 +10963,6 @@
             "description": "Unprocessable Content"
           }
         }
-      },
-      "post": {
-        "tags": [
-          "admin config"
-        ],
-        "summary": "Create Role",
-        "description": "Create a role (code immutable, unique). Refused: names or codes containing Orion / agent /\nbot / ai (reserved, BR-050). A role with a transition slot gets a person per transition in\n``Transition.role_assignments``. A new role holds only ``view`` until the matrix is edited.\nAudit ``config:roles``.",
-        "operationId": "create_role_api_v1_admin_roles_post",
-        "parameters": [
-          {
-            "name": "X-Demo-User",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Demo-User"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RoleCreateIn"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/RoleAdminOut"
-                  },
-                  "title": "Response Create Role Api V1 Admin Roles Post"
-                }
-              }
-            }
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        }
       }
     },
     "/api/v1/admin/roles/{code}": {
@@ -11327,7 +10971,7 @@
           "admin config"
         ],
         "summary": "Update Role",
-        "description": "Edit labels, description, colour, order, ``can_approve``, ``has_transition_slot`` (ADMIN is\nlocked false; a built-in slot cannot be turned off), active. Deactivating needs no active user\nleft with the role (409) and is refused for ADMIN.",
+        "description": "Rename a role (label, short label, phrase, description). Codes are fixed; the reserved words\nOrion / agent / bot / ai are refused (BR-050).",
         "operationId": "update_role_api_v1_admin_roles__code__patch",
         "parameters": [
           {
@@ -11422,24 +11066,17 @@
             "description": "Conflict"
           }
         }
-      },
-      "delete": {
+      }
+    },
+    "/api/v1/admin/users": {
+      "get": {
         "tags": [
           "admin config"
         ],
-        "summary": "Delete Role",
-        "description": "Delete an unused custom role (no users, no approval step, no assignment). Built-in roles\ncannot be deleted (409).",
-        "operationId": "delete_role_api_v1_admin_roles__code__delete",
+        "summary": "List Users",
+        "description": "Everybody (inactive included) with the number of active transitions each person is assigned\nto. The login list (``GET /users``) shows active people only.",
+        "operationId": "list_users_api_v1_admin_users_get",
         "parameters": [
-          {
-            "name": "code",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Code"
-            }
-          },
           {
             "name": "X-Demo-User",
             "in": "header",
@@ -11465,9 +11102,87 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/RoleAdminOut"
+                    "$ref": "#/components/schemas/UserAdminOut"
                   },
-                  "title": "Response Delete Role Api V1 Admin Roles  Code  Delete"
+                  "title": "Response List Users Api V1 Admin Users Get"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin config"
+        ],
+        "summary": "Create User",
+        "description": "Create a user (next id U17, U18 ...). The role must be active, the e-mail unique, the name not\nOrion / agent / bot / ai.",
+        "operationId": "create_user_api_v1_admin_users_post",
+        "parameters": [
+          {
+            "name": "X-Demo-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreateIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAdminOut"
                 }
               }
             }
@@ -11521,7 +11236,7 @@
           "admin config"
         ],
         "summary": "Update User",
-        "description": "Edit name, e-mail, role, focal label, title. You cannot change your own role away from\nAdmin, and the last active Admin keeps the role (guardrail 4). 404 unknown user.",
+        "description": "Edit name, e-mail, role, focal label, title; ``active=true`` re-activates. You cannot move\nyourself, or the last active Admin, away from Admin. 404 unknown user.",
         "operationId": "update_user_api_v1_admin_users__user_id__patch",
         "parameters": [
           {
@@ -11620,7 +11335,7 @@
           "admin config"
         ],
         "summary": "Deactivate User",
-        "description": "Deactivate a user (never delete). Refused for yourself and for the last active Admin\n(guardrail 4) and when it would leave nobody holding the ``admin`` permission. The response\nwarns \"assigned on N active transitions\"; ``reassign_to`` (an active user of the same role)\ntakes those slots over in the same audited action. Old records still resolve the name.",
+        "description": "Deactivate a user (never delete). Refused for yourself and for the last active Admin. The\nanswer says how many active transitions the person is assigned to; ``reassign_to`` (an active\nuser with the same role) takes those slots over in the same audited action.",
         "operationId": "deactivate_user_api_v1_admin_users__user_id__deactivate_post",
         "parameters": [
           {
@@ -11719,7 +11434,7 @@
           "admin config"
         ],
         "summary": "Get Permissions",
-        "description": "The permission matrix: rows = permissions grouped by ``area`` with scope (global /\ntransition), columns = active roles, locked cells with reasons, editable denial texts.",
+        "description": "The permission grid: rows = permissions grouped by ``area`` with scope (global / transition),\ncolumns = roles, locked cells with reasons, editable denial texts.",
         "operationId": "get_permissions_api_v1_admin_permissions_get",
         "parameters": [
           {
@@ -11787,7 +11502,7 @@
           "admin config"
         ],
         "summary": "Put Permissions",
-        "description": "Replace the matrix and optionally the texts. Guardrails (422, one reason each): ADMIN keeps\n``admin`` and one ACTIVE user holds it; ``view`` includes every active role; unknown perm or\nrole codes; no Orion / agent role. A denial text left unedited is regenerated from the role\nlabels (``is_custom=false``) so it never names a role that lost the right. Effective at once\n(``cfg.invalidate()`` rebuilds the permission cache). Audit ``config:permissions`` with the\nbefore / after matrix.",
+        "description": "Replace the grid (every permission present) and optionally the wording. 422 when the Admin\nrole would lose ``admin``, nobody active could change configuration, a role loses ``view``, or a\ncode is unknown. A denial text nobody edited is regenerated from the role names. Applies at once.",
         "operationId": "put_permissions_api_v1_admin_permissions_put",
         "parameters": [
           {
@@ -11877,7 +11592,7 @@
           "admin config"
         ],
         "summary": "Get Tiering",
-        "description": "Tier definitions, dimensions, default tier, questions and rules (evaluation order), plus the\nintake / custom fields a rule condition may look at.",
+        "description": "Tier definitions and tiering question wording (the rules BR-011 stay in code).",
         "operationId": "get_tiering_api_v1_admin_tiering_get",
         "parameters": [
           {
@@ -11945,7 +11660,7 @@
           "admin config"
         ],
         "summary": "Put Tiering",
-        "description": "Replace the whole tiering configuration. Guardrails: tier numbers unique and contiguous from\n1 (a tier is removed only when no tier assessment uses it); ``default_tier`` and every rule's\n``result_tier`` are defined; ``source: question`` conditions name an existing question;\n``intake`` / ``custom`` conditions name an existing field and (for select fields) a value of its\nlist; new questions get the next id (TQ6 ...). Audit ``config:tiering``.",
+        "description": "New wording for the tier definitions and the questions. The tier numbers and question ids must\nbe the existing ones (422 otherwise). Applies to new tier proposals.",
         "operationId": "put_tiering_api_v1_admin_tiering_put",
         "parameters": [
           {
@@ -12029,86 +11744,6 @@
         }
       }
     },
-    "/api/v1/admin/tiering/test": {
-      "post": {
-        "tags": [
-          "admin config"
-        ],
-        "summary": "Test Tiering",
-        "description": "Run the pure ``propose_tier(rules, questions, intake, answers)`` on a hypothetical project\n(saved configuration, or the unsaved ``config`` in the body). Writes nothing, no audit.",
-        "operationId": "test_tiering_api_v1_admin_tiering_test_post",
-        "parameters": [
-          {
-            "name": "X-Demo-User",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Demo-User"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TierTestIn"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TierTestOut"
-                }
-              }
-            }
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        }
-      }
-    },
     "/api/v1/admin/eval-metrics": {
       "get": {
         "tags": [
@@ -12187,7 +11822,7 @@
           "admin config"
         ],
         "summary": "Create Eval Metric",
-        "description": "Add a metric (id EV-nn = next free). One target row per ``cfg.tiers`` tier; ``targets_by_tier``\nmust cover every tier (422 otherwise); operator / value / unit only for ``auto`` metrics. New\ntransitions only. Audit ``config:eval_metrics``.",
+        "description": "Add a metric (id EV-nn = next free). ``targets_by_tier`` must cover every tier; operator and\nvalue only for ``auto`` metrics. New transitions only.",
         "operationId": "create_eval_metric_api_v1_admin_eval_metrics_post",
         "parameters": [
           {
@@ -12444,7 +12079,7 @@
           "admin config"
         ],
         "summary": "Put Thresholds",
-        "description": "Replace ``cfg.thresholds``. Guardrails: ranges (percent 0..100, days 0..365), amber not\nstricter than red (``amber_critical_gaps`` <= ``red_critical_gaps``, ``amber_lens_below`` >=\n``red_lens_below``), ``default_tier`` is a defined tier, ``default_pricing_basis`` an active\n``ocet_pricing_basis``. Live: RAG recalculates for all active transitions. Audit\n``config:thresholds``.",
+        "description": "Replace the thresholds. 422 when amber is stricter than red, or the default tier / pricing\nbasis does not exist. Live: RAG recalculates for all active transitions.",
         "operationId": "put_thresholds_api_v1_admin_thresholds_put",
         "parameters": [
           {
@@ -12481,480 +12116,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ThresholdsOut"
-                }
-              }
-            }
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/labels": {
-      "get": {
-        "tags": [
-          "admin config"
-        ],
-        "summary": "Get Labels",
-        "description": "Display overrides of workflow vocabulary (status words, RAG words, eval banner) with the\ndefaults.",
-        "operationId": "get_labels_api_v1_admin_labels_get",
-        "parameters": [
-          {
-            "name": "X-Demo-User",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Demo-User"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LabelsOut"
-                }
-              }
-            }
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "admin config"
-        ],
-        "summary": "Put Labels",
-        "description": "Replace ``cfg.labels``. Keys must be known (422 for others); labels are non-empty and at\nmost 120 characters. Wording only: behaviour never depends on a label. Audit ``config:labels``.",
-        "operationId": "put_labels_api_v1_admin_labels_put",
-        "parameters": [
-          {
-            "name": "X-Demo-User",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Demo-User"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LabelsDoc"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LabelsOut"
-                }
-              }
-            }
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/gates": {
-      "get": {
-        "tags": [
-          "admin config"
-        ],
-        "summary": "Get Gates",
-        "description": "Gate label / short / description for every gate (codes, order and type are fixed in code),\noutcome label overrides, the decision-gate -> approval-chain map and the mocked approver.",
-        "operationId": "get_gates_api_v1_admin_gates_get",
-        "parameters": [
-          {
-            "name": "X-Demo-User",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Demo-User"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GatesOut"
-                }
-              }
-            }
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "admin config"
-        ],
-        "summary": "Put Gates",
-        "description": "Replace the gate texts. Every gate code must be present and no unknown code (422);\n``chain`` values must be existing approval chain types and only decision gates may have one;\n``mock_approver_role`` must be an active role that ``can_approve``. Audit ``config:gates``.",
-        "operationId": "put_gates_api_v1_admin_gates_put",
-        "parameters": [
-          {
-            "name": "X-Demo-User",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Demo-User"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GatesDoc"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GatesOut"
-                }
-              }
-            }
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/lenses": {
-      "get": {
-        "tags": [
-          "admin config"
-        ],
-        "summary": "Get Lenses",
-        "description": "The three lenses with question, colour hint, owner roles and sign-off role.",
-        "operationId": "get_lenses_api_v1_admin_lenses_get",
-        "parameters": [
-          {
-            "name": "X-Demo-User",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Demo-User"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LensesOut"
-                }
-              }
-            }
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "admin config"
-        ],
-        "summary": "Put Lenses",
-        "description": "Replace the lens texts. Exactly Business, Technical and Compliance (structural); owner and\nsign-off roles must be active roles. Audit ``config:lenses``. Returns the document.",
-        "operationId": "put_lenses_api_v1_admin_lenses_put",
-        "parameters": [
-          {
-            "name": "X-Demo-User",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Demo-User"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LensesDoc"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LensesDoc"
                 }
               }
             }
@@ -13080,7 +12241,7 @@
           "admin config"
         ],
         "summary": "Put Message Templates",
-        "description": "Save templates. Validates: known keys only; only the key's declared placeholders (an\nunknown ``{{name}}`` refuses the save with the name in the reason); length caps. Cannot change\nrecipients or send policy (not part of a template). Audit ``config:message_templates``.",
+        "description": "Save templates. Only the key's own placeholders (an unknown ``{{name}}`` refuses the save with\nthe name in the reason); no scripts. Recipients and send policy are not part of a template.",
         "operationId": "put_message_templates_api_v1_admin_message_templates_put",
         "parameters": [
           {
@@ -13253,176 +12414,6 @@
               }
             },
             "description": "Unprocessable Content"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/config-export": {
-      "get": {
-        "tags": [
-          "admin config"
-        ],
-        "summary": "Export Config",
-        "description": "Stretch: every configuration section as JSON (settings, lists, fields, roles, matrix,\ntiering, templates). Demo configuration made in the UI is lost on a schema bump unless exported.",
-        "operationId": "export_config_api_v1_admin_config_export_get",
-        "parameters": [
-          {
-            "name": "X-Demo-User",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Demo-User"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConfigExportOut"
-                }
-              }
-            }
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/config-import": {
-      "post": {
-        "tags": [
-          "admin config"
-        ],
-        "summary": "Import Config",
-        "description": "Stretch: validate an export with the same rules as the editors and return the diff;\n``dry_run=true`` (default) writes nothing. 422 with reasons when a section is invalid, 409 when\n``schema_version`` differs from the server's.",
-        "operationId": "import_config_api_v1_admin_config_import_post",
-        "parameters": [
-          {
-            "name": "dry_run",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "default": true,
-              "title": "Dry Run"
-            }
-          },
-          {
-            "name": "X-Demo-User",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Demo-User"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConfigImportIn"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConfigDiffOut"
-                }
-              }
-            }
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Conflict"
           }
         }
       }
@@ -14113,14 +13104,15 @@
             "title": "Due Date"
           },
           "priority": {
-            "type": "string",
-            "enum": [
-              "High",
-              "Medium",
-              "Low"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Priority",
-            "default": "Medium"
+            "title": "Priority"
           }
         },
         "type": "object",
@@ -14197,11 +13189,6 @@
           },
           "priority": {
             "type": "string",
-            "enum": [
-              "High",
-              "Medium",
-              "Low"
-            ],
             "title": "Priority"
           },
           "origin": {
@@ -14300,12 +13287,7 @@
           "priority": {
             "anyOf": [
               {
-                "type": "string",
-                "enum": [
-                  "High",
-                  "Medium",
-                  "Low"
-                ]
+                "type": "string"
               },
               {
                 "type": "null"
@@ -14397,6 +13379,18 @@
             },
             "type": "array",
             "title": "Steps"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
           }
         },
         "type": "object",
@@ -14889,13 +13883,6 @@
           },
           "type": {
             "type": "string",
-            "enum": [
-              "Document",
-              "Link",
-              "Email sign-off",
-              "Recording",
-              "Generated"
-            ],
             "title": "Type"
           },
           "item_id": {
@@ -15290,6 +14277,11 @@
             "type": "string",
             "maxLength": 100,
             "title": "Label"
+          },
+          "is_mock": {
+            "type": "boolean",
+            "title": "Is Mock",
+            "default": false
           }
         },
         "type": "object",
@@ -16160,176 +15152,6 @@
         "title": "ConditionPatchIn",
         "description": "Either close (status \"Closed\" + close_note) or edit owner / due_gate / text of an Open condition."
       },
-      "ConfigDiffOut": {
-        "properties": {
-          "dry_run": {
-            "type": "boolean",
-            "title": "Dry Run"
-          },
-          "applied": {
-            "type": "boolean",
-            "title": "Applied"
-          },
-          "added": {
-            "additionalProperties": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "type": "object",
-            "title": "Added",
-            "default": {}
-          },
-          "changed": {
-            "additionalProperties": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "type": "object",
-            "title": "Changed",
-            "default": {}
-          },
-          "removed": {
-            "additionalProperties": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "type": "object",
-            "title": "Removed",
-            "default": {}
-          },
-          "reasons": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Reasons",
-            "default": []
-          }
-        },
-        "type": "object",
-        "required": [
-          "dry_run",
-          "applied"
-        ],
-        "title": "ConfigDiffOut",
-        "description": "POST /admin/config-import?dry_run=true: what the import would add, change and remove."
-      },
-      "ConfigExportOut": {
-        "properties": {
-          "schema_version": {
-            "type": "integer",
-            "title": "Schema Version"
-          },
-          "sections": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Sections"
-          }
-        },
-        "type": "object",
-        "required": [
-          "schema_version",
-          "sections"
-        ],
-        "title": "ConfigExportOut",
-        "description": "GET /admin/config-export (stretch): every configuration section as JSON."
-      },
-      "ConfigImportIn": {
-        "properties": {
-          "schema_version": {
-            "type": "integer",
-            "title": "Schema Version"
-          },
-          "sections": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Sections"
-          }
-        },
-        "type": "object",
-        "required": [
-          "schema_version",
-          "sections"
-        ],
-        "title": "ConfigImportIn"
-      },
-      "ConfigResetIn": {
-        "properties": {
-          "section": {
-            "type": "string",
-            "enum": [
-              "option_list",
-              "intake_fields",
-              "roles",
-              "permissions",
-              "tiering",
-              "thresholds",
-              "labels",
-              "gates",
-              "lenses",
-              "message_templates"
-            ],
-            "title": "Section"
-          },
-          "key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Key"
-          }
-        },
-        "type": "object",
-        "required": [
-          "section"
-        ],
-        "title": "ConfigResetIn",
-        "description": "POST /admin/config/reset (extension of design 4): restore ONE editor to seed/config.json.\nRefused (409) when it would remove a value that is in use. ``key`` selects a list / role / ..."
-      },
-      "ConfigResetOut": {
-        "properties": {
-          "section": {
-            "type": "string",
-            "title": "Section"
-          },
-          "key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Key"
-          },
-          "restored": {
-            "type": "integer",
-            "title": "Restored"
-          },
-          "notice": {
-            "type": "string",
-            "title": "Notice",
-            "default": ""
-          }
-        },
-        "type": "object",
-        "required": [
-          "section",
-          "restored"
-        ],
-        "title": "ConfigResetOut"
-      },
       "ConfirmNoDefectsIn": {
         "properties": {
           "confirmed": {
@@ -16634,12 +15456,6 @@
           },
           "priority": {
             "type": "string",
-            "enum": [
-              "P1",
-              "P2",
-              "P3",
-              "P4"
-            ],
             "title": "Priority"
           },
           "owner_user_id": {
@@ -16674,12 +15490,6 @@
           },
           "priority": {
             "type": "string",
-            "enum": [
-              "P1",
-              "P2",
-              "P3",
-              "P4"
-            ],
             "title": "Priority"
           },
           "status": {
@@ -16729,13 +15539,7 @@
           "priority": {
             "anyOf": [
               {
-                "type": "string",
-                "enum": [
-                  "P1",
-                  "P2",
-                  "P3",
-                  "P4"
-                ]
+                "type": "string"
               },
               {
                 "type": "null"
@@ -17399,7 +16203,7 @@
           "notice": {
             "type": "string",
             "title": "Notice",
-            "default": "Changes affect NEW transitions; existing transitions keep their items."
+            "default": "Applies to all AI transitions straight away, including ones already running."
           }
         },
         "type": "object",
@@ -18494,13 +17298,7 @@
           },
           "checklists": {
             "items": {
-              "type": "string",
-              "enum": [
-                "FRAMEWORK",
-                "AI_PLAYBOOK",
-                "PORTFOLIO",
-                "COMMON"
-              ]
+              "type": "string"
             },
             "type": "array",
             "maxItems": 8,
@@ -18559,6 +17357,47 @@
               }
             ],
             "title": "Note"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "default": true
+          },
+          "has_ai_profile": {
+            "type": "boolean",
+            "title": "Has Ai Profile",
+            "default": false
+          },
+          "has_eval_metrics": {
+            "type": "boolean",
+            "title": "Has Eval Metrics",
+            "default": false
+          },
+          "required_intake_fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Required Intake Fields",
+            "default": []
+          },
+          "synonyms": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Synonyms",
+            "default": []
           }
         },
         "type": "object",
@@ -18566,7 +17405,8 @@
           "project_type",
           "checklists"
         ],
-        "title": "FlavourRuleOut"
+        "title": "FlavourRuleOut",
+        "description": "A project type. The first four fields are the original contract; the rest is CR-01."
       },
       "FlavourRulesIn": {
         "properties": {
@@ -18924,29 +17764,6 @@
         "title": "GateItemRef",
         "description": "An item shown in the readiness check. ``item_id`` is the PLAYBOOK item id (e.g. S45-014)."
       },
-      "GateLabelOut": {
-        "properties": {
-          "label": {
-            "type": "string",
-            "title": "Label"
-          },
-          "short": {
-            "type": "string",
-            "title": "Short"
-          },
-          "description": {
-            "type": "string",
-            "title": "Description",
-            "default": ""
-          }
-        },
-        "type": "object",
-        "required": [
-          "label",
-          "short"
-        ],
-        "title": "GateLabelOut"
-      },
       "GateLensSummaryOut": {
         "properties": {
           "lens": {
@@ -19277,195 +18094,6 @@
           "state"
         ],
         "title": "GateStepOut"
-      },
-      "GateTextIn": {
-        "properties": {
-          "label": {
-            "type": "string",
-            "maxLength": 120,
-            "minLength": 1,
-            "title": "Label"
-          },
-          "short": {
-            "type": "string",
-            "maxLength": 30,
-            "minLength": 1,
-            "title": "Short"
-          },
-          "description": {
-            "type": "string",
-            "maxLength": 4000,
-            "title": "Description",
-            "default": ""
-          }
-        },
-        "type": "object",
-        "required": [
-          "label",
-          "short"
-        ],
-        "title": "GateTextIn"
-      },
-      "GateTextOut": {
-        "properties": {
-          "label": {
-            "type": "string",
-            "maxLength": 120,
-            "minLength": 1,
-            "title": "Label"
-          },
-          "short": {
-            "type": "string",
-            "maxLength": 30,
-            "minLength": 1,
-            "title": "Short"
-          },
-          "description": {
-            "type": "string",
-            "maxLength": 4000,
-            "title": "Description",
-            "default": ""
-          },
-          "code": {
-            "type": "string",
-            "title": "Code"
-          },
-          "order": {
-            "type": "integer",
-            "title": "Order"
-          },
-          "type": {
-            "type": "string",
-            "title": "Type"
-          }
-        },
-        "type": "object",
-        "required": [
-          "label",
-          "short",
-          "code",
-          "order",
-          "type"
-        ],
-        "title": "GateTextOut"
-      },
-      "GatesDoc": {
-        "properties": {
-          "gates": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/GateTextIn"
-            },
-            "type": "object",
-            "title": "Gates"
-          },
-          "outcome_labels": {
-            "additionalProperties": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
-            },
-            "type": "object",
-            "title": "Outcome Labels"
-          },
-          "chain": {
-            "additionalProperties": {
-              "type": "string",
-              "maxLength": 30
-            },
-            "type": "object",
-            "title": "Chain"
-          },
-          "mock_role": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mock Role"
-          },
-          "mock_approver_role": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mock Approver Role"
-          }
-        },
-        "type": "object",
-        "required": [
-          "gates"
-        ],
-        "title": "GatesDoc",
-        "description": "Gate texts keyed by gate code (codes, order and type stay in code), outcome label overrides\n``{gate_type: {outcome: label}}`` and the decision-gate -> approval-chain map."
-      },
-      "GatesOut": {
-        "properties": {
-          "gates": {
-            "items": {
-              "$ref": "#/components/schemas/GateTextOut"
-            },
-            "type": "array",
-            "title": "Gates"
-          },
-          "outcome_labels": {
-            "additionalProperties": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
-            },
-            "type": "object",
-            "title": "Outcome Labels"
-          },
-          "outcomes": {
-            "additionalProperties": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "type": "object",
-            "title": "Outcomes"
-          },
-          "chain": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "type": "object",
-            "title": "Chain"
-          },
-          "mock_role": {
-            "type": "string",
-            "title": "Mock Role"
-          },
-          "mock_approver_role": {
-            "type": "string",
-            "title": "Mock Approver Role"
-          },
-          "notice": {
-            "type": "string",
-            "title": "Notice",
-            "default": "Codes, order and gate types are fixed; the wording is yours."
-          }
-        },
-        "type": "object",
-        "required": [
-          "gates",
-          "outcome_labels",
-          "outcomes",
-          "chain",
-          "mock_role",
-          "mock_approver_role"
-        ],
-        "title": "GatesOut"
       },
       "GatesOverviewOut": {
         "properties": {
@@ -19811,13 +18439,6 @@
           },
           "kind": {
             "type": "string",
-            "enum": [
-              "recording",
-              "transcript",
-              "design",
-              "diagram",
-              "other"
-            ],
             "title": "Kind"
           },
           "url": {
@@ -20154,10 +18775,7 @@
           },
           "form": {
             "type": "string",
-            "enum": [
-              "intake",
-              "ai_profile"
-            ],
+            "const": "intake",
             "title": "Form",
             "default": "intake"
           },
@@ -20341,10 +18959,7 @@
           },
           "form": {
             "type": "string",
-            "enum": [
-              "intake",
-              "ai_profile"
-            ],
+            "const": "intake",
             "title": "Form",
             "default": "intake"
           },
@@ -21028,6 +19643,11 @@
             "type": "integer",
             "title": "Common"
           },
+          "other": {
+            "type": "integer",
+            "title": "Other",
+            "default": 0
+          },
           "total": {
             "type": "integer",
             "title": "Total"
@@ -21108,12 +19728,6 @@
           },
           "source": {
             "type": "string",
-            "enum": [
-              "FRAMEWORK",
-              "AI_PLAYBOOK",
-              "PORTFOLIO",
-              "COMMON"
-            ],
             "title": "Source"
           },
           "source_label": {
@@ -21210,12 +19824,7 @@
           "gap_severity": {
             "anyOf": [
               {
-                "type": "string",
-                "enum": [
-                  "Critical",
-                  "Major",
-                  "Minor"
-                ]
+                "type": "string"
               },
               {
                 "type": "null"
@@ -21401,12 +20010,7 @@
           "gap_severity": {
             "anyOf": [
               {
-                "type": "string",
-                "enum": [
-                  "Critical",
-                  "Major",
-                  "Minor"
-                ]
+                "type": "string"
               },
               {
                 "type": "null"
@@ -21551,56 +20155,6 @@
         ],
         "title": "KpiTileOut",
         "description": "A KPI tile (spec §8.1, §8.2). Control-tower tiles carry ``filter`` (query params that reproduce\nthe tile's set – clicking a tile filters the register); dashboard tiles carry ``link`` (a route)."
-      },
-      "LabelsDoc": {
-        "properties": {
-          "labels": {
-            "additionalProperties": {
-              "type": "string",
-              "maxLength": 120,
-              "minLength": 1
-            },
-            "type": "object",
-            "title": "Labels"
-          }
-        },
-        "type": "object",
-        "required": [
-          "labels"
-        ],
-        "title": "LabelsDoc",
-        "description": "Display overrides of workflow vocabulary: ``{key: label}`` (e.g. ``\"rag.Grey\": \"Not started\"``).\nKeys are the ones returned by GET (unknown keys are refused)."
-      },
-      "LabelsOut": {
-        "properties": {
-          "labels": {
-            "additionalProperties": {
-              "type": "string",
-              "maxLength": 120,
-              "minLength": 1
-            },
-            "type": "object",
-            "title": "Labels"
-          },
-          "defaults": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "type": "object",
-            "title": "Defaults",
-            "default": {}
-          },
-          "notice": {
-            "type": "string",
-            "title": "Notice",
-            "default": "Changes the wording only; behaviour does not change."
-          }
-        },
-        "type": "object",
-        "required": [
-          "labels"
-        ],
-        "title": "LabelsOut"
       },
       "LandscapeIn": {
         "properties": {
@@ -22022,45 +20576,6 @@
         "title": "LensCardOut",
         "description": "Overview lens card at the current gate (spec §8.7)."
       },
-      "LensCfgIn": {
-        "properties": {
-          "question": {
-            "type": "string",
-            "maxLength": 300,
-            "minLength": 1,
-            "title": "Question"
-          },
-          "color_hint": {
-            "type": "string",
-            "maxLength": 80,
-            "title": "Color Hint"
-          },
-          "owner_roles": {
-            "items": {
-              "type": "string",
-              "maxLength": 40,
-              "minLength": 1
-            },
-            "type": "array",
-            "maxItems": 10,
-            "title": "Owner Roles"
-          },
-          "signoff_role": {
-            "type": "string",
-            "maxLength": 40,
-            "minLength": 1,
-            "title": "Signoff Role"
-          }
-        },
-        "type": "object",
-        "required": [
-          "question",
-          "color_hint",
-          "owner_roles",
-          "signoff_role"
-        ],
-        "title": "LensCfgIn"
-      },
       "LensOut": {
         "properties": {
           "code": {
@@ -22120,44 +20635,6 @@
         ],
         "title": "LensValues",
         "description": "One integer per lens (readiness %, counts …). Lens colours: Business amber, Technical blue,\nCompliance teal (spec §4, §12)."
-      },
-      "LensesDoc": {
-        "properties": {
-          "lenses": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/LensCfgIn"
-            },
-            "type": "object",
-            "title": "Lenses"
-          }
-        },
-        "type": "object",
-        "required": [
-          "lenses"
-        ],
-        "title": "LensesDoc",
-        "description": "The three lenses (Business, Technical, Compliance - structural) keyed by code."
-      },
-      "LensesOut": {
-        "properties": {
-          "lenses": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/LensCfgIn"
-            },
-            "type": "object",
-            "title": "Lenses"
-          },
-          "notice": {
-            "type": "string",
-            "title": "Notice",
-            "default": "The three lenses are fixed; their question, colour and owners are yours."
-          }
-        },
-        "type": "object",
-        "required": [
-          "lenses"
-        ],
-        "title": "LensesOut"
       },
       "LinkMessage": {
         "properties": {
@@ -22854,9 +21331,15 @@
             "default": ""
           },
           "pricing_basis": {
-            "type": "string",
-            "title": "Pricing Basis",
-            "default": "Fixed (contract)"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pricing Basis"
           },
           "base_amount": {
             "anyOf": [
@@ -23540,6 +22023,14 @@
             "type": "string",
             "title": "Notice",
             "default": "Applies immediately; RAG recalculates for all active transitions."
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings",
+            "default": []
           }
         },
         "type": "object",
@@ -25002,17 +23493,6 @@
             "title": "Synonyms",
             "default": []
           },
-          "color": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Color"
-          },
           "note": {
             "anyOf": [
               {
@@ -25110,18 +23590,6 @@
             "maxItems": 30,
             "title": "Synonyms"
           },
-          "color": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 80
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Color"
-          },
           "note": {
             "anyOf": [
               {
@@ -25215,17 +23683,6 @@
             "type": "array",
             "title": "Synonyms",
             "default": []
-          },
-          "color": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Color"
           }
         },
         "type": "object",
@@ -25434,18 +23891,6 @@
               }
             ],
             "title": "Synonyms"
-          },
-          "color": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 80
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Color"
           },
           "note": {
             "anyOf": [
@@ -26159,26 +24604,10 @@
             "title": "Checklists",
             "default": []
           },
-          "labels": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "type": "object",
-            "title": "Labels",
-            "default": {}
-          },
           "thresholds": {
             "additionalProperties": true,
             "type": "object",
             "title": "Thresholds",
-            "default": {}
-          },
-          "gate_labels": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/GateLabelOut"
-            },
-            "type": "object",
-            "title": "Gate Labels",
             "default": {}
           },
           "approval_chain_labels": {
@@ -26268,6 +24697,17 @@
             "maxProperties": 20,
             "title": "Params",
             "default": {}
+          },
+          "autonomous_eligible": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Autonomous Eligible"
           }
         },
         "type": "object",
@@ -26470,11 +24910,6 @@
           },
           "rating": {
             "type": "string",
-            "enum": [
-              "High",
-              "Medium",
-              "Low"
-            ],
             "title": "Rating"
           },
           "decision": {
@@ -26512,11 +24947,6 @@
           },
           "rating": {
             "type": "string",
-            "enum": [
-              "High",
-              "Medium",
-              "Low"
-            ],
             "title": "Rating"
           },
           "decision": {
@@ -26595,17 +25025,6 @@
             "type": "integer",
             "title": "Sort Order"
           },
-          "color": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Color"
-          },
           "user_count": {
             "type": "integer",
             "title": "User Count",
@@ -26636,67 +25055,6 @@
           "sort_order"
         ],
         "title": "RoleAdminOut"
-      },
-      "RoleCreateIn": {
-        "properties": {
-          "code": {
-            "type": "string",
-            "pattern": "^[A-Z][A-Z0-9_]{1,29}$",
-            "title": "Code"
-          },
-          "label": {
-            "type": "string",
-            "maxLength": 80,
-            "title": "Label"
-          },
-          "short_label": {
-            "type": "string",
-            "maxLength": 40,
-            "title": "Short Label",
-            "default": ""
-          },
-          "phrase_label": {
-            "type": "string",
-            "maxLength": 40,
-            "title": "Phrase Label",
-            "default": ""
-          },
-          "description": {
-            "type": "string",
-            "maxLength": 4000,
-            "title": "Description",
-            "default": ""
-          },
-          "has_transition_slot": {
-            "type": "boolean",
-            "title": "Has Transition Slot",
-            "default": false
-          },
-          "can_approve": {
-            "type": "boolean",
-            "title": "Can Approve",
-            "default": false
-          },
-          "color": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 80
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Color"
-          }
-        },
-        "type": "object",
-        "required": [
-          "code",
-          "label"
-        ],
-        "title": "RoleCreateIn",
-        "description": "POST /admin/roles. ``code`` is immutable; \"Orion\", \"agent\", \"bot\", \"ai\" are reserved."
       },
       "RoleOut": {
         "properties": {
@@ -26753,17 +25111,6 @@
             "type": "integer",
             "title": "Sort Order",
             "default": 0
-          },
-          "color": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Color"
           }
         },
         "type": "object",
@@ -26822,68 +25169,11 @@
               }
             ],
             "title": "Description"
-          },
-          "active": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Active"
-          },
-          "has_transition_slot": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Has Transition Slot"
-          },
-          "can_approve": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Can Approve"
-          },
-          "sort_order": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "maximum": 10000.0,
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sort Order"
-          },
-          "color": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 80
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Color"
           }
         },
         "type": "object",
-        "title": "RoleUpdateIn"
+        "title": "RoleUpdateIn",
+        "description": "PATCH /admin/roles/{code}: the eight roles are fixed; only their wording can change."
       },
       "RolesOut": {
         "properties": {
@@ -26973,6 +25263,11 @@
           "common": {
             "type": "integer",
             "title": "Common"
+          },
+          "other": {
+            "type": "integer",
+            "title": "Other",
+            "default": 0
           },
           "total": {
             "type": "integer",
@@ -27354,11 +25649,6 @@
         "properties": {
           "type": {
             "type": "string",
-            "enum": [
-              "diagram",
-              "recording",
-              "document"
-            ],
             "title": "Type"
           },
           "ref": {
@@ -28127,72 +26417,10 @@
         "title": "TierCardOut",
         "description": "Tier definition card (from reference.json tiers)."
       },
-      "TierConditionIn": {
-        "properties": {
-          "source": {
-            "type": "string",
-            "enum": [
-              "question",
-              "intake",
-              "custom"
-            ],
-            "title": "Source"
-          },
-          "key": {
-            "type": "string",
-            "maxLength": 40,
-            "minLength": 1,
-            "title": "Key"
-          },
-          "op": {
-            "type": "string",
-            "enum": [
-              "yes",
-              "no",
-              "equals",
-              "not_equals",
-              "in"
-            ],
-            "title": "Op"
-          },
-          "value": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Value"
-          },
-          "rationale": {
-            "type": "string",
-            "maxLength": 200,
-            "title": "Rationale",
-            "default": ""
-          }
-        },
-        "type": "object",
-        "required": [
-          "source",
-          "key",
-          "op"
-        ],
-        "title": "TierConditionIn",
-        "description": "One condition of a rule. ``source`` question: ``key`` = a question id, op yes / no.\n``source`` intake / custom: ``key`` = field key (an audience-style option list or a custom\nfield), op equals / not_equals / in (``value`` = text, or a list for ``in``)."
-      },
       "TierConfirmIn": {
         "properties": {
           "tier": {
             "type": "integer",
-            "maximum": 4.0,
             "minimum": 1.0,
             "title": "Tier"
           },
@@ -28252,7 +26480,8 @@
           "tier",
           "name"
         ],
-        "title": "TierDefIn"
+        "title": "TierDefIn",
+        "description": "One tier definition. The tier number is fixed (BR-011 produces tiers 1-4); the wording is yours."
       },
       "TierInfoOut": {
         "properties": {
@@ -28493,9 +26722,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "pattern": "^(TQ\\d{1,3})?$",
-            "title": "Id",
-            "default": ""
+            "pattern": "^TQ\\d{1,3}$",
+            "title": "Id"
           },
           "text": {
             "type": "string",
@@ -28508,121 +26736,15 @@
             "maxLength": 200,
             "title": "Hint",
             "default": ""
-          },
-          "active": {
-            "type": "boolean",
-            "title": "Active",
-            "default": true
-          }
-        },
-        "type": "object",
-        "required": [
-          "text"
-        ],
-        "title": "TierQuestionIn",
-        "description": "``id`` empty = a new question (TQ6, TQ7 ... generated)."
-      },
-      "TierRuleIn": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "maxLength": 20,
-            "title": "Id",
-            "default": ""
-          },
-          "label": {
-            "type": "string",
-            "maxLength": 200,
-            "title": "Label",
-            "default": ""
-          },
-          "result_tier": {
-            "type": "integer",
-            "maximum": 9.0,
-            "minimum": 1.0,
-            "title": "Result Tier"
-          },
-          "match": {
-            "type": "string",
-            "enum": [
-              "any",
-              "all"
-            ],
-            "title": "Match",
-            "default": "any"
-          },
-          "conditions": {
-            "items": {
-              "$ref": "#/components/schemas/TierConditionIn"
-            },
-            "type": "array",
-            "maxItems": 20,
-            "title": "Conditions"
-          },
-          "active": {
-            "type": "boolean",
-            "title": "Active",
-            "default": true
-          }
-        },
-        "type": "object",
-        "required": [
-          "result_tier"
-        ],
-        "title": "TierRuleIn"
-      },
-      "TierRuleOut": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "label": {
-            "type": "string",
-            "maxLength": 200,
-            "title": "Label",
-            "default": ""
-          },
-          "result_tier": {
-            "type": "integer",
-            "maximum": 9.0,
-            "minimum": 1.0,
-            "title": "Result Tier"
-          },
-          "match": {
-            "type": "string",
-            "enum": [
-              "any",
-              "all"
-            ],
-            "title": "Match",
-            "default": "any"
-          },
-          "conditions": {
-            "items": {
-              "$ref": "#/components/schemas/TierConditionIn"
-            },
-            "type": "array",
-            "maxItems": 20,
-            "title": "Conditions"
-          },
-          "active": {
-            "type": "boolean",
-            "title": "Active",
-            "default": true
-          },
-          "sort_order": {
-            "type": "integer",
-            "title": "Sort Order",
-            "default": 0
           }
         },
         "type": "object",
         "required": [
           "id",
-          "result_tier"
+          "text"
         ],
-        "title": "TierRuleOut"
+        "title": "TierQuestionIn",
+        "description": "One tiering question. ``id`` (TQ1 ...) is fixed because BR-011 reads the answers by id."
       },
       "TierSetIn": {
         "properties": {
@@ -28639,112 +26761,6 @@
         "title": "TierSetIn",
         "description": "PUT /transitions/{id}/tier body. The server computes the proposal from the transition's\nintake fields + ``answers``."
       },
-      "TierSourceOut": {
-        "properties": {
-          "key": {
-            "type": "string",
-            "title": "Key"
-          },
-          "label": {
-            "type": "string",
-            "title": "Label"
-          },
-          "source": {
-            "type": "string",
-            "enum": [
-              "intake",
-              "custom"
-            ],
-            "title": "Source"
-          },
-          "values": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Values",
-            "default": []
-          }
-        },
-        "type": "object",
-        "required": [
-          "key",
-          "label",
-          "source"
-        ],
-        "title": "TierSourceOut",
-        "description": "What a rule condition can look at: an intake field with its option values."
-      },
-      "TierTestIn": {
-        "properties": {
-          "intake": {
-            "additionalProperties": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "type": "object",
-            "title": "Intake"
-          },
-          "answers": {
-            "additionalProperties": {
-              "type": "boolean"
-            },
-            "type": "object",
-            "title": "Answers"
-          },
-          "config": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/TieringConfigIn"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "title": "TierTestIn",
-        "description": "POST /admin/tiering/test: runs the pure ``propose_tier`` on a hypothetical project."
-      },
-      "TierTestOut": {
-        "properties": {
-          "tier": {
-            "type": "integer",
-            "title": "Tier"
-          },
-          "rationale": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Rationale"
-          },
-          "matched_rule_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Matched Rule Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "tier",
-          "rationale"
-        ],
-        "title": "TierTestOut"
-      },
       "TieringConfigIn": {
         "properties": {
           "tiers": {
@@ -28756,21 +26772,6 @@
             "minItems": 1,
             "title": "Tiers"
           },
-          "dimensions": {
-            "items": {
-              "type": "string",
-              "maxLength": 300
-            },
-            "type": "array",
-            "maxItems": 10,
-            "title": "Dimensions"
-          },
-          "default_tier": {
-            "type": "integer",
-            "maximum": 9.0,
-            "minimum": 1.0,
-            "title": "Default Tier"
-          },
           "questions": {
             "items": {
               "$ref": "#/components/schemas/TierQuestionIn"
@@ -28778,26 +26779,15 @@
             "type": "array",
             "maxItems": 30,
             "title": "Questions"
-          },
-          "rules": {
-            "items": {
-              "$ref": "#/components/schemas/TierRuleIn"
-            },
-            "type": "array",
-            "maxItems": 50,
-            "title": "Rules"
           }
         },
         "type": "object",
         "required": [
           "tiers",
-          "dimensions",
-          "default_tier",
-          "questions",
-          "rules"
+          "questions"
         ],
         "title": "TieringConfigIn",
-        "description": "PUT: the whole tiering configuration (list order = evaluation order). Guardrails: tier numbers\nunique and contiguous from 1, rules reference existing questions, ``default_tier`` is defined."
+        "description": "PUT: the same tier numbers and question ids as today, with new wording."
       },
       "TieringConfigOut": {
         "properties": {
@@ -28808,17 +26798,6 @@
             "type": "array",
             "title": "Tiers"
           },
-          "dimensions": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Dimensions"
-          },
-          "default_tier": {
-            "type": "integer",
-            "title": "Default Tier"
-          },
           "questions": {
             "items": {
               "$ref": "#/components/schemas/app__schemas__config_admin__TierQuestionOut"
@@ -28826,37 +26805,19 @@
             "type": "array",
             "title": "Questions"
           },
-          "rules": {
-            "items": {
-              "$ref": "#/components/schemas/TierRuleOut"
-            },
-            "type": "array",
-            "title": "Rules"
-          },
-          "sources": {
-            "items": {
-              "$ref": "#/components/schemas/TierSourceOut"
-            },
-            "type": "array",
-            "title": "Sources",
-            "default": []
-          },
           "notice": {
             "type": "string",
             "title": "Notice",
-            "default": "Applies to new tier proposals; confirmed tiers stay as they are."
+            "default": "Changes the wording only; the tiering rules (BR-011) stay as they are."
           }
         },
         "type": "object",
         "required": [
           "tiers",
-          "dimensions",
-          "default_tier",
-          "questions",
-          "rules"
+          "questions"
         ],
         "title": "TieringConfigOut",
-        "description": "GET / PUT /admin/tiering."
+        "description": "GET / PUT /admin/tiering: tier definitions and question wording."
       },
       "TodayIn": {
         "properties": {
@@ -29118,6 +27079,12 @@
               }
             ],
             "title": "Next Decision Date"
+          },
+          "custom_fields": {
+            "additionalProperties": true,
+            "type": "object",
+            "maxProperties": 100,
+            "title": "Custom Fields"
           }
         },
         "type": "object",
@@ -29359,6 +27326,22 @@
           "requires_tiering": {
             "type": "boolean",
             "title": "Requires Tiering"
+          },
+          "has_ai_profile": {
+            "type": "boolean",
+            "title": "Has Ai Profile",
+            "default": false
+          },
+          "has_eval_metrics": {
+            "type": "boolean",
+            "title": "Has Eval Metrics",
+            "default": false
+          },
+          "custom_fields": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Custom Fields",
+            "default": {}
           },
           "tier": {
             "anyOf": [
@@ -30056,6 +28039,19 @@
               }
             ],
             "title": "Blocker Note"
+          },
+          "custom_fields": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object",
+                "maxProperties": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Fields"
           }
         },
         "type": "object",
@@ -30387,6 +28383,17 @@
               }
             ],
             "title": "Title"
+          },
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
           }
         },
         "type": "object",
@@ -30793,6 +28800,7 @@
         "properties": {
           "id": {
             "type": "string",
+            "pattern": "^TQ\\d{1,3}$",
             "title": "Id"
           },
           "text": {
@@ -30806,11 +28814,6 @@
             "maxLength": 200,
             "title": "Hint",
             "default": ""
-          },
-          "active": {
-            "type": "boolean",
-            "title": "Active",
-            "default": true
           },
           "sort_order": {
             "type": "integer",

@@ -86,15 +86,18 @@ def test_thresholds_merge_over_defaults(fresh_seed, db) -> None:
     assert cfg.thresholds(db)["rag"]["red_lens_below"] == 40
 
 
-def test_labels_gates_lenses(db) -> None:
-    assert cfg.label(db, "rag.Grey") == "Not started"
-    assert cfg.label(db, "unknown.key", "fallback") == "fallback"
-    assert cfg.label(db, "unknown.key") == "unknown.key"
-    assert cfg.gate_label(db, "SG4_ATD").startswith("SG4")
-    assert cfg.gate_short(db, "SG2") == "SG0–SG2"
-    assert cfg.gate_short(db, "NOPE") == "NOPE"
-    assert set(cfg.lenses(db)) == {"Business", "Technical", "Compliance"}
-    assert cfg.lenses(db)["Compliance"]["signoff_role"] == "IRM"
+def test_dropped_documents_are_gone(db) -> None:
+    """CR-01 simplification: no label, gate or lens override documents and no tier-rule builder."""
+    for name in (
+        "label",
+        "labels",
+        "lenses",
+        "gate_label",
+        "gate_short",
+        "gates_doc",
+        "tier_rules",
+    ):
+        assert not hasattr(cfg, name), name
 
 
 def test_roles(db) -> None:

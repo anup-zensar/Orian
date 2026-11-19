@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.access import ensure_transition_role, transition_denial
 from app.deps import ensure
-from app.domain import audit
+from app.domain import audit, cfg
 from app.domain.approvals import exception_status
 from app.domain.conditions import create_condition
 from app.domain.records import get_transition, person, users_by_id
@@ -367,9 +367,18 @@ def _check_patch_permissions(
             )
 
 
-def _input_errors(db: Session, lens: str, body: ItemPatchIn) -> list[str]:
+def _on_offer(db: Session, list_key: str, current: str | None) -> list[str]:
+    """Active values of a dropdown list, plus the value already on the item (it may have been retired
+    since, and stays valid while unchanged)."""
+    values = cfg.option_values(db, list_key)
+    return [*values, current] if current and current not in values else values
+
+
+def _input_errors(db: Session, lens: str, body: ItemPatchIn, item: TransitionItem) -> list[str]:
     fields = body.model_fields_set
     reasons = status_rules.input_errors(
+        severities=_on_offer(db, "severities", item.gap_severity),
+        design_options=_on_offer(db, "design_effectiveness", item.design_effectiveness),
         lens=lens,
         status=body.status if "status" in fields else None,
         gap_severity=body.gap_severity if "gap_severity" in fields else None,
@@ -405,7 +414,7 @@ def patch_item(db: Session, item_id: int, body: ItemPatchIn, user: User) -> Item
     fields = body.model_fields_set
 
     _check_patch_permissions(db, user, transition, item, lens, body)
-    reasons = _input_errors(db, lens, body)
+    reasons = _input_errors(db, lens, body, item)
     if reasons:
         raise BadRequest("Invalid item update", reasons)
     if transition.status == "Closed":
@@ -522,6 +531,7 @@ def patch_item(db: Session, item_id: int, body: ItemPatchIn, user: User) -> Item
             check_design=touched_design and new_status == status_rules.COMPLIANT,
             check_na=touched_na,
             check_condition=False,
+            severities=cfg.option_values(db, "severities"),
         )
     )
     if violations:

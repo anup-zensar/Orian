@@ -44,9 +44,7 @@ CR_KEYS = {
     "lists",
     "intake_fields",
     "checklists",
-    "labels",
     "thresholds",
-    "gate_labels",
     "approval_chain_labels",
 }
 
@@ -61,6 +59,13 @@ def ref(client):
 def test_pre_cr_keys_are_all_still_there_and_new_keys_are_additive(ref) -> None:
     assert set(ref) >= PRE_CR_KEYS
     assert set(ref) == PRE_CR_KEYS | CR_KEYS
+
+
+def test_gates_and_lenses_are_the_clients_framework(ref) -> None:
+    """Gate and lens names are not editable: they come from reference.json unchanged."""
+    assert [g["code"] for g in ref["gates"]] == [g["code"] for g in REF["gates"]]
+    assert [g["short"] for g in ref["gates"]] == [g["short"] for g in REF["gates"]]
+    assert [x["code"] for x in ref["lenses"]] == [x["code"] for x in REF["lenses"]]
 
 
 def test_reference_is_public(client) -> None:
@@ -237,8 +242,7 @@ def test_new_additive_keys(ref) -> None:
         "COMMON",
     ]
     assert ref["thresholds"]["rag"]["red_critical_gaps"] == 2
-    assert ref["gate_labels"]["SG4_ATD"]["short"] == "AtD"
-    assert ref["labels"]["rag.Grey"]
+    assert "labels" not in ref and "gate_labels" not in ref  # dropped by the simplification
 
 
 def test_include_inactive_flag_is_accepted(client) -> None:

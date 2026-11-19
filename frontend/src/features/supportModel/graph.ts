@@ -1,14 +1,17 @@
 import type { Landscape, LandscapeComponent } from './api';
+import { useOptions } from '../reference/options';
 
 export const APP_NODE_ID = 'app';
 export type Direction = 'bidirectional' | 'inbound' | 'outbound' | 'child_of';
 
-export const DIRECTIONS: { value: Direction; label: string }[] = [
-  { value: 'bidirectional', label: 'Both ways' },
-  { value: 'inbound', label: 'Inbound (into target)' },
-  { value: 'outbound', label: 'Outbound (from target)' },
-  { value: 'child_of', label: 'Child of target' },
-];
+/** Direction choices: the support_relations list (labels and order editable) plus the structural child-of. */
+export function useDirections(): { value: Direction; label: string }[] {
+  const relations = useOptions('support_relations');
+  return [
+    ...relations.map((o) => ({ value: o.value as Direction, label: o.label })),
+    { value: 'child_of', label: 'Child of target' },
+  ];
+}
 
 export function directionOf(c: LandscapeComponent): Direction {
   if (c.relation.startsWith('child_of')) return 'child_of';

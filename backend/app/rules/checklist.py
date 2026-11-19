@@ -28,12 +28,35 @@ SOURCE_AI_PLAYBOOK = "AI_PLAYBOOK"
 SOURCE_PORTFOLIO = "PORTFOLIO"
 SOURCE_COMMON = "COMMON"
 
+# How a checklist takes part in assembly (``ChecklistDef.kind``).
+KIND_LIBRARY = "library"  # included when the project type lists it
+KIND_PORTFOLIO_GOLDEN = "portfolio_golden"  # included when the item's portfolio is the transition's
+KIND_COMMON = "common"  # always included (BR-010)
+
 EXCLUDED_BY_TIER = "tier"
 EXCLUDED_BY_PROJECT_TYPE = "project_type"
 EXCLUDED_BY_PORTFOLIO = "portfolio"
 
 SCOPE_CLARITY_CATEGORY = "Scope Clarity & Architecture"
 SUPPORT_MODEL_KIND = "Support model"
+
+
+@dataclass(frozen=True)
+class ChecklistDef:
+    """The part of a checklist (a ``cfg.checklist_defs`` row) that assembly needs."""
+
+    code: str
+    kind: str = KIND_LIBRARY
+    tier_filtered: bool = False  # library kind only: items are limited to ``applicable_tiers``
+
+
+# The four checklists of the client's framework; ``assemble_checklist`` uses them unless told otherwise.
+DEFAULT_CHECKLIST_DEFS: tuple[ChecklistDef, ...] = (
+    ChecklistDef(SOURCE_FRAMEWORK),
+    ChecklistDef(SOURCE_AI_PLAYBOOK, tier_filtered=True),
+    ChecklistDef(SOURCE_PORTFOLIO, KIND_PORTFOLIO_GOLDEN),
+    ChecklistDef(SOURCE_COMMON, KIND_COMMON),
+)
 
 
 @dataclass(frozen=True)
@@ -52,6 +75,7 @@ class LibraryItem:
     mandatory_rule: str | None = None  # always | if_applicable
     applies_to_project_types: Sequence[str] = ()  # empty = all project types
     owner_role_hint: str = ""
+    default_owner_role: str | None = None  # role code that owns the item; wins over the hint
     linked_module: str | None = None
     active: bool = True
 
@@ -115,30 +139,52 @@ class Reassembly:
 
 # --- owners (A-11) -----------------------------------------------------------------------------
 
-# Scanned left to right; the first keyword found in ``owner_role_hint`` wins.
-_ROLE_PATTERN = re.compile(r"\b(S&T|Architecture|Architect|SOM|OLM|Project|PM)\b", re.IGNORECASE)
-_ROLE_BY_KEYWORD = {
-    "s&t": "or_focal",
-    "architect": "architect",
-    "architecture": "architect",
-    "som": "olm",
-    "olm": "olm",
-    "project": "pm",
-    "pm": "pm",
+# (keyword, role code) pairs; the keyword found FIRST in ``owner_role_hint`` wins (``cfg.owner_hints``).
+DEFAULT_OWNER_HINTS: tuple[tuple[str, str], ...] = (
+    ("s&t", "OR_FOCAL"),
+    ("architecture", "ARCHITECT"),
+    ("architect", "ARCHITECT"),
+    ("som", "OLM"),
+    ("olm", "OLM"),
+    ("project", "PM"),
+    ("pm", "PM"),
+)
+# Role code -> the ``TransitionRoles`` attribute that holds the person.
+_ROLE_ATTRIBUTE = {
+    "OR_FOCAL": "or_focal",
+    "PM": "pm",
+    "ARCHITECT": "architect",
+    "OLM": "olm",
+    "IRM": "irm",
 }
 
 
-def role_from_hint(owner_role_hint: str) -> str | None:
+def role_from_hint(
+    owner_role_hint: str, hints: Sequence[tuple[str, str]] = DEFAULT_OWNER_HINTS
+) -> str | None:
     """Role attribute name ("or_focal", "architect", "olm", "pm") named first in the hint."""
-    match = _ROLE_PATTERN.search(owner_role_hint or "")
-    return _ROLE_BY_KEYWORD[match.group(1).lower()] if match else None
+    by_keyword = {keyword.lower(): role for keyword, role in hints}
+    if not by_keyword:
+        return None
+    longest_first = sorted(by_keyword, key=len, reverse=True)
+    pattern = re.compile(
+        r"\b(" + "|".join(re.escape(keyword) for keyword in longest_first) + r")\b", re.IGNORECASE
+    )
+    match = pattern.search(owner_role_hint or "")
+    if match is None:
+        return None
+    return _ROLE_ATTRIBUTE.get(by_keyword[match.group(1).lower()])
 
 
-def default_owner_role(item: LibraryItem) -> str:
+def default_owner_role(
+    item: LibraryItem, hints: Sequence[tuple[str, str]] = DEFAULT_OWNER_HINTS
+) -> str:
     """Role attribute of ``TransitionRoles`` that owns ``item`` by default (A-11, BR-010 step 6)."""
+    if item.default_owner_role in _ROLE_ATTRIBUTE:
+        return _ROLE_ATTRIBUTE[item.default_owner_role]
     if item.lens == "Compliance":
         return "irm"
-    hinted = role_from_hint(item.owner_role_hint)  # never "irm": IRM is not a keyword
+    hinted = role_from_hint(item.owner_role_hint, hints)  # never "irm": IRM is not a keyword
     if hinted is not None:
         return hinted
     if item.lens == "Technical" and (
@@ -148,8 +194,12 @@ def default_owner_role(item: LibraryItem) -> str:
     return "pm"
 
 
-def default_owner(item: LibraryItem, roles: TransitionRoles) -> str | None:
-    return getattr(roles, default_owner_role(item))
+def default_owner(
+    item: LibraryItem,
+    roles: TransitionRoles,
+    hints: Sequence[tuple[str, str]] = DEFAULT_OWNER_HINTS,
+) -> str | None:
+    return getattr(roles, default_owner_role(item, hints))
 
 
 # --- assembly (BR-010) -------------------------------------------------------------------------
@@ -160,6 +210,7 @@ def _plan(
     roles: TransitionRoles,
     applicability: str,
     excluded_by: str | None = None,
+    hints: Sequence[tuple[str, str]] = DEFAULT_OWNER_HINTS,
 ) -> PlannedItem:
     excluded = applicability == NOT_APPLICABLE
     return PlannedItem(
@@ -169,7 +220,7 @@ def _plan(
         # Excluded items carry the lens' N/A status so they never count as open work.
         status=na_status_for(item.lens) if excluded else NOT_STARTED,
         due_gate=item.gate,
-        owner_user_id=default_owner(item, roles),
+        owner_user_id=default_owner(item, roles, hints),
         linked_module=item.linked_module,  # A-10
         lens=item.lens,
         source=item.source,
@@ -184,43 +235,46 @@ def assemble_checklist(
     tier: int | None,
     flavour_checklists: Sequence[str],
     roles: TransitionRoles,
+    checklist_defs: Sequence[ChecklistDef] = DEFAULT_CHECKLIST_DEFS,
+    owner_hints: Sequence[tuple[str, str]] = DEFAULT_OWNER_HINTS,
 ) -> list[PlannedItem]:
     """Plan the TransitionItems of one transition (BR-010 steps 1-6). Library order is preserved.
 
-    ``tier`` None means "not proposed yet": every AI Playbook item applies (A-35).
+    ``tier`` None means "not proposed yet": every tier-filtered item applies (A-35). A checklist's
+    ``kind`` decides how its items are picked: "library" lists (framework, AI playbook, any list an
+    Admin adds) when the project type includes them, "portfolio_golden" by the transition's portfolio,
+    "common" always.
     """
+    kinds = {d.code: d for d in checklist_defs}
     planned: list[PlannedItem] = []
     for item in library:
-        if not item.active:
-            continue
+        checklist = kinds.get(item.source)
+        if not item.active or checklist is None:
+            continue  # retired line, or an unknown checklist: never guess
 
-        if item.source == SOURCE_FRAMEWORK:
-            if SOURCE_FRAMEWORK not in flavour_checklists:
+        if checklist.kind == KIND_LIBRARY:
+            if item.source not in flavour_checklists:
                 continue
-            applicability = APPLIES
-        elif item.source == SOURCE_AI_PLAYBOOK:
-            if SOURCE_AI_PLAYBOOK not in flavour_checklists:
-                continue
-            in_tier = tier is None or tier in item.applicable_tiers
+            in_tier = not checklist.tier_filtered or tier is None or tier in item.applicable_tiers
             applicability = APPLIES if in_tier else NOT_APPLICABLE
-        elif item.source == SOURCE_PORTFOLIO:
+        elif checklist.kind == KIND_PORTFOLIO_GOLDEN:
             if item.portfolio != portfolio:
                 continue
             applicability = APPLIES if item.mandatory else TO_CONFIRM
-        elif item.source == SOURCE_COMMON:
+        elif checklist.kind == KIND_COMMON:
             always = item.mandatory_rule == "always" or (
                 item.mandatory_rule is None and item.mandatory
             )
             applicability = APPLIES if always else TO_CONFIRM
         else:
-            continue  # unknown source: never guess
+            continue
 
         excluded_by = EXCLUDED_BY_TIER if applicability == NOT_APPLICABLE else None
         # Project-type exclusion wins: the item does not belong to this flavour at all.
         if item.applies_to_project_types and project_type not in item.applies_to_project_types:
             applicability, excluded_by = NOT_APPLICABLE, EXCLUDED_BY_PROJECT_TYPE
 
-        planned.append(_plan(item, roles, applicability, excluded_by))
+        planned.append(_plan(item, roles, applicability, excluded_by, owner_hints))
     return planned
 
 
@@ -233,6 +287,7 @@ def summarize_counts(planned: Iterable[PlannedItem]) -> dict[str, int]:
         "golden_set_applies": 0,
         "golden_set_to_confirm": 0,
         "common": 0,
+        "other": 0,  # applicable items of checklists an Admin added (e.g. a security playbook)
         "total_applicable": 0,
     }
     for p in planned:
@@ -252,6 +307,8 @@ def summarize_counts(planned: Iterable[PlannedItem]) -> dict[str, int]:
                 counts["golden_set_to_confirm"] += 1
         elif p.source == SOURCE_COMMON:
             counts["common"] += 1
+        elif p.applicability == APPLIES:
+            counts["other"] += 1
     return counts
 
 
@@ -262,6 +319,7 @@ def reassemble(
     existing: Iterable[ExistingItem],
     planned: Iterable[PlannedItem],
     library: Iterable[LibraryItem] = (),
+    checklist_defs: Sequence[ChecklistDef] = DEFAULT_CHECKLIST_DEFS,
 ) -> Reassembly:
     """Compare a transition's current items with a fresh plan.
 
@@ -312,6 +370,7 @@ def reassemble(
 
     planned_ids = {p.playbook_item_id for p in planned}
     lib_by_id = {item.id: item for item in library}
+    kinds = {d.code: d for d in checklist_defs}
     for current in existing:
         item = lib_by_id.get(current.playbook_item_id)
         if (
@@ -321,9 +380,10 @@ def reassemble(
             or current.applicability not in (APPLIES, TO_CONFIRM)
         ):
             continue
-        if item.source == SOURCE_PORTFOLIO:
+        kind = kinds[item.source].kind if item.source in kinds else None
+        if kind == KIND_PORTFOLIO_GOLDEN:
             excluded_by = EXCLUDED_BY_PORTFOLIO
-        elif item.source in (SOURCE_AI_PLAYBOOK, SOURCE_FRAMEWORK):
+        elif kind == KIND_LIBRARY:
             excluded_by = EXCLUDED_BY_PROJECT_TYPE
         else:
             continue

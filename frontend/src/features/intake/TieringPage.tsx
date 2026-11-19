@@ -32,6 +32,8 @@ import { TOASTER_ID, useApiErrorToast } from '../../hooks/useApiErrorToast';
 import { useReference } from '../reference/api';
 import { useMe } from '../users/api';
 import { useTransition, type TransitionDetail } from '../transition/api';
+import { useTypeFlags } from '../transitions/typeFlags';
+import { useIntakeFields, useOptionLabel } from '../reference/options';
 import {
   useAiProfile,
   useConfirmTier,
@@ -98,16 +100,29 @@ function QuestionsStep(props: {
 }) {
   const s = useStyles();
   const { t, answers } = props;
+  const optionLabel = useOptionLabel();
+  const fields = useIntakeFields();
+  // The intake answers the tier depends on; the wording of each label is set in Admin.
+  const intake = [
+    { key: 'audience', value: t.audience },
+    { key: 'write_actions', value: t.write_actions },
+    { key: 'sensitive_data', value: t.sensitive_data },
+  ].flatMap((x) => {
+    const field = fields.find((f) => f.key === x.key);
+    return field
+      ? [{ ...x, label: field.label, text: optionLabel(field.option_list ?? '', x.value) }]
+      : [];
+  });
   return (
     <div className={s.stack}>
       <SectionCard title="Intake answers (read-only)">
         <div className={s.intake}>
-          <ReadOnlyValue label="Audience" value={t.audience} />
-          <ReadOnlyValue label="Write actions" value={t.write_actions} />
-          <ReadOnlyValue label="Sensitive data" value={t.sensitive_data} />
+          {intake.map((x) => (
+            <ReadOnlyValue key={x.key} label={x.label} value={x.text} />
+          ))}
         </div>
       </SectionCard>
-      <SectionCard title="Tiering questions TQ1 – TQ5">
+      <SectionCard title="Tiering questions">
         {props.reference.tier_questions.map((q) => (
           <div key={q.id} className={s.question}>
             <div className={s.qText}>
@@ -299,7 +314,7 @@ function ProposalStep(props: {
             ) : (
               proposeBtn
             )}
-            {(me.permissions.includes('confirm_tier') || me.user.role === 'IRM') && (
+            {me.permissions.includes('confirm_tier') && (
               <>
                 {confirmReason ? (
                   <Tooltip content={confirmReason} relationship="description">
@@ -333,10 +348,9 @@ function ProposalStep(props: {
               </>
             )}
           </div>
-          {!can('confirm_tier') &&
-            (me.permissions.includes('confirm_tier') || me.user.role === 'IRM') && (
-              <Caption1>Confirm / change tier: {reasonFor('confirm_tier')}</Caption1>
-            )}
+          {!can('confirm_tier') && me.permissions.includes('confirm_tier') && (
+            <Caption1>Confirm / change tier: {reasonFor('confirm_tier')}</Caption1>
+          )}
           {changing && canConfirmNow && (
             <div className={s.stack}>
               <Field label="New tier" required>
@@ -465,7 +479,11 @@ function ProfileStep(props: { t: TransitionDetail }) {
   return <ProfileForm transitionId={props.t.id} initial={q.data} access={props.t.access} />;
 }
 
-const STEP_TITLES = ['1. Questions', '2. Proposed tier', '3. AI profile'];
+/** The steps of the wizard; the AI profile step exists only for project types that have one. */
+function stepTitles(hasAiProfile: boolean): string[] {
+  const steps = ['Questions', 'Proposed tier', ...(hasAiProfile ? ['AI profile'] : [])];
+  return steps.map((title, i) => `${i + 1}. ${title}`);
+}
 
 /** AI tiering wizard – FR-021 (spec 8.5, BR-011). */
 export function TieringPage() {
@@ -475,17 +493,20 @@ export function TieringPage() {
   const tq = useTransition(id);
   const ref = useReference();
   const me = useMe();
+  const flags = useTypeFlags(tq.data);
+  const titles = stepTitles(flags.hasAiProfile);
   const [step, setStep] = useState(0);
   const [edited, setAnswers] = useState<Answers | null>(null);
 
   const err = tq.error ?? ref.error ?? me.error;
   const t = tq.data;
-  const noTierYet = !!t?.requires_tiering && !t.tier?.proposed_tier && !t.tier?.confirmed_tier;
+  const noTierYet =
+    !!t && flags.requiresTiering && !t.tier?.proposed_tier && !t.tier?.confirmed_tier;
   const answers: Answers = edited ?? (t?.tier?.answers as Answers | undefined) ?? {};
   return (
     <>
       <PageHeader
-        title="AI tiering"
+        title={flags.hasAiProfile ? 'AI tiering' : 'Tiering'}
         subtitle={t ? `${t.id} · ${t.name} · ${t.flavour_label}` : undefined}
         actions={
           <Tooltip
@@ -502,15 +523,15 @@ export function TieringPage() {
         <ErrorState error={err} />
       ) : !t || !ref.data || !me.data ? (
         <LoadingState rows={6} />
-      ) : !t.requires_tiering ? (
+      ) : !flags.requiresTiering ? (
         <EmptyState
-          message="Tiering applies to AI project types only."
+          message="Tiering does not apply to this project type."
           action={<Link to={`/transitions/${t.id}/scope`}>Go to scope</Link>}
         />
       ) : (
         <div className={s.stack}>
           <div className={s.steps} role="tablist" aria-label="Tiering steps">
-            {STEP_TITLES.map((title, i) => (
+            {titles.map((title, i) => (
               <Button
                 key={title}
                 role="tab"
@@ -541,12 +562,12 @@ export function TieringPage() {
             <QuestionsStep t={t} reference={ref.data} answers={answers} set={setAnswers} />
           )}
           {step === 1 && <ProposalStep t={t} reference={ref.data} me={me.data} answers={answers} />}
-          {step === 2 && <ProfileStep t={t} />}
+          {step === 2 && flags.hasAiProfile && <ProfileStep t={t} />}
           <div className={s.actions}>
             <Button disabled={step === 0} onClick={() => setStep(step - 1)}>
               Back
             </Button>
-            {step < 2 ? (
+            {step < titles.length - 1 ? (
               <Button appearance="primary" onClick={() => setStep(step + 1)}>
                 Next
               </Button>

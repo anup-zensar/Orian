@@ -19,22 +19,23 @@ from typing import Any, Literal
 
 from app.rules.constants import GATE_ORDER, GATE_SHORT
 
-_GATE_LABEL = {"SG4_ATD": "Authority to Deploy", "SG6_ATO": "Authority to Operate"}
+_GATE_LABEL = {"SG4_ATD": "Agreement to Deploy", "SG6_ATO": "Agreement to Operate"}
 
 ReminderKind = Literal["Reminder", "Chaser", "Approval request", "Input request"]
 
 RULE_IDS: tuple[str, ...] = ("R1", "R2", "R3", "R4", "R5", "R6", "R7")
 # Rules that may be sent autonomously on autonomous transitions (spec 4 / 7.8).
 AUTONOMOUS_RULES: frozenset[str] = frozenset({"R1", "R2", "R3", "R5"})
-# R6 monitoring requirement items (once per transition).
-R6_ITEM_IDS: tuple[str, ...] = tuple(f"FW-{n:03d}" for n in range(48, 55))  # FW-048..FW-054
+# R6 monitoring requirement items (once per transition): the item ids and/or the checklist category
+# the Admin sets on the rule (Rules & thresholds). The default is FW-048..FW-054.
+R6_ITEM_IDS: tuple[str, ...] = tuple(f"FW-{n:03d}" for n in range(48, 55))
 DEFAULT_PARAMS: dict[str, dict[str, Any]] = {
     "R1": {"days_before_decision": 14},
     "R2": {},
     "R3": {"reminder_after_days": 2, "escalate_after_days": 5},
     "R4": {},
     "R5": {"requested_for_days": 5},
-    "R6": {},
+    "R6": {"item_ids": list(R6_ITEM_IDS), "category": ""},
     "R7": {},
 }
 
@@ -79,6 +80,7 @@ class ItemFact:
     first_due_gate: str  # gate by which the item is due (GATES code)
     gate_index: int  # position of first_due_gate in GATES (for "<= current gate" comparisons)
     done_or_covered: bool  # status in DONE_STATUSES or covered by evidence/condition
+    category: str = ""  # checklist category of the item (R6 can pick items by category)
 
 
 @dataclass(frozen=True)
@@ -409,20 +411,24 @@ def evaluate_r6(
 ) -> list[ReminderCandidate]:
     """R6 - monitoring requirements. For each transition whose current_gate == "SG2" and which has
     an architect: one candidate to the Architect, kind "Reminder", cc OR focal, subject_key
-    "monitoring-reqs", related_ids = R6_ITEM_IDS (FW-048..FW-054, only those present as items),
-    payload {transition_name, items: [{id, title}]}. autonomous_eligible ALWAYS False. "Once per
-    transition": the domain layer additionally skips the candidate when ANY OrionDraft with
-    rule_id R6 already exists for the transition (any status except Discarded)."""
+    "monitoring-reqs", related_ids = the monitoring items present on the transition, payload
+    {transition_name, items: [{id, title}]}. The monitoring items are the ids in ``params.item_ids``
+    (default FW-048..FW-054) plus, when ``params.category`` is set, every item of that checklist
+    category. autonomous_eligible ALWAYS False. "Once per transition": the domain layer additionally
+    skips the candidate when ANY OrionDraft with rule_id R6 already exists for the transition (any
+    status except Discarded)."""
+    wanted_ids = list(config.params.get("item_ids", R6_ITEM_IDS))
+    category = str(config.params.get("category") or "").strip()
     present: dict[str, dict[str, str]] = {}
     for i in items:
-        if i.item_id in R6_ITEM_IDS:
+        if i.item_id in wanted_ids or (category and i.category == category):
             present.setdefault(i.transition_id, {})[i.item_id] = i.title
     out: list[ReminderCandidate] = []
     for t in sorted(transitions, key=lambda x: x.transition_id):
         if t.current_gate != "SG2" or not t.architect_user_id:
             continue
         mine = present.get(t.transition_id, {})
-        ids = [i for i in R6_ITEM_IDS if i in mine]
+        ids = sorted(mine)
         out.append(
             ReminderCandidate(
                 rule_id="R6",

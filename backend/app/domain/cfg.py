@@ -42,7 +42,6 @@ from app.models import (
     Portfolio,
     Role,
     TierQuestion,
-    TierRule,
 )
 
 # --- value objects ------------------------------------------------------------------------------
@@ -59,7 +58,6 @@ class ProjectTypeCfg:
     has_eval_metrics: bool
     required_intake_fields: tuple[str, ...]
     synonyms: tuple[str, ...]
-    color: str | None
     note: str | None
     active: bool
     sort_order: int
@@ -114,7 +112,6 @@ class RoleCfg:
     transition_column: str | None
     can_approve: bool
     sort_order: int
-    color: str | None
 
 
 @dataclass(frozen=True)
@@ -150,17 +147,6 @@ class TierQuestionCfg:
     hint: str
     active: bool
     sort_order: int
-
-
-@dataclass(frozen=True)
-class TierRuleCfg:
-    id: str
-    sort_order: int
-    label: str
-    result_tier: int
-    match: str  # any | all
-    conditions: tuple[dict[str, Any], ...]  # {source, key, op, value, rationale}
-    active: bool
 
 
 @dataclass(frozen=True)
@@ -237,7 +223,6 @@ def _project_type(row: FlavourRule) -> ProjectTypeCfg:
         has_eval_metrics=bool(row.has_eval_metrics),
         required_intake_fields=tuple(row.required_intake_fields or ()),
         synonyms=tuple(row.synonyms or ()),
-        color=row.color,
         note=row.note,
         active=bool(row.active),
         sort_order=int(row.sort_order or 0),
@@ -260,7 +245,6 @@ def _all_project_types(db: Session) -> list[ProjectTypeCfg]:
                 has_eval_metrics=bool(d.get("has_eval_metrics", False)),
                 required_intake_fields=tuple(d.get("required_intake_fields", ())),
                 synonyms=tuple(d.get("synonyms", ())),
-                color=d.get("color"),
                 note=d.get("note"),
                 active=True,
                 sort_order=int(d.get("sort_order", 0)),
@@ -481,6 +465,15 @@ def option_label(db: Session, key: str, value: str | None) -> str:
     return found.label if found else (value or "")
 
 
+def evidence_type_for(db: Session, needs: str) -> str | None:
+    """The first active, non-system evidence type whose ``needs`` is ``needs`` ("url", "text" ...).
+    Orion uses it to pick the type for a pasted link or e-mail (None when the Admin has none)."""
+    for o in options(db, "evidence_types"):
+        if o.meta.get("needs") == needs and not o.meta.get("system"):
+            return o.value
+    return None
+
+
 def option_meta(db: Session, key: str, value: str | None) -> dict[str, Any]:
     """A copy of the item's meta ({} when unknown)."""
     found = _option(db, key, value)
@@ -543,7 +536,6 @@ def _roles(db: Session) -> list[RoleCfg]:
                     transition_column=r.transition_column,
                     can_approve=r.can_approve,
                     sort_order=r.sort_order,
-                    color=r.color,
                 )
                 for r in rows
             ]
@@ -564,7 +556,6 @@ def _roles(db: Session) -> list[RoleCfg]:
                     transition_column=d.get("transition_column"),
                     can_approve=bool(d.get("can_approve", False)),
                     sort_order=int(d.get("sort_order", 0)),
-                    color=d.get("color"),
                 )
                 for d in raw
             ),
@@ -609,7 +600,7 @@ def slot_roles(db: Session) -> list[RoleCfg]:
     return [r for r in roles(db) if r.has_transition_slot]
 
 
-# --- thresholds, gates, labels, lenses ----------------------------------------------------------
+# --- thresholds, approval chain settings --------------------------------------------------------
 
 
 def thresholds(db: Session) -> dict[str, Any]:
@@ -647,38 +638,6 @@ def rag_rule_text(db: Session) -> dict[str, str]:
     }
 
 
-def _gates_doc(db: Session) -> dict[str, dict[str, str]]:
-    def load() -> dict[str, dict[str, str]]:
-        base = defaults.seed_config()["settings"]["cfg.gates"]
-        merged = _merge(base, _setting(db, "cfg.gates"))
-        return merged
-
-    return _section("gates", load)
-
-
-def gate_label(db: Session, code: str) -> str:
-    return str(_gates_doc(db).get(code, {}).get("label") or code)
-
-
-def gate_short(db: Session, code: str) -> str:
-    return str(_gates_doc(db).get(code, {}).get("short") or code)
-
-
-def gate_description(db: Session, code: str) -> str:
-    return str(_gates_doc(db).get(code, {}).get("description") or "")
-
-
-def gates_doc(db: Session) -> dict[str, dict[str, str]]:
-    """{gate_code: {label, short, description}} for every gate (a copy)."""
-    return {k: dict(v) for k, v in _gates_doc(db).items()}
-
-
-def gate_outcome_labels(db: Session) -> dict[str, dict[str, str]]:
-    """Display overrides {gate_type: {outcome: label}}; an outcome without an entry shows itself."""
-    value = _section("gate_outcome_labels", lambda: _setting(db, "cfg.gate_outcome_labels"))
-    return {k: dict(v) for k, v in (value or {}).items() if isinstance(v, Mapping)}
-
-
 def gate_chain(db: Session) -> dict[str, str]:
     """{decision gate code: approval chain type} (default SG4_ATD -> AtD, SG6_ATO -> AtO)."""
     value = _section("gate_chain", lambda: _setting(db, "cfg.gate_chain"))
@@ -691,34 +650,6 @@ def mock_approver(db: Session) -> dict[str, str]:
     """{mock_role, approver_role, mock_label}: the mocked approval role and who acts for it."""
     value = _section("mock_approver", lambda: _setting(db, "cfg.mock_approver"))
     return _merge(defaults.DEFAULT_MOCK_APPROVER, value)
-
-
-def labels(db: Session) -> dict[str, str]:
-    """Display overrides of workflow vocabulary (status / RAG words, banners), merged over defaults."""
-    value = _section(
-        "labels",
-        lambda: _merge(
-            defaults.seed_config()["settings"]["cfg.labels"], _setting(db, "cfg.labels")
-        ),
-    )
-    return {k: str(v) for k, v in value.items()}
-
-
-def label(db: Session, key: str, default: str | None = None) -> str:
-    """``cfg.labels[key]`` or ``default`` (the key when no default is given)."""
-    value = labels(db).get(key)
-    return value if value is not None else (default if default is not None else key)
-
-
-def lenses(db: Session) -> dict[str, dict[str, Any]]:
-    """{Business|Technical|Compliance: {question, color_hint, owner_roles, signoff_role}} (a copy)."""
-    value = _section(
-        "lenses",
-        lambda: _merge(
-            defaults.seed_config()["settings"]["cfg.lenses"], _setting(db, "cfg.lenses")
-        ),
-    )
-    return {k: dict(v) for k, v in value.items()}
 
 
 # --- tiering ------------------------------------------------------------------------------------
@@ -776,46 +707,6 @@ def tier_questions(db: Session, active_only: bool = True) -> list[TierQuestionCf
         )
 
     return [q for q in _section("tier_questions", load) if q.active or not active_only]
-
-
-def tier_rules(db: Session, active_only: bool = True) -> list[TierRuleCfg]:
-    """Tier rules in evaluation order (first match wins)."""
-
-    def load() -> list[TierRuleCfg]:
-        rows = db.scalars(select(TierRule)).all()
-        raw = (
-            [
-                dict(
-                    id=r.id,
-                    sort_order=r.sort_order,
-                    label=r.label,
-                    result_tier=r.result_tier,
-                    match=r.match,
-                    conditions=r.conditions,
-                    active=r.active,
-                )
-                for r in rows
-            ]
-            if rows
-            else defaults.seed_config()["tier_rules"]
-        )
-        return sorted(
-            (
-                TierRuleCfg(
-                    id=d["id"],
-                    sort_order=int(d.get("sort_order", 0)),
-                    label=d.get("label", ""),
-                    result_tier=int(d["result_tier"]),
-                    match=d.get("match", "any"),
-                    conditions=tuple(dict(c) for c in d.get("conditions", ())),
-                    active=bool(d.get("active", True)),
-                )
-                for d in raw
-            ),
-            key=lambda r: (r.sort_order, r.id),
-        )
-
-    return [r for r in _section("tier_rules", load) if r.active or not active_only]
 
 
 # --- intake fields ------------------------------------------------------------------------------

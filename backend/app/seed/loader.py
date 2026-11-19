@@ -68,7 +68,6 @@ from app.models import (
     RolePermission,
     TierAssessment,
     TierQuestion,
-    TierRule,
     Transition,
     TransitionItem,
     User,
@@ -92,10 +91,9 @@ from app.rules.constants import (
 )
 from app.rules.synthesis import Pin, Snapshot, SynthItem, synthesize
 
-# Legacy export: the four project types of the first demo. Library items that list all of them mean
-# "every project type" and are stored as [] (CR-01 1.1). Kept for domain/admin.py until A2 removes it.
-ALL_PROJECT_TYPES = ["Agentic AI", "Normal", "Combined", "Infrastructure"]
-_LEGACY_ALL_TYPES = frozenset(ALL_PROJECT_TYPES)
+# The four project types of the first demo. A library item that lists all of them means "every
+# project type" and is stored as [] (so a type an Admin adds later gets it too).
+_LEGACY_ALL_TYPES = frozenset({"Agentic AI", "Normal", "Combined", "Infrastructure"})
 IRM_USER_ID = "U14"  # A-05: the only IRM
 ORION_SOURCE_LABEL = "Portfolio golden set (client prototype, approximate)"
 FW_SHEET = "Operate Readiness Framework"
@@ -213,7 +211,6 @@ def _config_rows(conf: dict[str, Any]) -> list[Any]:
                 has_eval_metrics=bool(pt.get("has_eval_metrics", False)),
                 required_intake_fields=list(pt.get("required_intake_fields", [])),
                 synonyms=list(pt.get("synonyms", [])),
-                color=pt.get("color"),
             )
         )
     for i, ol in enumerate(conf["option_lists"]):
@@ -270,8 +267,6 @@ def _config_item_rows(conf: dict[str, Any]) -> list[Any]:
         )
     for q in conf["tier_questions"]:
         rows.append(TierQuestion(**q))
-    for tr in conf["tier_rules"]:
-        rows.append(TierRule(**tr))
     rows.append(AppSetting(key="cfg.tiers", value=conf["tiers"]))
     rows.append(AppSetting(key="cfg.tier_dimensions", value=conf["tier_dimensions"]))
     for key, value in conf["settings"].items():

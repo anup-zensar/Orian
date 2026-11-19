@@ -225,7 +225,8 @@ export function ProposalCard({ proposal }: { proposal: Proposal }) {
             <details>
               <summary>
                 <Caption1 className={s.missing}>
-                  {fields.filter(isMissing).length} fields need your input
+                  {fields.filter(isMissing).length} more fields to fill in or check (some are
+                  optional)
                 </Caption1>
               </summary>
               {renderFieldTable(fields.filter(isMissing))}

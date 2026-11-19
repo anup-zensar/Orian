@@ -22,7 +22,7 @@ from app.domain.records import get_transition
 from app.errors import BadRequest, Conflict
 from app.models import EvalResult, EvalTarget, TierAssessment, Transition, User
 from app.permissions import Perm
-from app.rules.constants import ACTOR_HUMAN, AI_PROJECT_TYPES
+from app.rules.constants import ACTOR_HUMAN
 from app.schemas.eval import EvalResultIn, EvalRowOut, EvalTableOut
 from app.seed.loader import eval_passes
 
@@ -34,8 +34,15 @@ RESULT_FIELDS = ("value_number", "value_text", "passed", "source")
 LOWEST_TIER_FALLBACK = 1
 
 
-def ensure_ai(transition: Transition) -> None:
-    if transition.project_type not in AI_PROJECT_TYPES:
+def has_eval_metrics(db: Session, transition: Transition) -> bool:
+    """True when the transition's project type has the "Has eval metrics" switch on."""
+    from app.domain.scope import has_eval_metrics as type_has_eval_metrics
+
+    return type_has_eval_metrics(db, transition.project_type)
+
+
+def ensure_ai(db: Session, transition: Transition) -> None:
+    if not has_eval_metrics(db, transition):
         raise Conflict(
             "Eval metrics apply to AI flavours only",
             [f"{transition.id} is a {transition.project_type} transition"],
@@ -62,7 +69,10 @@ def _targets(db: Session, tier: int | None) -> list[EvalTarget]:
     return list(
         db.scalars(
             select(EvalTarget)
-            .where(EvalTarget.tier == (tier if tier is not None else LOWEST_TIER_FALLBACK))
+            .where(
+                EvalTarget.tier == (tier if tier is not None else LOWEST_TIER_FALLBACK),
+                EvalTarget.active.isnot(False),  # the Admin can switch a metric off
+            )
             .order_by(EvalTarget.sort_order, EvalTarget.metric_id)
         ).all()
     )
@@ -137,7 +147,7 @@ def eval_table(db: Session, transition: Transition) -> EvalTableOut:
 
 def get_eval_table(db: Session, transition_id: str) -> EvalTableOut:
     transition = get_transition(db, transition_id)
-    ensure_ai(transition)
+    ensure_ai(db, transition)
     return eval_table(db, transition)
 
 
@@ -151,7 +161,7 @@ def put_results(
 ) -> EvalTableOut:
     transition = get_transition(db, transition_id)
     ensure_transition_role(db, user, transition, Perm.EDIT_EVAL_RESULTS)
-    ensure_ai(transition)
+    ensure_ai(db, transition)
     tier = transition_tier(db, transition)
     targets = {t.metric_id: t for t in _targets(db, tier)}
 
@@ -253,7 +263,7 @@ def plausible_value(transition_id: str, target: EvalTarget) -> float:
 def import_results(db: Session, transition_id: str, user: User) -> EvalTableOut:
     transition = get_transition(db, transition_id)
     ensure_transition_role(db, user, transition, Perm.EDIT_EVAL_RESULTS)
-    ensure_ai(transition)
+    ensure_ai(db, transition)
     tier = transition_tier(db, transition)
     targets = _targets(db, tier)
     by_id = {t.metric_id: t for t in targets}

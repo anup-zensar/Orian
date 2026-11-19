@@ -297,9 +297,11 @@ class AddEvidencePayload(BaseModel):
     transition_id: str
     item_id: str | None = None
     title: str = Field(min_length=1, max_length=300)
-    type: Literal["Link", "Email sign-off"]
-    url: str | None = None  # type Link
-    text: str | None = None  # type Email sign-off: VERBATIM text the user pasted, never generated
+    type: str  # an active evidence type that needs a url or e-mail text (Admin list)
+    url: str | None = None  # types that need a link
+    text: str | None = (
+        None  # types that need e-mail text: VERBATIM text the user pasted, never generated
+    )
 
 
 PAYLOAD_MODELS: dict[str, type[BaseModel]] = {

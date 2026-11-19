@@ -1,6 +1,7 @@
 """CR-01 contract of /api/v1/admin/... (routers/config_admin.py): every endpoint of design 4 exists,
-GETs work for the Admin and answer 403 for everyone else, writes answer 501 until the admin-API
-engineer implements them (A-74), previews do not write."""
+GETs work for the Admin and answer 403 for everyone else, every write is Admin only, previews do not
+write. (What each write does is tested in test_config_*.py.) Dropped by the CR-01 simplification: custom
+roles, tier rules, label / gate / lens documents, config export / import and section reset."""
 
 from __future__ import annotations
 
@@ -19,15 +20,12 @@ GETS = [
     "option-lists/severities/items",
     "intake-fields",
     "roles",
+    "users",
     "permissions",
     "tiering",
     "eval-metrics",
     "thresholds",
-    "labels",
-    "gates",
-    "lenses",
     "message-templates",
-    "config-export",
     "usage?kind=project_type&key=Agentic%20AI",
 ]
 
@@ -51,24 +49,16 @@ WRITES = [
     ("put", "intake-fields/order"),
     ("patch", "intake-fields/name"),
     ("delete", "intake-fields/name"),
-    ("post", "roles"),
     ("patch", "roles/PM"),
-    ("delete", "roles/PM"),
     ("post", "users"),
     ("patch", "users/U01"),
     ("post", "users/U01/deactivate"),
     ("put", "permissions"),
     ("put", "tiering"),
-    ("post", "tiering/test"),
     ("post", "eval-metrics"),
     ("patch", "eval-metrics/EV-01"),
     ("put", "thresholds"),
-    ("put", "labels"),
-    ("put", "gates"),
-    ("put", "lenses"),
     ("put", "message-templates"),
-    ("post", "config-import"),
-    ("post", "config/reset"),
 ]
 
 
@@ -105,15 +95,23 @@ def test_get_endpoints_are_admin_only(client, headers, path) -> None:
 
 
 @pytest.mark.parametrize(("method", "path"), WRITES)
-def test_writes_are_admin_only_and_not_implemented_yet(client, headers, method, path) -> None:
+def test_writes_are_admin_only(client, headers, method, path) -> None:
     url = "/api/v1/admin/" + path
-    for user in ("U01", "U14"):
-        r = client.request(method.upper(), url, json={}, headers=headers(user))
-        assert r.status_code in (403, 422), (method, path, user, r.status_code)
-    # a valid-shaped body reaches the stub: 501 (not 500, not 404)
-    body = _valid_body(method, path)
-    r = client.request(method.upper(), url, json=body, headers=headers(ADMIN))
-    assert r.status_code in (501, 422), (method, path, r.status_code, r.text[:300])
+    for user in ("U01", "U14", "U15"):
+        r = client.request(
+            method.upper(), url, json=_valid_body(method, path), headers=headers(user)
+        )
+        assert r.status_code == 403, (method, path, user, r.status_code)
+    r = client.request(method.upper(), url, json=_valid_body(method, path))
+    assert r.status_code == 401, (method, path)
+
+
+def test_dropped_endpoints_are_gone(client) -> None:
+    paths = client.get("/openapi.json").json()["paths"]
+    for gone in ("labels", "gates", "lenses", "config-export", "config-import", "config/reset"):
+        assert "/api/v1/admin/" + gone not in paths, gone
+    assert "post" not in paths["/api/v1/admin/roles"] if "/api/v1/admin/roles" in paths else True
+    assert "/api/v1/admin/tiering/test" not in paths
 
 
 def _valid_body(method: str, path: str) -> dict:
@@ -127,23 +125,13 @@ def _valid_body(method: str, path: str) -> dict:
         "option-lists/regions/items": {"items": []},
         "intake-fields": {"label": "Cost centre"},
         "intake-fields/order": {"keys": []},
-        "roles": {"code": "SECURITY_LEAD", "label": "Security lead"},
         "users": {"name": "Sam", "email": "sam@example.com", "role": "PM"},
         "users/U01/deactivate": {},
         "permissions": {"matrix": {}},
-        "tiering": {
-            "tiers": [{"tier": 1, "name": "T1"}],
-            "dimensions": [],
-            "default_tier": 1,
-            "questions": [],
-            "rules": [],
-        },
-        "tiering/test": {},
+        "thresholds": {"thresholds": {}},
+        "tiering": {"tiers": [{"tier": 1, "name": "T1"}], "questions": []},
         "eval-metrics": {"metric": "New metric"},
-        "labels": {"labels": {}},
         "message-templates": {"templates": []},
-        "config-import": {"schema_version": 2, "sections": {}},
-        "config/reset": {"section": "labels"},
     }
     return bodies.get(path, {})
 
@@ -226,30 +214,18 @@ def test_get_shapes(client, headers) -> None:
     assert len(matrix["roles"]) == 8
 
     tiering = get("tiering")
-    assert [r["result_tier"] for r in tiering["rules"]] == [4, 3, 1, 2] and tiering[
-        "default_tier"
-    ] == 3
     assert [t["tier"] for t in tiering["tiers"]] == [1, 2, 3, 4]
-    assert any(s["key"] == "audience" and "External" in s["values"] for s in tiering["sources"])
+    assert [q["id"] for q in tiering["questions"]] == ["TQ1", "TQ2", "TQ3", "TQ4", "TQ5"]
+    assert set(tiering) == {"tiers", "questions", "notice"}  # no rule builder
 
     thresholds = get("thresholds")
     assert thresholds["thresholds"]["rag"]["red_near_days"] == 7
     assert thresholds["rag_rule"]["green"] == "otherwise"
 
-    gates = get("gates")
-    assert [g["code"] for g in gates["gates"]][:2] == ["SG0", "SG2"]
-    assert (
-        gates["chain"] == {"SG4_ATD": "AtD", "SG6_ATO": "AtO"} and gates["mock_role"] == "CISO_BISO"
-    )
-
     templates = get("message-templates")
     chaser = next(t for t in templates if t["key"] == "chaser")
     assert chaser["code_source"] and chaser["subject"] == chaser["default_subject"]
     assert any(p["name"] == "item_list" and p["html"] for p in chaser["placeholders"])
-
-    export = get("config-export")
-    assert export["schema_version"] >= 2
-    assert {"roles", "option_items", "message_templates", "settings"} <= set(export["sections"])
 
     roles = get("roles")
     assert [r["code"] for r in roles][:3] == ["OR_FOCAL", "PM", "ARCHITECT"]

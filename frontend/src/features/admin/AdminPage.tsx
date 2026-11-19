@@ -1,24 +1,16 @@
-import type { ReactNode } from 'react';
-import {
-  MessageBar,
-  MessageBarBody,
-  Tab,
-  TabList,
-  makeStyles,
-  tokens,
-} from '@fluentui/react-components';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Field, Select, Tab, TabList, makeStyles, tokens } from '@fluentui/react-components';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import { PageHeader } from '../../components/PageHeader';
 import { useReference } from '../reference/api';
-import { ADMIN_NOTICE } from './api';
-import { ChainsSection } from './ChainsSection';
+import { ChecklistsSection } from './checklists/ChecklistsSection';
 import { DemoSection } from './DemoSection';
-import { EvalSection } from './EvalSection';
-import { FlavourSection } from './FlavourSection';
-import { GoldenSetSection } from './GoldenSetSection';
-import { PlaybookSection } from './PlaybookSection';
-import { RemindersSection } from './RemindersSection';
-import { UsersSection } from './UsersSection';
+import { FormsSection } from './forms/FormsSection';
+import { MessagesSection } from './messages/MessagesSection';
+import { PeopleSection } from './people/PeopleSection';
+import { PortfoliosSection } from './portfolios/PortfoliosSection';
+import { ProjectTypesSection } from './projectTypes/ProjectTypesSection';
+import { RulesSection } from './rules/RulesSection';
 
 interface SectionDef {
   key: string;
@@ -27,16 +19,41 @@ interface SectionDef {
   demoOnly?: boolean;
 }
 
+/** The eight admin sections, in the order of the left menu. Each has one URL: /admin/<key>. */
 const SECTIONS: SectionDef[] = [
-  { key: 'playbook', label: 'Playbook library', render: () => <PlaybookSection /> },
-  { key: 'flavour', label: 'Flavour rules', render: () => <FlavourSection /> },
-  { key: 'golden-sets', label: 'Portfolio golden sets', render: () => <GoldenSetSection /> },
-  { key: 'eval-targets', label: 'Eval metric targets', render: () => <EvalSection /> },
-  { key: 'approval-chains', label: 'Approval chains', render: () => <ChainsSection /> },
-  { key: 'reminders', label: 'Reminder rules', render: () => <RemindersSection /> },
-  { key: 'users', label: 'Users', render: () => <UsersSection /> },
+  { key: 'checklists', label: 'Checklists & items', render: () => <ChecklistsSection /> },
+  { key: 'project-types', label: 'Project types', render: () => <ProjectTypesSection /> },
+  { key: 'portfolios', label: 'Portfolios', render: () => <PortfoliosSection /> },
+  { key: 'forms', label: 'Forms & dropdowns', render: () => <FormsSection /> },
+  { key: 'people', label: 'People & permissions', render: () => <PeopleSection /> },
+  { key: 'rules', label: 'Rules & thresholds', render: () => <RulesSection /> },
+  { key: 'messages', label: 'Messages', render: () => <MessagesSection /> },
   { key: 'demo', label: 'Demo controls', render: () => <DemoSection />, demoOnly: true },
 ];
+
+/** Old section URLs (bookmarks, earlier links) and the section that replaced them. */
+const OLD_LINKS: Record<string, string> = {
+  playbook: 'checklists',
+  flavour: 'project-types',
+  'golden-sets': 'portfolios',
+  'eval-targets': 'rules',
+  'approval-chains': 'rules',
+  reminders: 'rules',
+  users: 'people',
+};
+
+/** On narrow windows the left menu becomes a dropdown so the tables get the full width. */
+const NARROW = '(max-width: 1100px)';
+function useNarrow(): boolean {
+  const [narrow, setNarrow] = useState(() => window.matchMedia(NARROW).matches);
+  useEffect(() => {
+    const query = window.matchMedia(NARROW);
+    const update = () => setNarrow(query.matches);
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+  return narrow;
+}
 
 const useStyles = makeStyles({
   layout: {
@@ -46,6 +63,7 @@ const useStyles = makeStyles({
     flexWrap: 'wrap',
   },
   nav: { minWidth: '210px' },
+  picker: { width: '100%', maxWidth: '360px' },
   content: {
     flexGrow: 1,
     flexBasis: '480px',
@@ -56,9 +74,10 @@ const useStyles = makeStyles({
   },
 });
 
-/** Admin (FR-100, spec 8.16): playbook configuration and demo controls. ADMIN only. */
+/** Admin (FR-100, spec 8.16): configuration of everything a non-developer may change. ADMIN only. */
 export function AdminPage() {
   const s = useStyles();
+  const narrow = useNarrow();
   const navigate = useNavigate();
   const section = useParams()['*']?.split('/')[0] ?? '';
   const ref = useReference();
@@ -66,35 +85,41 @@ export function AdminPage() {
   const visible = SECTIONS.filter((x) => !x.demoOnly || demoMode);
   const current = visible.find((x) => x.key === section);
 
-  // Unknown section: go to the first. The demo tab waits for /reference before it is judged.
+  // Old links go to the section that replaced them; anything else goes to the first section.
+  // The demo section waits for /reference before it is judged.
   if (!current && !(section === 'demo' && ref.isLoading)) {
-    return <Navigate to={`/admin/${visible[0].key}`} replace />;
+    return <Navigate to={`/admin/${OLD_LINKS[section] ?? visible[0].key}`} replace />;
   }
 
   return (
     <div>
-      <PageHeader title="Admin" subtitle="Playbook configuration and demo controls" />
+      <PageHeader title="Admin" subtitle="Configure Orion without changing code" />
       <div className={s.layout}>
-        <TabList
-          className={s.nav}
-          vertical
-          selectedValue={section}
-          onTabSelect={(_, d) => navigate(`/admin/${String(d.value)}`)}
-        >
-          {visible.map((x) => (
-            <Tab key={x.key} value={x.key}>
-              {x.label}
-            </Tab>
-          ))}
-        </TabList>
-        <div className={s.content}>
-          {section !== 'demo' && section !== 'users' && (
-            <MessageBar intent="info">
-              <MessageBarBody>{ADMIN_NOTICE}</MessageBarBody>
-            </MessageBar>
-          )}
-          {current?.render()}
-        </div>
+        {narrow ? (
+          <Field label="Section" className={s.picker}>
+            <Select value={section} onChange={(_, d) => navigate(`/admin/${d.value}`)}>
+              {visible.map((x) => (
+                <option key={x.key} value={x.key}>
+                  {x.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        ) : (
+          <TabList
+            className={s.nav}
+            vertical
+            selectedValue={section}
+            onTabSelect={(_, d) => navigate(`/admin/${String(d.value)}`)}
+          >
+            {visible.map((x) => (
+              <Tab key={x.key} value={x.key}>
+                {x.label}
+              </Tab>
+            ))}
+          </TabList>
+        )}
+        <div className={s.content}>{current?.render()}</div>
       </div>
     </div>
   );

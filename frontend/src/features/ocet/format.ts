@@ -17,5 +17,3 @@ export function fmtSigned(n: number): string {
 export function fmtPct(p: number | null): string {
   return p === null ? 'n/a' : `${p > 0 ? '+' : ''}${p.toFixed(1)}%`;
 }
-
-export const OWNER_ROLES = ['PM', 'ARCHITECT', 'OR_FOCAL', 'OLM', 'PLANNER', 'IRM'] as const;

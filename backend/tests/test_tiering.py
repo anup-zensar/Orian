@@ -284,3 +284,12 @@ def test_ai_profile_roundtrip(client, headers, fresh_seed):
 def test_seeded_flagship_profile_is_readable(client, headers):
     res = client.get(f"{API}/transitions/TR-0001/ai-profile", headers=headers())
     assert res.status_code == 200
+
+
+def test_default_tier_is_a_parameter():
+    assert propose_tier("Internal department", "No", "No", {}).tier == 3
+    result = propose_tier("Internal department", "No", "No", {}, default_tier=2)
+    assert result.tier == 2
+    assert "No rule matched -> Tier 2 (conservative default)" in result.rationale
+    # a rule that matches is not affected by the default
+    assert propose_tier("External", "No", "No", {}, default_tier=2).tier == 3

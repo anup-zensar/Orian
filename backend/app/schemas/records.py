@@ -9,11 +9,11 @@ from pydantic import BaseModel, Field
 
 from app.schemas.common import PersonRef
 
-EvidenceType = Literal["Document", "Link", "Email sign-off", "Recording", "Generated"]
+EvidenceType = str  # a value of the "evidence_types" list (checked in the domain)
 EvidenceStatus = Literal["Submitted", "Accepted", "Rejected"]
 ActionStatus = Literal["Open", "In progress", "Done", "Cancelled"]
-Priority3 = Literal["High", "Medium", "Low"]
-DefectPriority = Literal["P1", "P2", "P3", "P4"]
+Priority3 = str  # a value of "action_priorities" or "risk_ratings" (checked in the domain)
+DefectPriority = str  # a value of "defect_priorities" (checked in the domain)
 DefectStatus = Literal["Open", "Resolved"]
 
 
@@ -71,7 +71,7 @@ class ActionCreateIn(BaseModel):
     item_ids: list[str] = Field(default=[], max_length=200)
     owner_user_id: str = Field(max_length=40)
     due_date: date
-    priority: Priority3 = "Medium"
+    priority: Priority3 | None = None  # none = the middle option of the priorities list
 
 
 class ActionPatchIn(BaseModel):
