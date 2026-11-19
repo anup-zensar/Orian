@@ -44,7 +44,7 @@ export function DashboardPage() {
   // /dashboard may leave role_label empty, so fall back to the reference role name.
   const roleLabel =
     d.user.role_label || reference.data?.roles.find((r) => r.code === d.user.role)?.label;
-  const subtitle = [roleLabel, d.user.focal_label].filter(Boolean).join(' · ');
+  const subtitle = d.subtitle || [roleLabel, d.user.focal_label].filter(Boolean).join(' · ');
 
   /** "My open items" scrolls to My work; other tiles with a link navigate there. */
   const tileAction = (key: string, link: string | null | undefined) => {

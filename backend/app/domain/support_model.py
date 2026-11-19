@@ -673,10 +673,10 @@ def draft_question_to_architect(
     access.ensure_transition_role(
         db, user, _transition(db, model.transition_id), Perm.EDIT_SUPPORT_MODEL
     )
-    questions = list((model.landscape or {}).get("open_questions") or [])
+    questions = LandscapeIn.model_validate(model.landscape or {"central_app": "-"}).open_questions
     if question_index < 0 or question_index >= len(questions):
         raise NotFound(f"Open question {question_index} not found")
-    question = str(questions[question_index])
+    question = questions[question_index].question
     transition = _transition(db, model.transition_id)
     architect = db.get(User, transition.architect_user_id) if transition.architect_user_id else None
     focal = db.get(User, transition.or_focal_user_id)

@@ -3,10 +3,20 @@
 Rows marked "derived" are not in the spec table; they follow the closest spec row and are recorded
 in PLAN.md (A-28). Approving an approval-chain step is not here: it is checked dynamically
 (the step's role must equal the user's role, BR-041).
+
+CR-01: ``MATRIX`` and ``DEFAULT_DENIAL_REASONS`` are the DEFAULTS (the seed copies them into
+``role_permissions`` / ``permission_texts``). At run time ``has_perm`` / ``permissions_for`` /
+``denied_reasons_for`` read an in-process cache built from those tables; with no rows (an empty or
+unseeded database) they fall back to the defaults. The cache is rebuilt lazily after
+``invalidate_cache()`` (called by ``app.domain.cfg.invalidate()``: every admin save, ``reset_and_seed``,
+the ``fresh_seed`` test fixture). Inactive or unknown roles hold no permission. Orion is never a role
+and has no row (BR-050).
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterator, Mapping
+from dataclasses import dataclass
 from enum import StrEnum
 
 
@@ -53,6 +63,12 @@ class Perm(StrEnum):
     GENERATE_LEADERSHIP_UPDATE = "generate_leadership_update"
     RUN_REMINDERS = "run_reminders"
     EDIT_TRANSITION = "edit_transition"  # PATCH /transitions/{id}: its OR focal; Admin re-assigns
+    # --- CR-01 (design 1.6): replace role-name checks in the code; callers switch to them later ---
+    VIEW_ALL_APPROVALS = "view_all_approvals"  # GET /approvals?scope=all (OR focal, Admin today)
+    SEE_MOCK_APPROVALS = (
+        "see_mock_approvals"  # the mocked CISO/BISO step shows in my approvals (IRM)
+    )
+    SEE_ALL_TRANSITIONS = "see_all_transitions"  # whole-portfolio dashboard / metrics (Leadership)
 
 
 R = Role
@@ -84,10 +100,13 @@ MATRIX: dict[Perm, frozenset[Role]] = {
     Perm.GENERATE_LEADERSHIP_UPDATE: frozenset({R.OR_FOCAL, R.ADMIN}),
     Perm.RUN_REMINDERS: frozenset({R.OR_FOCAL, R.ADMIN}),
     Perm.EDIT_TRANSITION: frozenset({R.OR_FOCAL, R.ADMIN}),
+    Perm.VIEW_ALL_APPROVALS: frozenset({R.OR_FOCAL, R.ADMIN}),
+    Perm.SEE_MOCK_APPROVALS: frozenset({R.IRM}),
+    Perm.SEE_ALL_TRANSITIONS: frozenset({R.LEADERSHIP}),
 }
 
 # Human-readable reasons shown as tooltips / 403 messages (spec §3.3 "Only IRM can set compliance status").
-DENIAL_REASONS: dict[Perm, str] = {
+DEFAULT_DENIAL_REASONS: dict[Perm, str] = {
     Perm.VIEW: "You do not have access to Orion",
     Perm.CREATE_TRANSITION: "Only an OR focal, PM or Admin can create a transition",
     Perm.PROPOSE_TIER: "Only the OR focal can propose the tier",
@@ -115,11 +134,125 @@ DENIAL_REASONS: dict[Perm, str] = {
     Perm.GENERATE_LEADERSHIP_UPDATE: "Only the OR focal can generate and send leadership updates",
     Perm.RUN_REMINDERS: "Only the OR focal or Admin can run the reminder engine",
     Perm.EDIT_TRANSITION: "Only the OR focal of the transition or an Admin can edit it",
+    Perm.VIEW_ALL_APPROVALS: "Only the OR focal or Admin can see all approvals",
+    Perm.SEE_MOCK_APPROVALS: "Only IRM can see the mocked approval steps",
+    Perm.SEE_ALL_TRANSITIONS: "Only Leadership sees the whole portfolio on the dashboard",
 }
 
 
+# --- runtime cache (CR-01) -----------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PermissionCache:
+    """What ``has_perm`` reads: perm value -> roles, perm value -> denial text, the active role codes."""
+
+    matrix: dict[str, frozenset[str]]
+    reasons: dict[str, str]
+    active_roles: frozenset[str]
+    from_db: bool
+
+
+def _default_cache() -> PermissionCache:
+    return PermissionCache(
+        matrix={p.value: frozenset(r.value for r in rs) for p, rs in MATRIX.items()},
+        reasons={p.value: t for p, t in DEFAULT_DENIAL_REASONS.items()},
+        active_roles=frozenset(r.value for r in Role),
+        from_db=False,
+    )
+
+
+_cache: PermissionCache | None = None
+
+
+def build_cache(db) -> PermissionCache:  # noqa: ANN001 - Session; imported lazily to avoid cycles
+    """Read ``role_permissions`` + ``permission_texts`` + ``roles``; defaults when there are no rows."""
+    from sqlalchemy import select
+
+    from app.models.reference import PermissionText, RolePermission
+    from app.models.reference import Role as RoleRow
+
+    rows = db.execute(select(RolePermission.perm, RolePermission.role_code)).all()
+    if not rows:
+        return _default_cache()
+    matrix: dict[str, set[str]] = {p.value: set() for p in Perm}
+    for perm, role_code in rows:
+        matrix.setdefault(perm, set()).add(role_code)
+    reasons = {p.value: t for p, t in DEFAULT_DENIAL_REASONS.items()}
+    for perm, text in db.execute(select(PermissionText.perm, PermissionText.denial_reason)).all():
+        if text:
+            reasons[perm] = text
+    role_rows = db.execute(select(RoleRow.code, RoleRow.active)).all()
+    active = (
+        frozenset(code for code, is_active in role_rows if is_active)
+        if role_rows
+        else frozenset(r.value for r in Role)
+    )
+    return PermissionCache(
+        matrix={k: frozenset(v) for k, v in matrix.items()},
+        reasons=reasons,
+        active_roles=active,
+        from_db=True,
+    )
+
+
+def load_cache(db) -> PermissionCache:  # noqa: ANN001
+    """(Re)build the cache from ``db`` now (startup after seeding)."""
+    global _cache
+    _cache = build_cache(db)
+    return _cache
+
+
+def invalidate_cache() -> None:
+    """Forget the cache; the next permission check rebuilds it from the database."""
+    global _cache
+    _cache = None
+
+
+def current_cache() -> PermissionCache:
+    """The cache, built on first use. A missing / unreadable database yields the defaults WITHOUT
+    remembering them (the next call tries the database again)."""
+    global _cache
+    if _cache is not None:
+        return _cache
+    try:
+        from app.db import SessionLocal
+
+        with SessionLocal() as db:
+            _cache = build_cache(db)
+    except Exception:  # tables not created yet, engine not configured, ...
+        return _default_cache()
+    return _cache
+
+
+class _DenialReasons(Mapping[Perm, str]):
+    """``DENIAL_REASONS[perm]`` - the current (admin-editable) reason text; same call sites as before."""
+
+    def __getitem__(self, perm: Perm) -> str:
+        key = Perm(perm).value
+        return current_cache().reasons.get(key) or DEFAULT_DENIAL_REASONS[Perm(perm)]
+
+    def __iter__(self) -> Iterator[Perm]:
+        return iter(Perm)
+
+    def __len__(self) -> int:
+        return len(Perm)
+
+
+DENIAL_REASONS: Mapping[Perm, str] = _DenialReasons()
+
+
 def has_perm(role: str, perm: Perm) -> bool:
-    return role in MATRIX[perm]
+    cache = current_cache()
+    return role in cache.active_roles and role in cache.matrix.get(Perm(perm).value, frozenset())
+
+
+def roles_with(perm: Perm) -> frozenset[str]:
+    """Active roles that currently hold ``perm``."""
+    cache = current_cache()
+    return frozenset(
+        r for r in cache.matrix.get(Perm(perm).value, frozenset()) if r in cache.active_roles
+    )
 
 
 def permissions_for(role: str) -> list[str]:

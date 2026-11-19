@@ -512,14 +512,29 @@ def _slide_contacts(prs: Any, landscape: Mapping[str, Any]) -> None:
             fill(table.cell(r, col), str(contact.get(key, "")), header=False)
 
 
+def _question_parts(raw: Any) -> tuple[str, str]:
+    """(question, answer) of a landscape entry; a plain string is an unanswered question."""
+    if isinstance(raw, Mapping):
+        return _clean(raw.get("question", "")), _clean(raw.get("answer", "")).strip()
+    return _clean(raw), ""
+
+
 def _slide_questions(prs: Any, landscape: Mapping[str, Any]) -> None:
     t = theme()
     slide = _base_slide(prs, "Open questions and sources", 5)
-    questions = [_clean(q) for q in landscape.get("open_questions") or []][:10]
+    questions = [_question_parts(q) for q in landscape.get("open_questions") or []][:10]
+    answered = [(q, a) for q, a in questions if a]
+    open_ones = [q for q, a in questions if not a]
     sources = list(landscape.get("sources") or [])[:12]
-    left: list[tuple[str, float, str, bool]] = [("Open questions", 16, t["header_bg"], True)]
-    left += [(f"{i}. {_short(q, 140)}", 13, t["text"], False) for i, q in enumerate(questions, 1)]
-    if not questions:
+    left: list[tuple[str, float, str, bool]] = []
+    if answered:
+        left.append(("Answered questions", 16, t["header_bg"], True))
+        for q, a in answered:
+            left.append((f"Q: {_short(q, 120)}", 12, t["text"], True))
+            left.append((f"A: {_short(a, 200)}", 12, t["text"], False))
+    left.append(("Open questions", 16, t["header_bg"], True))
+    left += [(f"{i}. {_short(q, 140)}", 13, t["text"], False) for i, q in enumerate(open_ones, 1)]
+    if not open_ones:
         left.append(("No open questions", 13, t["muted"], False))
     right: list[tuple[str, float, str, bool]] = [("Sources", 16, t["header_bg"], True)]
     right += [

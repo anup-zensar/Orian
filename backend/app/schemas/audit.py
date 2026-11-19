@@ -22,6 +22,7 @@ class AuditEventOut(BaseModel):
     before: dict[str, Any] | None
     after: dict[str, Any] | None
     note: str
+    summary: str = ""  # human-readable one-liner, e.g. "Drafted Orion draft 1"
 
 
 class AuditFilters(BaseModel):

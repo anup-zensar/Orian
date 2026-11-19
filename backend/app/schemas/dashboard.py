@@ -42,6 +42,10 @@ class PortfolioTileOut(BaseModel):
 
 class DashboardOut(BaseModel):
     user: UserOut
+    # Header line under "Hi <name>": the role label plus the portfolios of the user's active
+    # transitions, e.g. "OR focal (S&T) · GCC, Retail Site Systems" (just the role label when the
+    # user has none). Replaces role + focal_label, which is only a login-screen placeholder.
+    subtitle: str = ""
     today: date
     kpis: list[KpiTileOut]
     my_work: list[

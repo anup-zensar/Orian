@@ -18,6 +18,7 @@ from app.models import (
     ReminderRun,
     Transition,
     TransitionItem,
+    User,
 )
 from app.rules.constants import GATE_ORDER
 
@@ -154,9 +155,76 @@ def test_r4_ready_for_atd_draft_is_a_proposal_only(client, headers, db, fresh_se
     assert draft.status == "Draft" and draft.kind == "Approval request"
     assert draft.action == {"type": "request_approval", "gate": "SG4_ATD"}
     assert draft.subject == "Ready for AtD - request OLM approval"
-    assert len(draft.to) == 1  # addressed to the OR focal, who decides whether to send
+    # The message IS the approval request: To = the OLM (first chain step), Cc = the OR focal.
+    olm, focal = db.get(User, "U12"), db.get(User, "U01")
+    assert draft.to == [olm.email] and draft.cc == [focal.email]
+    assert "Sofia Garcia" in draft.body_html and "Asha Menon" in draft.body_html
+    # de-dup key is still rule | transition | OR focal | subject (stable)
+    assert draft.recipient_key == "R4|TR-0001|U01|ready:SG4_ATD"
     # Orion changed no approval state: nothing was requested by the run itself
     assert db.scalars(select(ApprovalRequest).where(ApprovalRequest.type == "AtD")).all() == []
+    again = _run(client, headers, user="U01", transition_id="TR-0001", rules=["R4"]).json()
+    assert again["created"]["R4"] == 0 and again["skipped_duplicates"] == 1
+
+
+def test_r4_send_starts_the_chain_once_and_mails_the_olm_once(client, headers, db, fresh_seed):
+    tid = "TR-0018"  # OR focal U04
+    db.get(Transition, tid).current_gate = "SG4_ATD"
+    _complete_items_for_atd(db, tid)
+    for row in db.scalars(select(TransitionItem).where(TransitionItem.transition_id == tid)).all():
+        row.gap_severity = None
+    db.commit()
+    transition = db.get(Transition, tid)
+    olm, focal = db.get(User, transition.olm_user_id), db.get(User, transition.or_focal_user_id)
+    assert _run(client, headers, user=focal.id, transition_id=tid, rules=["R4"]).json()[
+        "created"
+    ] == {**dict.fromkeys(ALL, 0), "R4": 1}
+    (draft,) = _drafts(db, rule_id="R4", transition_id=tid)
+    assert draft.to == [olm.email] and draft.cc == [focal.email]
+
+    # the draft stays in the OR focal's queue; only she may send it
+    queue = client.get(f"{API}/orion/drafts", params={"status": "Draft"}, headers=headers(focal.id))
+    row = next(d for d in queue.json() if d["id"] == draft.id)
+    assert row["can_send"] is True and row["to"] == [olm.email]
+    other = client.get(f"{API}/orion/drafts", params={"status": "Draft"}, headers=headers("U16"))
+    assert next(d for d in other.json() if d["id"] == draft.id)["can_send"] is False
+    assert (
+        client.post(f"{API}/orion/drafts/{draft.id}/send", headers=headers("U16")).status_code
+        == 403
+    )
+
+    sent = client.post(f"{API}/orion/drafts/{draft.id}/send", headers=headers(focal.id))
+    assert sent.status_code == 200, sent.text
+    chains = db.scalars(select(ApprovalRequest).where(ApprovalRequest.transition_id == tid)).all()
+    assert len(chains) == 1 and chains[0].type == "AtD" and chains[0].status == "Pending"
+
+    db.expire_all()
+    out = db.scalars(select(OutboxMessage).order_by(OutboxMessage.id)).all()
+    emails = [m for m in out if m.channel == "Email"]
+    assert len(emails) == 1
+    assert emails[0].to == [olm.email] and emails[0].cc == [focal.email]
+    assert not any(focal.email in m.to for m in emails)  # no self-addressed e-mail
+    cards = [m for m in out if m.channel == "Teams" and m.adaptive_card_json]
+    approval_cards = [
+        m for m in cards if any(a.get("type") == "Action.Execute" for a in _actions(m))
+    ]
+    assert len(cards) == 1 and len(approval_cards) == 1  # the one actionable approval card
+
+    again = client.post(f"{API}/orion/drafts/{draft.id}/send", headers=headers(focal.id))
+    assert again.status_code == 409
+    assert (
+        len(db.scalars(select(ApprovalRequest).where(ApprovalRequest.transition_id == tid)).all())
+        == 1
+    )
+    kept = client.get(
+        f"{API}/orion/drafts", params={"transition_id": tid}, headers=headers(focal.id)
+    )
+    final = next(d for d in kept.json() if d["id"] == draft.id)
+    assert final["status"] == "Sent" and final["can_send"] is False
+
+
+def _actions(message: OutboxMessage) -> list[dict]:
+    return list((message.adaptive_card_json or {}).get("actions") or [])
 
 
 def test_autonomous_mode_sends_only_eligible_rules(client, headers, db, fresh_seed):
@@ -256,10 +324,6 @@ def test_reminder_wording_variants():
         },
     )
     assert "Escalation" in esc["subject"] and "Sofia" in esc["body_html"]
-    ready = draft_message(
-        "approval request", {**base, "ready": True, "gate_short": "AtD", "approver_role": "OLM"}
-    )
-    assert ready["subject"] == "Ready for AtD - request OLM approval"
     items = [{"id": f"X{n}", "title": f"T{n}"} for n in range(3)]
     chaser = draft_message("chaser", {**base, "items": items})["body_html"]
     assert chaser.count("<ul>") == 1 and chaser.count("</ul>") == 1 and chaser.count("<li>") == 3

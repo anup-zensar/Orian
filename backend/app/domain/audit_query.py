@@ -7,6 +7,7 @@ from datetime import datetime, time, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.domain.audit_text import describe_event
 from app.errors import BadRequest
 from app.models import AuditEvent, Transition, User
 from app.schemas.audit import AuditEventOut, AuditFilters, AuditPageOut
@@ -72,6 +73,7 @@ def query_audit(db: Session, filters: AuditFilters) -> AuditPageOut:
                 before=r.before,
                 after=r.after,
                 note=r.note or "",
+                summary=describe_event(r.entity, r.entity_id, r.action),
             )
             for r in rows
         ],

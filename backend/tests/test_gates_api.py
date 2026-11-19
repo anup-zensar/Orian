@@ -524,3 +524,21 @@ def test_closure_close_requires_everything_done(client, headers, fresh_seed, db)
         headers=headers("U04"),
     )
     assert again.status_code == 409
+
+
+def test_pending_exception_action_names_the_approver_and_the_action(client, headers, db):
+    data = _readiness(client, headers, FLAGSHIP)
+    action = next(a for a in data["recommended_actions"] if a["item_ids"] == ["S45-014"])
+    assert action["kind"] == "draft_chaser"
+    assert action["label"] == "Ask Fatima Khan (IRM) to approve exception EX-01 for S45-014"
+    # the chaser behind the button goes to the approver, not to a bystander
+    res = client.post(
+        f"{API}/orion/drafts/chaser",
+        json={"transition_id": FLAGSHIP, "item_ids": ["S45-014"]},
+        headers=headers("U01"),
+    )
+    assert res.status_code == 201, res.text
+    from app.models import User
+
+    assert res.json()["to"] == [db.get(User, "U14").email]
+    assert "EX-01" in res.json()["body_html"]

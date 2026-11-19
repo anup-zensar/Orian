@@ -203,9 +203,7 @@ export function RecentActivityCard({ events, today }: { events: AuditEvent[]; to
                   {dayjs(e.at).from(now)}
                 </Caption1>
               </div>
-              <span>
-                {e.action} {e.entity} {e.entity_id}
-              </span>
+              <span>{e.summary || `${e.action} ${e.entity} ${e.entity_id}`}</span>
               {e.transition_id && (
                 <Caption1>
                   <AppLink to={`/transitions/${e.transition_id}/overview`}>

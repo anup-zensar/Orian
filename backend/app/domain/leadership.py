@@ -93,6 +93,12 @@ def _critical_gaps(m: TransitionMetrics) -> list[str]:
     return out
 
 
+def _human_date(iso: str) -> str:
+    """ "2026-11-18" -> "18 Nov 2026" (the app's date style)."""
+    day = date.fromisoformat(iso)
+    return f"{day.day} {day:%b %Y}"
+
+
 def collect_scope_data(db: Session, scope: LeadershipScope, scope_id: str | None) -> dict[str, Any]:
     """Live data for ``AIService.leadership_update``: keys ``scope``, ``scope_id``, ``title``, ``today``,
     ``transitions`` (id, name, portfolio, current gate, RAG, readiness %, days to decision, verdict),
@@ -239,7 +245,7 @@ def collect_scope_data(db: Session, scope: LeadershipScope, scope_id: str | None
         asks.append(f"{by_id[tid].transition.name}: {n} overdue action(s) need an owner push")
 
     wins = [
-        f"{a['type']} approved for {a['name']} on {a['date']}"
+        f"{a['type']} approved for {a['name']} on {_human_date(a['date'])}"
         + (f" ({a['approver']})" if a.get("approver") else "")
         for a in approvals
         if (today - date.fromisoformat(a["date"])).days <= RECENT_WIN_DAYS

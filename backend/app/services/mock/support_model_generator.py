@@ -140,13 +140,21 @@ def _generic(transition: Mapping[str, Any], inputs: Mapping[str, Any]) -> dict[s
             },
         ],
         "open_questions": [
-            f"Confirm the L2/L3 split between the vendor and the product team for {name}",
-            "Who owns monitoring alerts and the on-call rota outside office hours?",
-            "Confirm hosting and data platform dependencies"
-            + (f" for the {portfolio} portfolio" if portfolio else ""),
+            _question(
+                f"Confirm the L2/L3 split between the vendor and the product team for {name}"
+            ),
+            _question("Who owns monitoring alerts and the on-call rota outside office hours?"),
+            _question(
+                "Confirm hosting and data platform dependencies"
+                + (f" for the {portfolio} portfolio" if portfolio else "")
+            ),
         ],
         "sources": [],
     }
+
+
+def _question(text: str) -> dict[str, str]:
+    return {"question": text, "answer": ""}
 
 
 def _number(landscape: dict[str, Any]) -> dict[str, Any]:

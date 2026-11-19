@@ -165,6 +165,12 @@ export function DemoSection() {
               / support model), {ffResult.skipped_exception} left open (exception),{' '}
               {ffResult.evals_passing} eval metrics passing.
               {ffResult.readiness ? ` Readiness: ${ffResult.readiness}.` : ''}
+              {ffResult.r4_drafts > 0 && (
+                <div>
+                  Orion (rule R4) drafted &quot;Ready for AtD - request OLM approval&quot;.{' '}
+                  <Link to="/drafts">Open Orion drafts</Link>
+                </div>
+              )}
               <div>
                 <Link to={`/transitions/${encodeURIComponent(ffResult.transition_id)}/gates`}>
                   Open {ffResult.transition_id} gates tab

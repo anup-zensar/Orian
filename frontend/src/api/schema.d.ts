@@ -2065,7 +2065,15 @@ export interface paths {
          */
         get: operations["list_playbook_items_api_v1_admin_playbook_items_get"];
         put?: never;
-        post?: never;
+        /**
+         * Create Playbook Item
+         * @description Create a library item in ANY checklist (``source`` = checklist code; GET / PUT of items
+         *     already exist). Validates: checklist exists and is active; ``portfolio`` required for a
+         *     ``portfolio_golden`` checklist and must exist; gate is a gate code; lens one of the three;
+         *     tiers within ``cfg.tier_numbers``; ``default_owner_role`` an active role; id unique. New
+         *     transitions only. Audit ``config:playbook_items``.
+         */
+        post: operations["create_playbook_item_api_v1_admin_playbook_items_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2266,7 +2274,12 @@ export interface paths {
          */
         get: operations["list_admin_users_api_v1_admin_users_get"];
         put?: never;
-        post?: never;
+        /**
+         * Create User
+         * @description Create a user (id from ``ID_FORMATS["U"]``: U17, U18 ...). Validates: role is an ACTIVE role;
+         *     e-mail unique; name not Orion / agent / bot / ai. Audit ``config:users``.
+         */
+        post: operations["create_user_api_v1_admin_users_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2336,6 +2349,812 @@ export interface paths {
          *     "today_override" and applied in-process. Audited. 403; 404 DEMO_MODE=false; 422 bad date.
          */
         post: operations["demo_set_today_api_v1_admin_demo_today_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/project-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Project Types
+         * @description All project types (active and inactive) by ``sort_order`` with ``used_by`` = transitions of
+         *     that type. 403 non-admin.
+         */
+        get: operations["list_project_types_api_v1_admin_project_types_get"];
+        put?: never;
+        /**
+         * Create Project Type
+         * @description Create a project type (no code change needed). Validates: code unique (case-insensitive) and
+         *     printable; every checklist exists and is a ``library`` checklist; required intake fields exist;
+         *     ``has_ai_profile`` / ``requires_tiering`` are plain flags. New transitions only. Audit
+         *     ``config:project_types``. 422 reasons per problem; 409 duplicate code. Returns the list.
+         */
+        post: operations["create_project_type_api_v1_admin_project_types_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/project-types/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Project Type
+         * @description Delete a project type nobody uses. 409 "Used by N transitions - deactivate instead" when any
+         *     transition has it. Returns the list.
+         */
+        delete: operations["delete_project_type_api_v1_admin_project_types__code__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Project Type
+         * @description Edit label, description, flags, checklists, required intake fields (written to both sides:
+         *     the type's list and the fields' ``required_for_project_types``), synonyms, order, active.
+         *     Guardrails: the last active project type cannot be deactivated (guardrail 5); a checklist must
+         *     exist and be active. The code never changes. Returns the list. 404 unknown code.
+         */
+        patch: operations["update_project_type_api_v1_admin_project_types__code__patch"];
+        trace?: never;
+    };
+    "/api/v1/admin/project-types/{code}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview Project Type
+         * @description What a NEW transition of this type would get: active library item counts per gate and per
+         *     checklist, and which steps (tiering, AI profile, eval metrics) it shows. 404 unknown code.
+         */
+        get: operations["preview_project_type_api_v1_admin_project_types__code__preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/checklists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Checklists
+         * @description The checklist registry with item counts and the project types that list each one.
+         */
+        get: operations["list_checklists_api_v1_admin_checklists_get"];
+        put?: never;
+        /**
+         * Create Checklist
+         * @description Create a ``library`` checklist (code ``^[A-Z][A-Z0-9_]{1,39}$``, unique). Audit
+         *     ``config:checklists``. 409 duplicate code. Returns the list.
+         */
+        post: operations["create_checklist_api_v1_admin_checklists_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/checklists/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Checklist
+         * @description Delete a custom checklist with no items and no project type. Built-ins cannot be deleted
+         *     (409); 409 when it has items or is listed by a project type. Returns the list.
+         */
+        delete: operations["delete_checklist_api_v1_admin_checklists__code__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Checklist
+         * @description Edit label, description, order, ``tier_filtered`` and active. ``kind`` never changes;
+         *     deactivating is refused (409) while an active project type lists the checklist. Returns the list.
+         */
+        patch: operations["update_checklist_api_v1_admin_checklists__code__patch"];
+        trace?: never;
+    };
+    "/api/v1/admin/portfolios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Portfolios
+         * @description All portfolios (active and inactive) with golden-set size and ``used_by``. The golden-set
+         *     routes (``/admin/portfolios/{name}/golden-set``) are unchanged.
+         */
+        get: operations["list_portfolios_api_v1_admin_portfolios_get"];
+        put?: never;
+        /**
+         * Create Portfolio
+         * @description Create a portfolio (name immutable and unique, short ``code``). ``requires_sites`` turns on
+         *     the site rows at intake. Audit ``config:portfolios``. 409 duplicate name. Returns the list.
+         */
+        post: operations["create_portfolio_api_v1_admin_portfolios_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/portfolios/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Portfolio
+         * @description Delete an unused portfolio and its golden set. 409 "Used by N transitions - deactivate
+         *     instead". Returns the list.
+         */
+        delete: operations["delete_portfolio_api_v1_admin_portfolios__name__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Portfolio
+         * @description Edit code, label, description, focus areas, ``requires_sites``, ``sites_label``, synonyms,
+         *     order, active. The last active portfolio cannot be deactivated. Returns the list.
+         */
+        patch: operations["update_portfolio_api_v1_admin_portfolios__name__patch"];
+        trace?: never;
+    };
+    "/api/v1/admin/option-lists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Option Lists
+         * @description Every list (built-in and custom) with ``group``, ``structural`` (lock icon), declared meta
+         *     fields and counts. Items: ``GET /admin/option-lists/{key}/items``.
+         */
+        get: operations["list_option_lists_api_v1_admin_option_lists_get"];
+        put?: never;
+        /**
+         * Create Option List
+         * @description Create a custom list (key unique, ``^[a-z][a-z0-9_]{1,39}$``) for custom fields. Audit
+         *     ``config:option_lists``. 409 duplicate key. Returns the list of lists.
+         */
+        post: operations["create_option_list_api_v1_admin_option_lists_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/option-lists/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Option List
+         * @description Delete a custom list not used by any intake field. Built-in and structural lists cannot be
+         *     deleted (409); 409 while a field uses it.
+         */
+        delete: operations["delete_option_list_api_v1_admin_option_lists__key__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Option List
+         * @description Edit label, description, group, declared meta fields. A structural list accepts label and
+         *     description only (422 "Behaviour depends on these values - only the labels can change").
+         */
+        patch: operations["update_option_list_api_v1_admin_option_lists__key__patch"];
+        trace?: never;
+    };
+    "/api/v1/admin/option-lists/{key}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Option Items
+         * @description The ordered items of a list (inactive included) with ``used_by``. 404 unknown list.
+         */
+        get: operations["get_option_items_api_v1_admin_option_lists__key__items_get"];
+        /**
+         * Put Option Items
+         * @description Replace the ORDERED items (position = ``sort_order``). Existing values keep their identity
+         *     (the value never changes); new values are added; a used value missing from the body or sent
+         *     ``active=false`` is DEACTIVATED (warning with the count), an unused one is removed. Structural
+         *     lists: labels / descriptions only (add / remove / recode refused with a reason). Validates meta
+         *     against the declared meta fields; ``severities``: exactly one ``counts_as_critical``;
+         *     ``evidence_types`` ``needs`` in file / url / text / none; the last active value of ``regions``
+         *     cannot be deactivated. Returns the items.
+         */
+        put: operations["put_option_items_api_v1_admin_option_lists__key__items_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/config/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Config Section
+         * @description EXTENSION of design 4 ("Reset section to defaults"): restore one editor from seed/config.json.
+         *     409 when it would remove a value that is in use. Audit ``config:<section>``.
+         */
+        post: operations["reset_config_section_api_v1_admin_config_reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/intake-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Intake Fields
+         * @description Built-in and custom fields (both forms, inactive included) in form order with ``used_by``
+         *     and ``type_locked``.
+         */
+        get: operations["list_intake_fields_api_v1_admin_intake_fields_get"];
+        put?: never;
+        /**
+         * Create Intake Field
+         * @description Create a custom field. Key ``cf_<slug>`` from the label (unique, ``^[a-z][a-z0-9_]{1,40}$``
+         *     after the prefix). select / multiselect need an existing option list (``option_list``); number
+         *     accepts ``min`` / ``max``; text ``max_length``. ``required_mode`` by_project_type needs project
+         *     types that exist. Values live in ``Transition.custom_fields`` (``AIProfile.extra`` for the
+         *     ai_profile form). Audit ``config:intake_fields``.
+         */
+        post: operations["create_intake_field_api_v1_admin_intake_fields_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/intake-fields/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Order Intake Fields
+         * @description Set the field order: ``keys`` must contain every field key exactly once (422 otherwise).
+         */
+        put: operations["order_intake_fields_api_v1_admin_intake_fields_order_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/intake-fields/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Intake Field
+         * @description Delete an UNUSED custom field. Built-in fields cannot be deleted (409); a used custom field
+         *     answers 409 "Used by N transitions - deactivate instead" (deactivating hides it; stored values
+         *     stay readable under "Retired fields").
+         */
+        delete: operations["delete_intake_field_api_v1_admin_intake_fields__key__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Intake Field
+         * @description Edit a field. Label / help / section are editable everywhere. Structural fields (name,
+         *     project_type, portfolio, region, or_focal_user_id) refuse hide, optional and deactivate; the
+         *     ``type`` is refused once any transition holds a value and always for built-ins; a used option
+         *     removal becomes deactivation. ``required_for_project_types`` and the project types'
+         *     ``required_intake_fields`` are written through one function so they cannot diverge.
+         */
+        patch: operations["update_intake_field_api_v1_admin_intake_fields__key__patch"];
+        trace?: never;
+    };
+    "/api/v1/admin/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Roles
+         * @description All roles (active and inactive) with ``user_count`` and lock reasons.
+         */
+        get: operations["list_roles_api_v1_admin_roles_get"];
+        put?: never;
+        /**
+         * Create Role
+         * @description Create a role (code immutable, unique). Refused: names or codes containing Orion / agent /
+         *     bot / ai (reserved, BR-050). A role with a transition slot gets a person per transition in
+         *     ``Transition.role_assignments``. A new role holds only ``view`` until the matrix is edited.
+         *     Audit ``config:roles``.
+         */
+        post: operations["create_role_api_v1_admin_roles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/roles/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Role
+         * @description Delete an unused custom role (no users, no approval step, no assignment). Built-in roles
+         *     cannot be deleted (409).
+         */
+        delete: operations["delete_role_api_v1_admin_roles__code__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Role
+         * @description Edit labels, description, colour, order, ``can_approve``, ``has_transition_slot`` (ADMIN is
+         *     locked false; a built-in slot cannot be turned off), active. Deactivating needs no active user
+         *     left with the role (409) and is refused for ADMIN.
+         */
+        patch: operations["update_role_api_v1_admin_roles__code__patch"];
+        trace?: never;
+    };
+    "/api/v1/admin/users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update User
+         * @description Edit name, e-mail, role, focal label, title. You cannot change your own role away from
+         *     Admin, and the last active Admin keeps the role (guardrail 4). 404 unknown user.
+         */
+        patch: operations["update_user_api_v1_admin_users__user_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/admin/users/{user_id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deactivate User
+         * @description Deactivate a user (never delete). Refused for yourself and for the last active Admin
+         *     (guardrail 4) and when it would leave nobody holding the ``admin`` permission. The response
+         *     warns "assigned on N active transitions"; ``reassign_to`` (an active user of the same role)
+         *     takes those slots over in the same audited action. Old records still resolve the name.
+         */
+        post: operations["deactivate_user_api_v1_admin_users__user_id__deactivate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Permissions
+         * @description The permission matrix: rows = permissions grouped by ``area`` with scope (global /
+         *     transition), columns = active roles, locked cells with reasons, editable denial texts.
+         */
+        get: operations["get_permissions_api_v1_admin_permissions_get"];
+        /**
+         * Put Permissions
+         * @description Replace the matrix and optionally the texts. Guardrails (422, one reason each): ADMIN keeps
+         *     ``admin`` and one ACTIVE user holds it; ``view`` includes every active role; unknown perm or
+         *     role codes; no Orion / agent role. A denial text left unedited is regenerated from the role
+         *     labels (``is_custom=false``) so it never names a role that lost the right. Effective at once
+         *     (``cfg.invalidate()`` rebuilds the permission cache). Audit ``config:permissions`` with the
+         *     before / after matrix.
+         */
+        put: operations["put_permissions_api_v1_admin_permissions_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/tiering": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Tiering
+         * @description Tier definitions, dimensions, default tier, questions and rules (evaluation order), plus the
+         *     intake / custom fields a rule condition may look at.
+         */
+        get: operations["get_tiering_api_v1_admin_tiering_get"];
+        /**
+         * Put Tiering
+         * @description Replace the whole tiering configuration. Guardrails: tier numbers unique and contiguous from
+         *     1 (a tier is removed only when no tier assessment uses it); ``default_tier`` and every rule's
+         *     ``result_tier`` are defined; ``source: question`` conditions name an existing question;
+         *     ``intake`` / ``custom`` conditions name an existing field and (for select fields) a value of its
+         *     list; new questions get the next id (TQ6 ...). Audit ``config:tiering``.
+         */
+        put: operations["put_tiering_api_v1_admin_tiering_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/tiering/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Tiering
+         * @description Run the pure ``propose_tier(rules, questions, intake, answers)`` on a hypothetical project
+         *     (saved configuration, or the unsaved ``config`` in the body). Writes nothing, no audit.
+         */
+        post: operations["test_tiering_api_v1_admin_tiering_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/eval-metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Eval Metrics
+         * @description Every eval metric (EV-nn) with its targets per tier and the metric-level ``active`` flag.
+         *     (The tier-target editor stays ``/admin/eval-targets``.)
+         */
+        get: operations["list_eval_metrics_api_v1_admin_eval_metrics_get"];
+        put?: never;
+        /**
+         * Create Eval Metric
+         * @description Add a metric (id EV-nn = next free). One target row per ``cfg.tiers`` tier; ``targets_by_tier``
+         *     must cover every tier (422 otherwise); operator / value / unit only for ``auto`` metrics. New
+         *     transitions only. Audit ``config:eval_metrics``.
+         */
+        post: operations["create_eval_metric_api_v1_admin_eval_metrics_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/eval-metrics/{metric_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Eval Metric
+         * @description Edit name, evaluation mode, unit; ``active=false`` deactivates the metric for new results
+         *     (existing results stay). 404 unknown metric.
+         */
+        patch: operations["update_eval_metric_api_v1_admin_eval_metrics__metric_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/admin/thresholds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Thresholds
+         * @description RAG numbers, insight thresholds, calendar horizon, dashboard limits, narrative size, default
+         *     tier / pricing basis / horizon / growth, and the ``rag_rule`` text generated from them.
+         */
+        get: operations["get_thresholds_api_v1_admin_thresholds_get"];
+        /**
+         * Put Thresholds
+         * @description Replace ``cfg.thresholds``. Guardrails: ranges (percent 0..100, days 0..365), amber not
+         *     stricter than red (``amber_critical_gaps`` <= ``red_critical_gaps``, ``amber_lens_below`` >=
+         *     ``red_lens_below``), ``default_tier`` is a defined tier, ``default_pricing_basis`` an active
+         *     ``ocet_pricing_basis``. Live: RAG recalculates for all active transitions. Audit
+         *     ``config:thresholds``.
+         */
+        put: operations["put_thresholds_api_v1_admin_thresholds_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/labels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Labels
+         * @description Display overrides of workflow vocabulary (status words, RAG words, eval banner) with the
+         *     defaults.
+         */
+        get: operations["get_labels_api_v1_admin_labels_get"];
+        /**
+         * Put Labels
+         * @description Replace ``cfg.labels``. Keys must be known (422 for others); labels are non-empty and at
+         *     most 120 characters. Wording only: behaviour never depends on a label. Audit ``config:labels``.
+         */
+        put: operations["put_labels_api_v1_admin_labels_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/gates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Gates
+         * @description Gate label / short / description for every gate (codes, order and type are fixed in code),
+         *     outcome label overrides, the decision-gate -> approval-chain map and the mocked approver.
+         */
+        get: operations["get_gates_api_v1_admin_gates_get"];
+        /**
+         * Put Gates
+         * @description Replace the gate texts. Every gate code must be present and no unknown code (422);
+         *     ``chain`` values must be existing approval chain types and only decision gates may have one;
+         *     ``mock_approver_role`` must be an active role that ``can_approve``. Audit ``config:gates``.
+         */
+        put: operations["put_gates_api_v1_admin_gates_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/lenses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Lenses
+         * @description The three lenses with question, colour hint, owner roles and sign-off role.
+         */
+        get: operations["get_lenses_api_v1_admin_lenses_get"];
+        /**
+         * Put Lenses
+         * @description Replace the lens texts. Exactly Business, Technical and Compliance (structural); owner and
+         *     sign-off roles must be active roles. Audit ``config:lenses``. Returns the document.
+         */
+        put: operations["put_lenses_api_v1_admin_lenses_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/message-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Message Templates
+         * @description Every template (saved row, else the code default) with its allowed placeholders, the code
+         *     default text and the code path it replaces.
+         */
+        get: operations["list_message_templates_api_v1_admin_message_templates_get"];
+        /**
+         * Put Message Templates
+         * @description Save templates. Validates: known keys only; only the key's declared placeholders (an
+         *     unknown ``{{name}}`` refuses the save with the name in the reason); length caps. Cannot change
+         *     recipients or send policy (not part of a template). Audit ``config:message_templates``.
+         */
+        put: operations["put_message_templates_api_v1_admin_message_templates_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/message-templates/{key}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview Message Template
+         * @description Render a template (saved, or the unsaved edit in the body) with a sample context; values
+         *     are HTML-escaped, unknown placeholders are listed. Writes nothing, no audit.
+         */
+        post: operations["preview_message_template_api_v1_admin_message_templates__key__preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/config-export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Config
+         * @description Stretch: every configuration section as JSON (settings, lists, fields, roles, matrix,
+         *     tiering, templates). Demo configuration made in the UI is lost on a schema bump unless exported.
+         */
+        get: operations["export_config_api_v1_admin_config_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/config-import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Config
+         * @description Stretch: validate an export with the same rules as the editors and return the diff;
+         *     ``dry_run=true`` (default) writes nothing. 422 with reasons when a section is invalid, 409 when
+         *     ``schema_version`` differs from the server's.
+         */
+        post: operations["import_config_api_v1_admin_config_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Usage
+         * @description Where a value is used: count and the first 10 transitions. 422 unknown ``kind``.
+         */
+        get: operations["get_usage_api_v1_admin_usage_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2677,6 +3496,11 @@ export interface components {
             role: string;
             /** Label */
             label: string;
+            /**
+             * Is Mock
+             * @default false
+             */
+            is_mock: boolean;
         };
         /** ApprovalChainsIn */
         ApprovalChainsIn: {
@@ -2804,6 +3628,11 @@ export interface components {
             } | null;
             /** Note */
             note: string;
+            /**
+             * Summary
+             * @default
+             */
+            summary: string;
         };
         /** AuditPageOut */
         AuditPageOut: {
@@ -3008,6 +3837,46 @@ export interface components {
             /** Messages */
             messages: (components["schemas"]["TextMessage"] | components["schemas"]["FormMessage"] | components["schemas"]["ReadinessMessage"] | components["schemas"]["TableMessage"] | components["schemas"]["DraftsMessage"] | components["schemas"]["LinkMessage"] | components["schemas"]["ProposalMessage"] | components["schemas"]["LeadershipMessage"])[];
         };
+        /** ChecklistAdminOut */
+        ChecklistAdminOut: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "library" | "portfolio_golden" | "common";
+            /** Tier Filtered */
+            tier_filtered: boolean;
+            /** Is Builtin */
+            is_builtin: boolean;
+            /** Active */
+            active: boolean;
+            /** Sort Order */
+            sort_order: number;
+            /**
+             * Item Count
+             * @default 0
+             */
+            item_count: number;
+            /**
+             * Project Types
+             * @default []
+             */
+            project_types: string[];
+            /**
+             * Notice
+             * @default Changes affect NEW transitions; existing transitions keep their items.
+             */
+            notice: string;
+        };
         /**
          * ChecklistCountsOut
          * @description Active library sizes for the intake "Auto-scope" preview (spec §8.4).
@@ -3023,6 +3892,74 @@ export interface components {
             };
             /** Common */
             common: number;
+        };
+        /**
+         * ChecklistCreateIn
+         * @description POST /admin/checklists. New checklists are ``library`` checklists (included when a project
+         *     type lists them); ``kind`` of a built-in cannot change.
+         */
+        ChecklistCreateIn: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Tier Filtered
+             * @default false
+             */
+            tier_filtered: boolean;
+        };
+        /** ChecklistRefOut */
+        ChecklistRefOut: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Kind */
+            kind: string;
+            /**
+             * Tier Filtered
+             * @default false
+             */
+            tier_filtered: boolean;
+            /**
+             * Is Builtin
+             * @default false
+             */
+            is_builtin: boolean;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+        };
+        /** ChecklistUpdateIn */
+        ChecklistUpdateIn: {
+            /** Label */
+            label?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Active */
+            active?: boolean | null;
+            /** Sort Order */
+            sort_order?: number | null;
+            /** Tier Filtered */
+            tier_filtered?: boolean | null;
         };
         /** CompareRowOut */
         CompareRowOut: {
@@ -3169,6 +4106,91 @@ export interface components {
             /** Text */
             text?: string | null;
         };
+        /**
+         * ConfigDiffOut
+         * @description POST /admin/config-import?dry_run=true: what the import would add, change and remove.
+         */
+        ConfigDiffOut: {
+            /** Dry Run */
+            dry_run: boolean;
+            /** Applied */
+            applied: boolean;
+            /**
+             * Added
+             * @default {}
+             */
+            added: {
+                [key: string]: string[];
+            };
+            /**
+             * Changed
+             * @default {}
+             */
+            changed: {
+                [key: string]: string[];
+            };
+            /**
+             * Removed
+             * @default {}
+             */
+            removed: {
+                [key: string]: string[];
+            };
+            /**
+             * Reasons
+             * @default []
+             */
+            reasons: string[];
+        };
+        /**
+         * ConfigExportOut
+         * @description GET /admin/config-export (stretch): every configuration section as JSON.
+         */
+        ConfigExportOut: {
+            /** Schema Version */
+            schema_version: number;
+            /** Sections */
+            sections: {
+                [key: string]: unknown;
+            };
+        };
+        /** ConfigImportIn */
+        ConfigImportIn: {
+            /** Schema Version */
+            schema_version: number;
+            /** Sections */
+            sections: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * ConfigResetIn
+         * @description POST /admin/config/reset (extension of design 4): restore ONE editor to seed/config.json.
+         *     Refused (409) when it would remove a value that is in use. ``key`` selects a list / role / ...
+         */
+        ConfigResetIn: {
+            /**
+             * Section
+             * @enum {string}
+             */
+            section: "option_list" | "intake_fields" | "roles" | "permissions" | "tiering" | "thresholds" | "labels" | "gates" | "lenses" | "message_templates";
+            /** Key */
+            key?: string | null;
+        };
+        /** ConfigResetOut */
+        ConfigResetOut: {
+            /** Section */
+            section: string;
+            /** Key */
+            key?: string | null;
+            /** Restored */
+            restored: number;
+            /**
+             * Notice
+             * @default
+             */
+            notice: string;
+        };
         /** ConfirmNoDefectsIn */
         ConfirmNoDefectsIn: {
             /** Confirmed */
@@ -3254,6 +4276,11 @@ export interface components {
         DashboardOut: {
             user: components["schemas"]["UserOut"];
             /**
+             * Subtitle
+             * @default
+             */
+            subtitle: string;
+            /**
              * Today
              * Format: date
              */
@@ -3268,6 +4295,13 @@ export interface components {
             portfolio_tiles: components["schemas"]["PortfolioTileOut"][];
             /** Recent Activity */
             recent_activity: components["schemas"]["AuditEventOut"][];
+        };
+        /** DashboardThresholdsDoc */
+        DashboardThresholdsDoc: {
+            /** My Work Limit */
+            my_work_limit: number;
+            /** Recent Activity Limit */
+            recent_activity_limit: number;
         };
         /**
          * DecisionOption
@@ -3526,6 +4560,58 @@ export interface components {
             /** Days To Next Decision */
             days_to_next_decision: number | null;
         };
+        /** EvalMetricAdminOut */
+        EvalMetricAdminOut: {
+            /** Id */
+            id: string;
+            /** Metric */
+            metric: string;
+            /** Evaluation */
+            evaluation: string;
+            /** Unit */
+            unit?: string | null;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /**
+             * Targets By Tier
+             * @default {}
+             */
+            targets_by_tier: {
+                [key: string]: string;
+            };
+            /**
+             * Notice
+             * @default Changes affect NEW transitions; existing transitions keep their items.
+             */
+            notice: string;
+        };
+        /**
+         * EvalMetricCreateIn
+         * @description POST /admin/eval-metrics: a new metric EV-nn with a target per tier (``cfg.tiers``).
+         */
+        EvalMetricCreateIn: {
+            /** Metric */
+            metric: string;
+            /**
+             * Evaluation
+             * @default manual
+             * @enum {string}
+             */
+            evaluation: "auto" | "manual";
+            /** Unit */
+            unit?: string | null;
+            /** Operator */
+            operator?: (">=" | "<=" | "<" | ">" | "==" | "abs<=") | null;
+            /** Value */
+            value?: number | null;
+            /** Targets By Tier */
+            targets_by_tier?: {
+                [key: string]: string;
+            };
+        };
         /** EvalMetricIn */
         EvalMetricIn: {
             /** Metric Id */
@@ -3543,6 +4629,17 @@ export interface components {
             evaluation: string;
             /** Tiers */
             tiers: components["schemas"]["EvalTierTargetOut"][];
+        };
+        /** EvalMetricUpdateIn */
+        EvalMetricUpdateIn: {
+            /** Metric */
+            metric?: string | null;
+            /** Evaluation */
+            evaluation?: ("auto" | "manual") | null;
+            /** Unit */
+            unit?: string | null;
+            /** Active */
+            active?: boolean | null;
         };
         /** EvalResultIn */
         EvalResultIn: {
@@ -3800,6 +4897,11 @@ export interface components {
             evals_passing: number;
             /** Readiness */
             readiness?: string | null;
+            /**
+             * R4 Drafts
+             * @default 0
+             */
+            r4_drafts: number;
         };
         /** FlavourRuleIn */
         FlavourRuleIn: {
@@ -3967,6 +5069,18 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** GateLabelOut */
+        GateLabelOut: {
+            /** Label */
+            label: string;
+            /** Short */
+            short: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+        };
         /**
          * GateLensSummaryOut
          * @description Gate summary bar row for the selected gate (spec §8.7 b), one per lens, live (BR-020).
@@ -4004,6 +5118,11 @@ export interface components {
             short: string;
             /** Type */
             type: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
         };
         /** GateOverview */
         GateOverview: {
@@ -4110,6 +5229,89 @@ export interface components {
             type: string;
             /** State */
             state: string;
+        };
+        /** GateTextIn */
+        GateTextIn: {
+            /** Label */
+            label: string;
+            /** Short */
+            short: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+        };
+        /** GateTextOut */
+        GateTextOut: {
+            /** Label */
+            label: string;
+            /** Short */
+            short: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Code */
+            code: string;
+            /** Order */
+            order: number;
+            /** Type */
+            type: string;
+        };
+        /**
+         * GatesDoc
+         * @description Gate texts keyed by gate code (codes, order and type stay in code), outcome label overrides
+         *     ``{gate_type: {outcome: label}}`` and the decision-gate -> approval-chain map.
+         */
+        GatesDoc: {
+            /** Gates */
+            gates: {
+                [key: string]: components["schemas"]["GateTextIn"];
+            };
+            /** Outcome Labels */
+            outcome_labels?: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+            /** Chain */
+            chain?: {
+                [key: string]: string;
+            };
+            /** Mock Role */
+            mock_role?: string | null;
+            /** Mock Approver Role */
+            mock_approver_role?: string | null;
+        };
+        /** GatesOut */
+        GatesOut: {
+            /** Gates */
+            gates: components["schemas"]["GateTextOut"][];
+            /** Outcome Labels */
+            outcome_labels: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+            /** Outcomes */
+            outcomes: {
+                [key: string]: string[];
+            };
+            /** Chain */
+            chain: {
+                [key: string]: string;
+            };
+            /** Mock Role */
+            mock_role: string;
+            /** Mock Approver Role */
+            mock_approver_role: string;
+            /**
+             * Notice
+             * @default Codes, order and gate types are fixed; the wording is yours.
+             */
+            notice: string;
         };
         /** GatesOverviewOut */
         GatesOverviewOut: {
@@ -4265,8 +5467,14 @@ export interface components {
         };
         /**
          * InsightActionOut
-         * @description A button on an insight. M2: ``kind="link"`` navigates to ``href``. M8 adds proposal kinds that a
-         *     permitted human accepts (BR-050).
+         * @description A button on an insight. ``kind="link"`` navigates to ``href``.
+         *
+         *     ``kind="draft_chaser"`` is a typed action (BR-050: Orion only suggests, the human clicks): the
+         *     frontend shows ``label`` as a button that calls, as the signed-in user,
+         *     ``POST /api/v1/orion/drafts/chaser`` with ``{"transition_id": transition_id, "item_ids":
+         *     [item_id]}`` and then opens the returned draft in the drafts queue (nothing is sent). ``href``
+         *     stays filled (the gap in the workspace) as a fallback for clients that only know links.
+         *     ``transition_id`` / ``item_id`` are null for plain links.
          */
         InsightActionOut: {
             /** Label */
@@ -4280,6 +5488,10 @@ export interface components {
             href?: string | null;
             /** Proposal Id */
             proposal_id?: number | null;
+            /** Transition Id */
+            transition_id?: string | null;
+            /** Item Id */
+            item_id?: string | null;
         };
         /** InsightOut */
         InsightOut: {
@@ -4311,6 +5523,13 @@ export interface components {
             /** Insights */
             insights: components["schemas"]["InsightOut"][];
         };
+        /** InsightsThresholdsDoc */
+        InsightsThresholdsDoc: {
+            /** Low Readiness Below */
+            low_readiness_below: number;
+            /** Within Days */
+            within_days: number;
+        };
         /** IntakeExtraFieldOut */
         IntakeExtraFieldOut: {
             /** Key */
@@ -4329,7 +5548,311 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
-        /** IntakeOptionsOut */
+        /** IntakeFieldAdminOut */
+        IntakeFieldAdminOut: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Help
+             * @default
+             */
+            help: string;
+            /** Builtin */
+            builtin: boolean;
+            /** Structural */
+            structural: boolean;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "text" | "textarea" | "number" | "date" | "select" | "multiselect" | "boolean" | "user";
+            /** Option List */
+            option_list?: string | null;
+            /**
+             * Visible
+             * @default true
+             */
+            visible: boolean;
+            /**
+             * Required Mode
+             * @default never
+             * @enum {string}
+             */
+            required_mode: "never" | "always" | "by_project_type";
+            /**
+             * Required For Project Types
+             * @default []
+             */
+            required_for_project_types: string[];
+            /**
+             * Applies To Project Types
+             * @default []
+             */
+            applies_to_project_types: string[];
+            /**
+             * Applies To Portfolios
+             * @default []
+             */
+            applies_to_portfolios: string[];
+            /**
+             * Section
+             * @default
+             */
+            section: string;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+            /**
+             * Show On Overview
+             * @default false
+             */
+            show_on_overview: boolean;
+            /**
+             * Filterable
+             * @default false
+             */
+            filterable: boolean;
+            /**
+             * Form
+             * @default intake
+             * @enum {string}
+             */
+            form: "intake" | "ai_profile";
+            /** Min */
+            min?: number | null;
+            /** Max */
+            max?: number | null;
+            /** Max Length */
+            max_length?: number | null;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /**
+             * Used By
+             * @default 0
+             */
+            used_by: number;
+            /**
+             * Type Locked
+             * @default false
+             */
+            type_locked: boolean;
+            /** Lock Reason */
+            lock_reason?: string | null;
+        };
+        /**
+         * IntakeFieldCreateIn
+         * @description POST /admin/intake-fields: a custom field. ``key`` is generated from the label as
+         *     ``cf_<slug>`` (``^[a-z][a-z0-9_]{1,40}$``) unless given.
+         */
+        IntakeFieldCreateIn: {
+            /** Label */
+            label: string;
+            /** Key */
+            key?: string | null;
+            /**
+             * Type
+             * @default text
+             * @enum {string}
+             */
+            type: "text" | "textarea" | "number" | "date" | "select" | "multiselect" | "boolean" | "user";
+            /** Option List */
+            option_list?: string | null;
+            /**
+             * Help
+             * @default
+             */
+            help: string;
+            /**
+             * Required Mode
+             * @default never
+             * @enum {string}
+             */
+            required_mode: "never" | "always" | "by_project_type";
+            /** Required For Project Types */
+            required_for_project_types?: string[];
+            /** Applies To Project Types */
+            applies_to_project_types?: string[];
+            /** Applies To Portfolios */
+            applies_to_portfolios?: string[];
+            /**
+             * Section
+             * @default Additional details
+             */
+            section: string;
+            /**
+             * Show On Overview
+             * @default false
+             */
+            show_on_overview: boolean;
+            /**
+             * Filterable
+             * @default false
+             */
+            filterable: boolean;
+            /**
+             * Form
+             * @default intake
+             * @enum {string}
+             */
+            form: "intake" | "ai_profile";
+            /** Min */
+            min?: number | null;
+            /** Max */
+            max?: number | null;
+            /** Max Length */
+            max_length?: number | null;
+        };
+        /**
+         * IntakeFieldOrderIn
+         * @description PUT /admin/intake-fields/order: every field key in the new order.
+         */
+        IntakeFieldOrderIn: {
+            /** Keys */
+            keys: string[];
+        };
+        /**
+         * IntakeFieldRefOut
+         * @description One intake form field (design 1.5). ``option_list``: list key for select / multiselect (the
+         *     virtual lists ``project_types`` and ``portfolios`` come from their own keys); for type ``user``
+         *     the role code whose users are offered.
+         */
+        IntakeFieldRefOut: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Help
+             * @default
+             */
+            help: string;
+            /**
+             * Builtin
+             * @default false
+             */
+            builtin: boolean;
+            /**
+             * Structural
+             * @default false
+             */
+            structural: boolean;
+            /** Type */
+            type: string;
+            /** Option List */
+            option_list?: string | null;
+            /**
+             * Visible
+             * @default true
+             */
+            visible: boolean;
+            /**
+             * Required Mode
+             * @default never
+             */
+            required_mode: string;
+            /**
+             * Required For Project Types
+             * @default []
+             */
+            required_for_project_types: string[];
+            /**
+             * Applies To Project Types
+             * @default []
+             */
+            applies_to_project_types: string[];
+            /**
+             * Applies To Portfolios
+             * @default []
+             */
+            applies_to_portfolios: string[];
+            /**
+             * Section
+             * @default
+             */
+            section: string;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+            /**
+             * Show On Overview
+             * @default false
+             */
+            show_on_overview: boolean;
+            /**
+             * Filterable
+             * @default false
+             */
+            filterable: boolean;
+            /**
+             * Form
+             * @default intake
+             */
+            form: string;
+            /** Min */
+            min?: number | null;
+            /** Max */
+            max?: number | null;
+            /** Max Length */
+            max_length?: number | null;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+        };
+        /**
+         * IntakeFieldUpdateIn
+         * @description PATCH: label stays editable on every field; structural fields refuse hide / optional /
+         *     deactivate; ``type`` is refused once a transition holds a value.
+         */
+        IntakeFieldUpdateIn: {
+            /** Label */
+            label?: string | null;
+            /** Help */
+            help?: string | null;
+            /** Type */
+            type?: ("text" | "textarea" | "number" | "date" | "select" | "multiselect" | "boolean" | "user") | null;
+            /** Option List */
+            option_list?: string | null;
+            /** Visible */
+            visible?: boolean | null;
+            /** Required Mode */
+            required_mode?: ("never" | "always" | "by_project_type") | null;
+            /** Required For Project Types */
+            required_for_project_types?: string[] | null;
+            /** Applies To Project Types */
+            applies_to_project_types?: string[] | null;
+            /** Applies To Portfolios */
+            applies_to_portfolios?: string[] | null;
+            /** Section */
+            section?: string | null;
+            /** Show On Overview */
+            show_on_overview?: boolean | null;
+            /** Filterable */
+            filterable?: boolean | null;
+            /** Min */
+            min?: number | null;
+            /** Max */
+            max?: number | null;
+            /** Max Length */
+            max_length?: number | null;
+            /** Active */
+            active?: boolean | null;
+        };
+        /**
+         * IntakeOptionsOut
+         * @description Active VALUES of the intake option lists. The six below always exist; further lists of the
+         *     "Intake" group are added as extra keys (``dict[str, list[str]]``, design 4).
+         */
         IntakeOptionsOut: {
             /** Audience */
             audience: string[];
@@ -4343,6 +5866,8 @@ export interface components {
             investment_type: string[];
             /** Delivery Method */
             delivery_method: string[];
+        } & {
+            [key: string]: unknown;
         };
         /** IntentCatalogOut */
         IntentCatalogOut: {
@@ -4570,6 +6095,36 @@ export interface components {
             link?: string | null;
         };
         /**
+         * LabelsDoc
+         * @description Display overrides of workflow vocabulary: ``{key: label}`` (e.g. ``"rag.Grey": "Not started"``).
+         *     Keys are the ones returned by GET (unknown keys are refused).
+         */
+        LabelsDoc: {
+            /** Labels */
+            labels: {
+                [key: string]: string;
+            };
+        };
+        /** LabelsOut */
+        LabelsOut: {
+            /** Labels */
+            labels: {
+                [key: string]: string;
+            };
+            /**
+             * Defaults
+             * @default {}
+             */
+            defaults: {
+                [key: string]: string;
+            };
+            /**
+             * Notice
+             * @default Changes the wording only; behaviour does not change.
+             */
+            notice: string;
+        };
+        /**
          * LandscapeIn
          * @description Editable landscape (request body of PUT, and shape of the generated JSON).
          */
@@ -4618,7 +6173,7 @@ export interface components {
              * Open Questions
              * @default []
              */
-            open_questions: string[];
+            open_questions: components["schemas"]["OpenQuestionIO"][];
             /**
              * Sources
              * @default []
@@ -4674,7 +6229,7 @@ export interface components {
              * Open Questions
              * @default []
              */
-            open_questions: string[];
+            open_questions: components["schemas"]["OpenQuestionIO"][];
             /**
              * Sources
              * @default []
@@ -4798,6 +6353,17 @@ export interface components {
             /** Readiness Pct */
             readiness_pct: number;
         };
+        /** LensCfgIn */
+        LensCfgIn: {
+            /** Question */
+            question: string;
+            /** Color Hint */
+            color_hint: string;
+            /** Owner Roles */
+            owner_roles: string[];
+            /** Signoff Role */
+            signoff_role: string;
+        };
         /** LensOut */
         LensOut: {
             /** Code */
@@ -4823,6 +6389,28 @@ export interface components {
             Technical: number;
             /** Compliance */
             Compliance: number;
+        };
+        /**
+         * LensesDoc
+         * @description The three lenses (Business, Technical, Compliance - structural) keyed by code.
+         */
+        LensesDoc: {
+            /** Lenses */
+            lenses: {
+                [key: string]: components["schemas"]["LensCfgIn"];
+            };
+        };
+        /** LensesOut */
+        LensesOut: {
+            /** Lenses */
+            lenses: {
+                [key: string]: components["schemas"]["LensCfgIn"];
+            };
+            /**
+             * Notice
+             * @default The three lenses are fixed; their question, colour and owners are yours.
+             */
+            notice: string;
         };
         /** LinkMessage */
         LinkMessage: {
@@ -4861,6 +6449,99 @@ export interface components {
             denied_reasons: {
                 [key: string]: string;
             };
+        };
+        /** MessageTemplateAdminOut */
+        MessageTemplateAdminOut: {
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Subject */
+            subject: string;
+            /** Body */
+            body: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Placeholders */
+            placeholders: components["schemas"]["PlaceholderOut"][];
+            /**
+             * Is Default
+             * @default true
+             */
+            is_default: boolean;
+            /**
+             * Code Source
+             * @default
+             */
+            code_source: string;
+            /** Default Subject */
+            default_subject: string;
+            /** Default Body */
+            default_body: string;
+            /**
+             * Notice
+             * @default Orion drafts, you decide: only the wording changes, never who receives it or when.
+             */
+            notice: string;
+        };
+        /** MessageTemplateIn */
+        MessageTemplateIn: {
+            /** Key */
+            key: string;
+            /** Subject */
+            subject: string;
+            /** Body */
+            body: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+        };
+        /** MessageTemplatesPutIn */
+        MessageTemplatesPutIn: {
+            /** Templates */
+            templates: components["schemas"]["MessageTemplateIn"][];
+        };
+        /** MetaFieldIn */
+        MetaFieldIn: {
+            /** Key */
+            key: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "token" | "text" | "number" | "boolean" | "select" | "list" | "role" | "gate";
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /** Options */
+            options?: string[];
+        };
+        /**
+         * MetaFieldOut
+         * @description A declared meta key of a list: tells the editor which extra columns to show.
+         */
+        MetaFieldOut: {
+            /** Key */
+            key: string;
+            /** Type */
+            type: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /**
+             * Options
+             * @default []
+             */
+            options: string[];
         };
         /** NotificationOut */
         NotificationOut: {
@@ -5190,6 +6871,20 @@ export interface components {
             owner?: components["schemas"]["PersonRef"] | null;
         };
         /**
+         * OpenQuestionIO
+         * @description An open question for the architect and its answer. Answered = non-empty ``answer``.
+         *     A plain string (landscapes stored before answers existed) loads as an unanswered question.
+         */
+        OpenQuestionIO: {
+            /** Question */
+            question: string;
+            /**
+             * Answer
+             * @default
+             */
+            answer: string;
+        };
+        /**
          * OperatingRhythmRowOut
          * @description Static operating-rhythm card (from the client prototype, spec §8.2).
          */
@@ -5202,6 +6897,190 @@ export interface components {
             input: string;
             /** Output */
             output: string;
+        };
+        /**
+         * OptionItemIn
+         * @description One row of the PUT body. ``value`` identifies an existing row (it never changes); a new
+         *     ``value`` adds a row. A row missing from the PUT is DEACTIVATED when used, removed otherwise.
+         */
+        OptionItemIn: {
+            /** Value */
+            value: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Meta */
+            meta?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+        };
+        /** OptionItemOut */
+        OptionItemOut: {
+            /** Value */
+            value: string;
+            /** Label */
+            label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Meta
+             * @default {}
+             */
+            meta: {
+                [key: string]: unknown;
+            };
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+            /**
+             * Used By
+             * @default 0
+             */
+            used_by: number;
+        };
+        /**
+         * OptionItemsIn
+         * @description PUT /admin/option-lists/{key}/items: replaces the ORDERED items (position = sort_order).
+         */
+        OptionItemsIn: {
+            /** Items */
+            items: components["schemas"]["OptionItemIn"][];
+        };
+        /** OptionItemsOut */
+        OptionItemsOut: {
+            option_list: components["schemas"]["OptionListAdminOut"];
+            /** Items */
+            items: components["schemas"]["OptionItemOut"][];
+            /**
+             * Notice
+             * @default Applies immediately; RAG recalculates for all active transitions.
+             */
+            notice: string;
+        };
+        /** OptionListAdminOut */
+        OptionListAdminOut: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Group
+             * @default
+             */
+            group: string;
+            /** Is Builtin */
+            is_builtin: boolean;
+            /** Structural */
+            structural: boolean;
+            /** Lock Reason */
+            lock_reason?: string | null;
+            /**
+             * Meta Fields
+             * @default []
+             */
+            meta_fields: components["schemas"]["MetaFieldOut"][];
+            /**
+             * Item Count
+             * @default 0
+             */
+            item_count: number;
+            /**
+             * Active Count
+             * @default 0
+             */
+            active_count: number;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+        };
+        /**
+         * OptionListCreateIn
+         * @description POST /admin/option-lists: a custom list (used by custom fields of type select / multiselect).
+         */
+        OptionListCreateIn: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Group
+             * @default Custom lists
+             */
+            group: string;
+            /** Meta Fields */
+            meta_fields?: components["schemas"]["MetaFieldIn"][];
+        };
+        /** OptionListUpdateIn */
+        OptionListUpdateIn: {
+            /** Label */
+            label?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Group */
+            group?: string | null;
+            /** Meta Fields */
+            meta_fields?: components["schemas"]["MetaFieldIn"][] | null;
+        };
+        /**
+         * OptionOut
+         * @description One item of an option list (``ReferenceOut.lists[key]``).
+         */
+        OptionOut: {
+            /** Value */
+            value: string;
+            /** Label */
+            label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Meta
+             * @default {}
+             */
+            meta: {
+                [key: string]: unknown;
+            };
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
         };
         /** OutboxMessageOut */
         OutboxMessageOut: {
@@ -5248,6 +7127,91 @@ export interface components {
             status: string;
         };
         /**
+         * PermissionMatrixOut
+         * @description GET / PUT /admin/permissions. Columns = ``roles`` (active only), rows = ``permissions``.
+         */
+        PermissionMatrixOut: {
+            /** Roles */
+            roles: components["schemas"]["RoleAdminOut"][];
+            /** Permissions */
+            permissions: components["schemas"]["PermissionRowOut"][];
+            /**
+             * Notices
+             * @default []
+             */
+            notices: string[];
+        };
+        /** PermissionRowOut */
+        PermissionRowOut: {
+            /** Perm */
+            perm: string;
+            /** Label */
+            label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Area
+             * @default
+             */
+            area: string;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "global" | "transition";
+            /** Roles */
+            roles: string[];
+            /** Denial Reason */
+            denial_reason: string;
+            /** Default Denial Reason */
+            default_denial_reason: string;
+            /**
+             * Is Custom
+             * @default false
+             */
+            is_custom: boolean;
+            /**
+             * Locked Roles
+             * @default []
+             */
+            locked_roles: string[];
+            /**
+             * Lock Reasons
+             * @default {}
+             */
+            lock_reasons: {
+                [key: string]: string;
+            };
+        };
+        /** PermissionTextIn */
+        PermissionTextIn: {
+            /** Label */
+            label?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Denial Reason */
+            denial_reason?: string | null;
+        };
+        /**
+         * PermissionsPutIn
+         * @description PUT /admin/permissions: the full matrix ``{perm: [role codes]}`` (every perm present) and
+         *     optional text edits ``{perm: {...}}``. Guardrails: ADMIN keeps ``admin`` and one active user
+         *     holds it; ``view`` includes every active role; no Orion / agent role.
+         */
+        PermissionsPutIn: {
+            /** Matrix */
+            matrix: {
+                [key: string]: string[];
+            };
+            /** Texts */
+            texts?: {
+                [key: string]: components["schemas"]["PermissionTextIn"];
+            };
+        };
+        /**
          * PersonRef
          * @description Compact user reference for tables and cards.
          */
@@ -5256,6 +7220,21 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** PlaceholderOut */
+        PlaceholderOut: {
+            /** Name */
+            name: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Html
+             * @default false
+             */
+            html: boolean;
         };
         /**
          * PlaybookItemAdminOut
@@ -5360,6 +7339,76 @@ export interface components {
             notice: string;
         };
         /**
+         * PlaybookItemCreateIn
+         * @description POST /admin/playbook-items: a new library item in ANY checklist (``source`` = checklist code).
+         *     ``id`` is generated from the checklist code when omitted (e.g. SECURITY_PLAYBOOK-001).
+         */
+        PlaybookItemCreateIn: {
+            /** Id */
+            id?: string | null;
+            /** Source */
+            source: string;
+            /** Portfolio */
+            portfolio?: string | null;
+            /** Title */
+            title: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Gate */
+            gate: string;
+            /**
+             * Lens
+             * @enum {string}
+             */
+            lens: "Business" | "Technical" | "Compliance";
+            /**
+             * Secondary Lens
+             * @default
+             */
+            secondary_lens: string;
+            /**
+             * Category
+             * @default
+             */
+            category: string;
+            /**
+             * Kind
+             * @default Deliverable
+             */
+            kind: string;
+            /** Applicable Tiers */
+            applicable_tiers?: number[];
+            /**
+             * Mandatory
+             * @default true
+             */
+            mandatory: boolean;
+            /**
+             * Mandatory Rule
+             * @default always
+             */
+            mandatory_rule: ("always" | "if_applicable") | null;
+            /** Applies To Project Types */
+            applies_to_project_types?: string[];
+            /**
+             * Owner Role Hint
+             * @default
+             */
+            owner_role_hint: string;
+            /** Default Owner Role */
+            default_owner_role?: string | null;
+            /** Linked Module */
+            linked_module?: ("OCET" | "SUPPORT_MODEL") | null;
+        };
+        /**
          * PlaybookItemUpdateIn
          * @description PUT body; full replacement of the editable fields.
          */
@@ -5394,6 +7443,96 @@ export interface components {
              */
             active: boolean;
         };
+        /** PortfolioAdminOut */
+        PortfolioAdminOut: {
+            /** Name */
+            name: string;
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Focus Areas
+             * @default []
+             */
+            focus_areas: string[];
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+            /**
+             * Requires Sites
+             * @default false
+             */
+            requires_sites: boolean;
+            /**
+             * Sites Label
+             * @default
+             */
+            sites_label: string;
+            /**
+             * Synonyms
+             * @default []
+             */
+            synonyms: string[];
+            /**
+             * Golden Set Count
+             * @default 0
+             */
+            golden_set_count: number;
+            /**
+             * Used By
+             * @default 0
+             */
+            used_by: number;
+            /**
+             * Notice
+             * @default Changes affect NEW transitions; existing transitions keep their items.
+             */
+            notice: string;
+        };
+        /** PortfolioCreateIn */
+        PortfolioCreateIn: {
+            /** Name */
+            name: string;
+            /** Code */
+            code: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Focus Areas */
+            focus_areas?: string[];
+            /**
+             * Requires Sites
+             * @default false
+             */
+            requires_sites: boolean;
+            /**
+             * Sites Label
+             * @default
+             */
+            sites_label: string;
+            /** Synonyms */
+            synonyms?: string[];
+        };
         /** PortfolioDetailOut */
         PortfolioDetailOut: {
             /** Name */
@@ -5408,6 +7547,41 @@ export interface components {
             golden_set_count: number;
             /** Golden Set Mandatory Count */
             golden_set_mandatory_count: number;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Requires Sites
+             * @default false
+             */
+            requires_sites: boolean;
+            /**
+             * Sites Label
+             * @default
+             */
+            sites_label: string;
+            /**
+             * Synonyms
+             * @default []
+             */
+            synonyms: string[];
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
         };
         /**
          * PortfolioTileOut
@@ -5432,6 +7606,27 @@ export interface components {
             decisions_14d: number;
             /** Critical Gaps */
             critical_gaps: number;
+        };
+        /** PortfolioUpdateIn */
+        PortfolioUpdateIn: {
+            /** Code */
+            code?: string | null;
+            /** Label */
+            label?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Focus Areas */
+            focus_areas?: string[] | null;
+            /** Active */
+            active?: boolean | null;
+            /** Sort Order */
+            sort_order?: number | null;
+            /** Requires Sites */
+            requires_sites?: boolean | null;
+            /** Sites Label */
+            sites_label?: string | null;
+            /** Synonyms */
+            synonyms?: string[] | null;
         };
         /** PptxInfoOut */
         PptxInfoOut: {
@@ -5458,6 +7653,103 @@ export interface components {
             /** Download Path */
             download_path: string;
         };
+        /** ProjectTypeAdminOut */
+        ProjectTypeAdminOut: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+            /** Checklists */
+            checklists: string[];
+            /** Requires Tiering */
+            requires_tiering: boolean;
+            /** Has Ai Profile */
+            has_ai_profile: boolean;
+            /** Has Eval Metrics */
+            has_eval_metrics: boolean;
+            /**
+             * Required Intake Fields
+             * @default []
+             */
+            required_intake_fields: string[];
+            /**
+             * Synonyms
+             * @default []
+             */
+            synonyms: string[];
+            /** Color */
+            color?: string | null;
+            /** Note */
+            note?: string | null;
+            /**
+             * Used By
+             * @default 0
+             */
+            used_by: number;
+            /**
+             * Notice
+             * @default Changes affect NEW transitions; existing transitions keep their items.
+             */
+            notice: string;
+        };
+        /**
+         * ProjectTypeCreateIn
+         * @description POST /admin/project-types. ``code`` is immutable (letters, digits, space, - _ & /).
+         */
+        ProjectTypeCreateIn: {
+            /** Code */
+            code: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Checklists */
+            checklists?: string[];
+            /**
+             * Requires Tiering
+             * @default false
+             */
+            requires_tiering: boolean;
+            /**
+             * Has Ai Profile
+             * @default false
+             */
+            has_ai_profile: boolean;
+            /**
+             * Has Eval Metrics
+             * @default false
+             */
+            has_eval_metrics: boolean;
+            /** Required Intake Fields */
+            required_intake_fields?: string[];
+            /** Synonyms */
+            synonyms?: string[];
+            /** Color */
+            color?: string | null;
+            /** Note */
+            note?: string | null;
+        };
         /** ProjectTypeOut */
         ProjectTypeOut: {
             /** Code */
@@ -5466,6 +7758,106 @@ export interface components {
             checklists: string[];
             /** Requires Tiering */
             requires_tiering: boolean;
+            /** Note */
+            note?: string | null;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+            /**
+             * Has Ai Profile
+             * @default false
+             */
+            has_ai_profile: boolean;
+            /**
+             * Has Eval Metrics
+             * @default false
+             */
+            has_eval_metrics: boolean;
+            /**
+             * Required Intake Fields
+             * @default []
+             */
+            required_intake_fields: string[];
+            /**
+             * Synonyms
+             * @default []
+             */
+            synonyms: string[];
+            /** Color */
+            color?: string | null;
+        };
+        /**
+         * ProjectTypePreviewOut
+         * @description GET /admin/project-types/{code}/preview: what a NEW transition of this type would get.
+         */
+        ProjectTypePreviewOut: {
+            /** Code */
+            code: string;
+            /** Items By Gate */
+            items_by_gate: {
+                [key: string]: number;
+            };
+            /** Items By Checklist */
+            items_by_checklist: {
+                [key: string]: number;
+            };
+            /** Total Items */
+            total_items: number;
+            /** Shows Tiering */
+            shows_tiering: boolean;
+            /** Shows Ai Profile */
+            shows_ai_profile: boolean;
+            /** Shows Eval Metrics */
+            shows_eval_metrics: boolean;
+            /** Required Intake Fields */
+            required_intake_fields: string[];
+            /**
+             * Notes
+             * @default []
+             */
+            notes: string[];
+        };
+        /** ProjectTypeUpdateIn */
+        ProjectTypeUpdateIn: {
+            /** Label */
+            label?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Active */
+            active?: boolean | null;
+            /** Sort Order */
+            sort_order?: number | null;
+            /** Checklists */
+            checklists?: string[] | null;
+            /** Requires Tiering */
+            requires_tiering?: boolean | null;
+            /** Has Ai Profile */
+            has_ai_profile?: boolean | null;
+            /** Has Eval Metrics */
+            has_eval_metrics?: boolean | null;
+            /** Required Intake Fields */
+            required_intake_fields?: string[] | null;
+            /** Synonyms */
+            synonyms?: string[] | null;
+            /** Color */
+            color?: string | null;
             /** Note */
             note?: string | null;
         };
@@ -5539,6 +7931,19 @@ export interface components {
              * @default Orion drafted a question to the architect. Review and send it from the drafts.
              */
             message: string;
+        };
+        /** RagThresholdsDoc */
+        RagThresholdsDoc: {
+            /** Red Critical Gaps */
+            red_critical_gaps: number;
+            /** Red Lens Below */
+            red_lens_below: number;
+            /** Red Near Days */
+            red_near_days: number;
+            /** Amber Critical Gaps */
+            amber_critical_gaps: number;
+            /** Amber Lens Below */
+            amber_lens_below: number;
         };
         /** ReadinessCheckOut */
         ReadinessCheckOut: {
@@ -5693,7 +8098,7 @@ export interface components {
             /** Tier Dimensions */
             tier_dimensions: string[];
             /** Tier Questions */
-            tier_questions: components["schemas"]["TierQuestionOut"][];
+            tier_questions: components["schemas"]["app__schemas__reference__TierQuestionOut"][];
             /** Rag Rule */
             rag_rule: {
                 [key: string]: string;
@@ -5717,6 +8122,51 @@ export interface components {
             checklist_counts: components["schemas"]["ChecklistCountsOut"];
             enums: components["schemas"]["EnumsOut"];
             app: components["schemas"]["AppInfoOut"];
+            /**
+             * Lists
+             * @default {}
+             */
+            lists: {
+                [key: string]: components["schemas"]["OptionOut"][];
+            };
+            /**
+             * Intake Fields
+             * @default []
+             */
+            intake_fields: components["schemas"]["IntakeFieldRefOut"][];
+            /**
+             * Checklists
+             * @default []
+             */
+            checklists: components["schemas"]["ChecklistRefOut"][];
+            /**
+             * Labels
+             * @default {}
+             */
+            labels: {
+                [key: string]: string;
+            };
+            /**
+             * Thresholds
+             * @default {}
+             */
+            thresholds: {
+                [key: string]: unknown;
+            };
+            /**
+             * Gate Labels
+             * @default {}
+             */
+            gate_labels: {
+                [key: string]: components["schemas"]["GateLabelOut"];
+            };
+            /**
+             * Approval Chain Labels
+             * @default {}
+             */
+            approval_chain_labels: {
+                [key: string]: string;
+            };
         };
         /** RegionReadinessOut */
         RegionReadinessOut: {
@@ -5755,7 +8205,7 @@ export interface components {
              * Rules
              * @description Only evaluate these rule ids (R1..R7); None = all enabled
              */
-            rules?: string[] | null;
+            rules?: ("R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7")[] | null;
             /**
              * Transition Id
              * @description Only this transition; None = all active transitions
@@ -5844,12 +8294,146 @@ export interface components {
             /** Item Ids */
             item_ids: string[];
         };
+        /** RoleAdminOut */
+        RoleAdminOut: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+            /** Short Label */
+            short_label: string;
+            /** Phrase Label */
+            phrase_label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Active */
+            active: boolean;
+            /** Is Builtin */
+            is_builtin: boolean;
+            /** Has Transition Slot */
+            has_transition_slot: boolean;
+            /** Transition Column */
+            transition_column?: string | null;
+            /** Can Approve */
+            can_approve: boolean;
+            /** Sort Order */
+            sort_order: number;
+            /** Color */
+            color?: string | null;
+            /**
+             * User Count
+             * @default 0
+             */
+            user_count: number;
+            /** Lock Reason */
+            lock_reason?: string | null;
+        };
+        /**
+         * RoleCreateIn
+         * @description POST /admin/roles. ``code`` is immutable; "Orion", "agent", "bot", "ai" are reserved.
+         */
+        RoleCreateIn: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+            /**
+             * Short Label
+             * @default
+             */
+            short_label: string;
+            /**
+             * Phrase Label
+             * @default
+             */
+            phrase_label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Has Transition Slot
+             * @default false
+             */
+            has_transition_slot: boolean;
+            /**
+             * Can Approve
+             * @default false
+             */
+            can_approve: boolean;
+            /** Color */
+            color?: string | null;
+        };
         /** RoleOut */
         RoleOut: {
             /** Code */
             code: string;
             /** Label */
             label: string;
+            /**
+             * Short Label
+             * @default
+             */
+            short_label: string;
+            /**
+             * Phrase Label
+             * @default
+             */
+            phrase_label: string;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /**
+             * Is Builtin
+             * @default true
+             */
+            is_builtin: boolean;
+            /**
+             * Has Transition Slot
+             * @default false
+             */
+            has_transition_slot: boolean;
+            /** Transition Column */
+            transition_column?: string | null;
+            /**
+             * Can Approve
+             * @default false
+             */
+            can_approve: boolean;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+            /** Color */
+            color?: string | null;
+        };
+        /** RoleUpdateIn */
+        RoleUpdateIn: {
+            /** Label */
+            label?: string | null;
+            /** Short Label */
+            short_label?: string | null;
+            /** Phrase Label */
+            phrase_label?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Active */
+            active?: boolean | null;
+            /** Has Transition Slot */
+            has_transition_slot?: boolean | null;
+            /** Can Approve */
+            can_approve?: boolean | null;
+            /** Sort Order */
+            sort_order?: number | null;
+            /** Color */
+            color?: string | null;
         };
         /** RolesOut */
         RolesOut: {
@@ -6142,6 +8726,33 @@ export interface components {
             /** Footnote */
             footnote?: string | null;
         };
+        /**
+         * TemplatePreviewIn
+         * @description POST /admin/message-templates/{key}/preview: sample context render. ``subject`` / ``body``
+         *     preview unsaved edits; omitted = the saved template. ``context`` overrides sample values.
+         */
+        TemplatePreviewIn: {
+            /** Subject */
+            subject?: string | null;
+            /** Body */
+            body?: string | null;
+            /** Context */
+            context?: {
+                [key: string]: string;
+            };
+        };
+        /** TemplatePreviewOut */
+        TemplatePreviewOut: {
+            /** Subject */
+            subject: string;
+            /** Body Html */
+            body_html: string;
+            /**
+             * Unknown Placeholders
+             * @default []
+             */
+            unknown_placeholders: string[];
+        };
         /** TextMessage */
         TextMessage: {
             /**
@@ -6156,6 +8767,46 @@ export interface components {
             type: "text";
             /** Text */
             text: string;
+        };
+        /**
+         * ThresholdsDoc
+         * @description ``cfg.thresholds``. Guardrail: amber is not stricter than red.
+         */
+        ThresholdsDoc: {
+            rag: components["schemas"]["RagThresholdsDoc"];
+            insights: components["schemas"]["InsightsThresholdsDoc"];
+            /** Calendar Horizon Days */
+            calendar_horizon_days: number;
+            /** Leadership Decision Window Days */
+            leadership_decision_window_days: number;
+            dashboard: components["schemas"]["DashboardThresholdsDoc"];
+            /** Narrative Top */
+            narrative_top: number;
+            /** Default Tier */
+            default_tier: number;
+            /** Default Pricing Basis */
+            default_pricing_basis: string;
+            /** Default Horizon Years */
+            default_horizon_years: number;
+            /** Default Growth Pct */
+            default_growth_pct: number;
+        };
+        /** ThresholdsIn */
+        ThresholdsIn: {
+            thresholds: components["schemas"]["ThresholdsDoc"];
+        };
+        /** ThresholdsOut */
+        ThresholdsOut: {
+            thresholds: components["schemas"]["ThresholdsDoc"];
+            /** Rag Rule */
+            rag_rule: {
+                [key: string]: string;
+            };
+            /**
+             * Notice
+             * @default Applies immediately; RAG recalculates for all active transitions.
+             */
+            notice: string;
         };
         /** TierAssessmentOut */
         TierAssessmentOut: {
@@ -6213,12 +8864,61 @@ export interface components {
             /** Builder Persona */
             builder_persona: string;
         };
+        /**
+         * TierConditionIn
+         * @description One condition of a rule. ``source`` question: ``key`` = a question id, op yes / no.
+         *     ``source`` intake / custom: ``key`` = field key (an audience-style option list or a custom
+         *     field), op equals / not_equals / in (``value`` = text, or a list for ``in``).
+         */
+        TierConditionIn: {
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "question" | "intake" | "custom";
+            /** Key */
+            key: string;
+            /**
+             * Op
+             * @enum {string}
+             */
+            op: "yes" | "no" | "equals" | "not_equals" | "in";
+            /** Value */
+            value?: string | string[] | null;
+            /**
+             * Rationale
+             * @default
+             */
+            rationale: string;
+        };
         /** TierConfirmIn */
         TierConfirmIn: {
             /** Tier */
             tier: number;
             /** Reason */
             reason?: string | null;
+        };
+        /** TierDefIn */
+        TierDefIn: {
+            /** Tier */
+            tier: number;
+            /** Name */
+            name: string;
+            /**
+             * Definition
+             * @default
+             */
+            definition: string;
+            /**
+             * Examples
+             * @default
+             */
+            examples: string;
+            /**
+             * Builder Persona
+             * @default
+             */
+            builder_persona: string;
         };
         /** TierInfoOut */
         TierInfoOut: {
@@ -6284,14 +8984,86 @@ export interface components {
                 [key: string]: boolean;
             };
         };
-        /** TierQuestionOut */
-        TierQuestionOut: {
-            /** Id */
+        /**
+         * TierQuestionIn
+         * @description ``id`` empty = a new question (TQ6, TQ7 ... generated).
+         */
+        TierQuestionIn: {
+            /**
+             * Id
+             * @default
+             */
             id: string;
             /** Text */
             text: string;
-            /** If Yes */
-            if_yes: string;
+            /**
+             * Hint
+             * @default
+             */
+            hint: string;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+        };
+        /** TierRuleIn */
+        TierRuleIn: {
+            /**
+             * Id
+             * @default
+             */
+            id: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /** Result Tier */
+            result_tier: number;
+            /**
+             * Match
+             * @default any
+             * @enum {string}
+             */
+            match: "any" | "all";
+            /** Conditions */
+            conditions?: components["schemas"]["TierConditionIn"][];
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+        };
+        /** TierRuleOut */
+        TierRuleOut: {
+            /** Id */
+            id: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /** Result Tier */
+            result_tier: number;
+            /**
+             * Match
+             * @default any
+             * @enum {string}
+             */
+            match: "any" | "all";
+            /** Conditions */
+            conditions?: components["schemas"]["TierConditionIn"][];
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
         };
         /**
          * TierSetIn
@@ -6303,6 +9075,93 @@ export interface components {
             answers?: {
                 [key: string]: boolean;
             };
+        };
+        /**
+         * TierSourceOut
+         * @description What a rule condition can look at: an intake field with its option values.
+         */
+        TierSourceOut: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "intake" | "custom";
+            /**
+             * Values
+             * @default []
+             */
+            values: string[];
+        };
+        /**
+         * TierTestIn
+         * @description POST /admin/tiering/test: runs the pure ``propose_tier`` on a hypothetical project.
+         */
+        TierTestIn: {
+            /** Intake */
+            intake?: {
+                [key: string]: string | null;
+            };
+            /** Answers */
+            answers?: {
+                [key: string]: boolean;
+            };
+            config?: components["schemas"]["TieringConfigIn"] | null;
+        };
+        /** TierTestOut */
+        TierTestOut: {
+            /** Tier */
+            tier: number;
+            /** Rationale */
+            rationale: string[];
+            /** Matched Rule Id */
+            matched_rule_id?: string | null;
+        };
+        /**
+         * TieringConfigIn
+         * @description PUT: the whole tiering configuration (list order = evaluation order). Guardrails: tier numbers
+         *     unique and contiguous from 1, rules reference existing questions, ``default_tier`` is defined.
+         */
+        TieringConfigIn: {
+            /** Tiers */
+            tiers: components["schemas"]["TierDefIn"][];
+            /** Dimensions */
+            dimensions: string[];
+            /** Default Tier */
+            default_tier: number;
+            /** Questions */
+            questions: components["schemas"]["TierQuestionIn"][];
+            /** Rules */
+            rules: components["schemas"]["TierRuleIn"][];
+        };
+        /**
+         * TieringConfigOut
+         * @description GET / PUT /admin/tiering.
+         */
+        TieringConfigOut: {
+            /** Tiers */
+            tiers: components["schemas"]["TierDefIn"][];
+            /** Dimensions */
+            dimensions: string[];
+            /** Default Tier */
+            default_tier: number;
+            /** Questions */
+            questions: components["schemas"]["app__schemas__config_admin__TierQuestionOut"][];
+            /** Rules */
+            rules: components["schemas"]["TierRuleOut"][];
+            /**
+             * Sources
+             * @default []
+             */
+            sources: components["schemas"]["TierSourceOut"][];
+            /**
+             * Notice
+             * @default Applies to new tier proposals; confirmed tiers stay as they are.
+             */
+            notice: string;
         };
         /** TodayIn */
         TodayIn: {
@@ -6323,6 +9182,12 @@ export interface components {
         };
         /** TransitionCreateIn */
         TransitionCreateIn: {
+            /**
+             * Confirm Duplicate
+             * @description Create even though an active transition already has this ServiceNow project id
+             * @default false
+             */
+            confirm_duplicate: boolean;
             /** Name */
             name: string;
             /** Servicenow Project Id */
@@ -6618,6 +9483,98 @@ export interface components {
             /** Blocker Note */
             blocker_note?: string | null;
         };
+        /**
+         * UsageOut
+         * @description GET /admin/usage?kind=&key=: where a value is used (first 10 transitions).
+         */
+        UsageOut: {
+            /** Kind */
+            kind: string;
+            /** Key */
+            key: string;
+            /** Count */
+            count: number;
+            /**
+             * Transitions
+             * @default []
+             */
+            transitions: components["schemas"]["UsageTransitionOut"][];
+        };
+        /** UsageTransitionOut */
+        UsageTransitionOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** UserAdminOut */
+        UserAdminOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /** Role */
+            role: string;
+            /**
+             * Role Label
+             * @default
+             */
+            role_label: string;
+            /** Focal Label */
+            focal_label?: string | null;
+            /** Title */
+            title?: string | null;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /**
+             * Assigned Transitions
+             * @default 0
+             */
+            assigned_transitions: number;
+        };
+        /**
+         * UserCreateIn
+         * @description POST /admin/users: the id is generated (U17, U18, ...); the role must be an active role.
+         */
+        UserCreateIn: {
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /** Role */
+            role: string;
+            /** Focal Label */
+            focal_label?: string | null;
+            /** Title */
+            title?: string | null;
+        };
+        /**
+         * UserDeactivateIn
+         * @description ``reassign_to``: a user of the same role who takes over the deactivated person's slots on
+         *     active transitions (one audited action). Without it the slots stay (and show as inactive).
+         */
+        UserDeactivateIn: {
+            /** Reassign To */
+            reassign_to?: string | null;
+        };
+        /** UserDeactivateOut */
+        UserDeactivateOut: {
+            user: components["schemas"]["UserAdminOut"];
+            /** Assigned Transitions */
+            assigned_transitions: number;
+            /** Reassigned */
+            reassigned: number;
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
+        };
         /** UserOut */
         UserOut: {
             /** Id */
@@ -6635,6 +9592,19 @@ export interface components {
             role_label: string;
             /** Focal Label */
             focal_label?: string | null;
+        };
+        /** UserUpdateIn */
+        UserUpdateIn: {
+            /** Name */
+            name?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Role */
+            role?: string | null;
+            /** Focal Label */
+            focal_label?: string | null;
+            /** Title */
+            title?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -6775,6 +9745,28 @@ export interface components {
              */
             waiting_days: number;
         };
+        /** TierQuestionOut */
+        app__schemas__config_admin__TierQuestionOut: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /**
+             * Hint
+             * @default
+             */
+            hint: string;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+        };
         /** ApprovalStepOut */
         app__schemas__gates__ApprovalStepOut: {
             /** Step */
@@ -6786,6 +9778,15 @@ export interface components {
             approver?: components["schemas"]["PersonRef"] | null;
             /** Status */
             status: string;
+        };
+        /** TierQuestionOut */
+        app__schemas__reference__TierQuestionOut: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /** If Yes */
+            if_yes: string;
         };
         /** ReminderRuleOut */
         app__schemas__reminders__ReminderRuleOut: {
@@ -6813,7 +9814,10 @@ export type $defs = Record<string, never>;
 export interface operations {
     get_reference_api_v1_reference_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Also return inactive project types, portfolios, list values, roles and fields (each carries `active`); the UI filters them itself */
+                include_inactive?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -6827,6 +9831,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReferenceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -10534,6 +13547,68 @@ export interface operations {
             };
         };
     };
+    create_playbook_item_api_v1_admin_playbook_items_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaybookItemCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybookItemAdminOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
     get_playbook_item_api_v1_admin_playbook_items__item_id__get: {
         parameters: {
             query?: never;
@@ -11267,6 +14342,68 @@ export interface operations {
             };
         };
     };
+    create_user_api_v1_admin_users_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserAdminOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
     demo_reset_api_v1_admin_demo_reset_post: {
         parameters: {
             query?: never;
@@ -11440,6 +14577,3061 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TodayOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    list_project_types_api_v1_admin_project_types_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectTypeAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    create_project_type_api_v1_admin_project_types_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectTypeCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectTypeAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    delete_project_type_api_v1_admin_project_types__code__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectTypeAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    update_project_type_api_v1_admin_project_types__code__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectTypeUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectTypeAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    preview_project_type_api_v1_admin_project_types__code__preview_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectTypePreviewOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    list_checklists_api_v1_admin_checklists_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChecklistAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    create_checklist_api_v1_admin_checklists_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChecklistCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChecklistAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    delete_checklist_api_v1_admin_checklists__code__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChecklistAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    update_checklist_api_v1_admin_checklists__code__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChecklistUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChecklistAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    list_portfolios_api_v1_admin_portfolios_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    create_portfolio_api_v1_admin_portfolios_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortfolioCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    delete_portfolio_api_v1_admin_portfolios__name__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    update_portfolio_api_v1_admin_portfolios__name__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortfolioUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    list_option_lists_api_v1_admin_option_lists_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OptionListAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    create_option_list_api_v1_admin_option_lists_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OptionListCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OptionListAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    delete_option_list_api_v1_admin_option_lists__key__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OptionListAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    update_option_list_api_v1_admin_option_lists__key__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OptionListUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OptionListAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_option_items_api_v1_admin_option_lists__key__items_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OptionItemsOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    put_option_items_api_v1_admin_option_lists__key__items_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OptionItemsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OptionItemsOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    reset_config_section_api_v1_admin_config_reset_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigResetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigResetOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    list_intake_fields_api_v1_admin_intake_fields_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntakeFieldAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    create_intake_field_api_v1_admin_intake_fields_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntakeFieldCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntakeFieldAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    order_intake_fields_api_v1_admin_intake_fields_order_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntakeFieldOrderIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntakeFieldAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    delete_intake_field_api_v1_admin_intake_fields__key__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntakeFieldAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    update_intake_field_api_v1_admin_intake_fields__key__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntakeFieldUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntakeFieldAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    list_roles_api_v1_admin_roles_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    create_role_api_v1_admin_roles_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    delete_role_api_v1_admin_roles__code__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    update_role_api_v1_admin_roles__code__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    update_user_api_v1_admin_users__user_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserAdminOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    deactivate_user_api_v1_admin_users__user_id__deactivate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserDeactivateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserDeactivateOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_permissions_api_v1_admin_permissions_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermissionMatrixOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    put_permissions_api_v1_admin_permissions_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PermissionsPutIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermissionMatrixOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_tiering_api_v1_admin_tiering_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TieringConfigOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    put_tiering_api_v1_admin_tiering_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TieringConfigIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TieringConfigOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    test_tiering_api_v1_admin_tiering_test_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TierTestIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TierTestOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    list_eval_metrics_api_v1_admin_eval_metrics_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvalMetricAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    create_eval_metric_api_v1_admin_eval_metrics_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvalMetricCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvalMetricAdminOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    update_eval_metric_api_v1_admin_eval_metrics__metric_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                metric_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvalMetricUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvalMetricAdminOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_thresholds_api_v1_admin_thresholds_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThresholdsOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    put_thresholds_api_v1_admin_thresholds_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ThresholdsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThresholdsOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_labels_api_v1_admin_labels_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelsOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    put_labels_api_v1_admin_labels_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabelsDoc"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelsOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_gates_api_v1_admin_gates_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GatesOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    put_gates_api_v1_admin_gates_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GatesDoc"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GatesOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_lenses_api_v1_admin_lenses_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LensesOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    put_lenses_api_v1_admin_lenses_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LensesDoc"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LensesDoc"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    list_message_templates_api_v1_admin_message_templates_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageTemplateAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    put_message_templates_api_v1_admin_message_templates_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MessageTemplatesPutIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageTemplateAdminOut"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    preview_message_template_api_v1_admin_message_templates__key__preview_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplatePreviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplatePreviewOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    export_config_api_v1_admin_config_export_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigExportOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    import_config_api_v1_admin_config_import_post: {
+        parameters: {
+            query?: {
+                dry_run?: boolean;
+            };
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigImportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigDiffOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_usage_api_v1_admin_usage_get: {
+        parameters: {
+            query: {
+                /** @description project_type | portfolio | option | role | checklist */
+                kind: string;
+                /** @description the code / name; for kind=option "<list key>:<value>" */
+                key: string;
+            };
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageOut"];
                 };
             };
             /** @description Forbidden */

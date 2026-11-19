@@ -1,4 +1,5 @@
 import {
+  Badge,
   Body1,
   Button,
   Caption1,
@@ -14,6 +15,7 @@ import {
   TableRow,
   Textarea,
   makeStyles,
+  mergeClasses,
   tokens,
 } from '@fluentui/react-components';
 import { AddRegular, DeleteRegular, MailRegular } from '@fluentui/react-icons';
@@ -28,6 +30,10 @@ const useStyles = makeStyles({
     alignItems: 'start',
   },
   stack: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS },
+  question: {
+    paddingBottom: tokens.spacingVerticalS,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
   row: { display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'center' },
   grow: { flexGrow: 1, minWidth: 0 },
   tableWrap: { overflowX: 'auto' },
@@ -96,6 +102,10 @@ export function LandscapePanels(props: {
 
   const setContact = (i: number, patch: Partial<Contact>) =>
     onPatch({ contacts: l.contacts.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
+  const setQuestion = (i: number, patch: Partial<Landscape['open_questions'][number]>) =>
+    onPatch({
+      open_questions: l.open_questions.map((q, j) => (j === i ? { ...q, ...patch } : q)),
+    });
   const setSource = (i: number, patch: Partial<Source>) =>
     onPatch({ sources: l.sources.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
 
@@ -218,23 +228,68 @@ export function LandscapePanels(props: {
 
       <div className={s.grid}>
         <SectionCard title="Open questions">
-          <StringList
-            items={l.open_questions}
-            editable={editable}
-            label="Question"
-            addLabel="Add question"
-            onChange={(open_questions) => onPatch({ open_questions })}
-            extra={(i) => (
-              <Button
-                size="small"
-                disabled={!!props.draftDisabledReason || props.drafting || !l.open_questions[i]}
-                title={props.draftDisabledReason ?? undefined}
-                onClick={() => props.onDraftQuestion(i)}
-              >
-                Draft question to architect
-              </Button>
+          <div className={s.stack}>
+            {l.open_questions.length === 0 && <Caption1>None yet.</Caption1>}
+            {l.open_questions.map((q, i) => (
+              <div key={i} className={mergeClasses(s.stack, s.question)}>
+                <div className={s.row}>
+                  <Input
+                    className={s.grow}
+                    aria-label={`Question ${i + 1}`}
+                    value={q.question}
+                    disabled={!editable}
+                    onChange={(_, d) => setQuestion(i, { question: d.value })}
+                  />
+                  {q.answer.trim() && (
+                    <Badge appearance="tint" color="success">
+                      Answered
+                    </Badge>
+                  )}
+                  {editable && (
+                    <Button
+                      appearance="subtle"
+                      icon={<DeleteRegular />}
+                      aria-label={`Remove Question ${i + 1}`}
+                      onClick={() =>
+                        onPatch({ open_questions: l.open_questions.filter((_, j) => j !== i) })
+                      }
+                    />
+                  )}
+                </div>
+                <Textarea
+                  aria-label={`Answer to question ${i + 1}`}
+                  placeholder={editable ? 'Answer (optional)' : 'No answer yet'}
+                  value={q.answer}
+                  disabled={!editable}
+                  resize="vertical"
+                  rows={2}
+                  onChange={(_, d) => setQuestion(i, { answer: d.value })}
+                />
+                <div>
+                  <Button
+                    size="small"
+                    disabled={!!props.draftDisabledReason || props.drafting || !q.question}
+                    title={props.draftDisabledReason ?? undefined}
+                    onClick={() => props.onDraftQuestion(i)}
+                  >
+                    Draft question to architect
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {editable && (
+              <div>
+                <Button
+                  icon={<AddRegular />}
+                  onClick={() =>
+                    onPatch({ open_questions: [...l.open_questions, { question: '', answer: '' }] })
+                  }
+                >
+                  Add question
+                </Button>
+              </div>
             )}
-          />
+          </div>
           {props.draftDisabledReason && <Caption1>{props.draftDisabledReason}</Caption1>}
         </SectionCard>
 

@@ -15,6 +15,14 @@ export const useRecordStyles = makeStyles({
   },
   form: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
   tableWrap: { overflowX: 'auto' },
+  // Last (action) column of a wide table: stays visible while the rest scrolls sideways.
+  stickyEnd: {
+    position: 'sticky',
+    right: 0,
+    zIndex: 1,
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderLeft: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
   muted: { color: tokens.colorNeutralForeground3 },
   card: {
     display: 'flex',

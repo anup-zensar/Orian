@@ -77,6 +77,7 @@ def test_generic_landscape_for_flagship(client, headers, fresh_seed):
     assert {"Entra ID SSO", "ServiceNow", "Monitoring tool"} <= {c["name"] for c in comps}
     assert landscape["support_tiers"]["L1"].startswith("L1 Service Desk")
     assert len(landscape["open_questions"]) == 3
+    assert all(q["question"] and q["answer"] == "" for q in landscape["open_questions"])
     assert any(s["ref"] == "walk.txt" for s in landscape["sources"])
     assert [c["id"] for c in comps] == [f"c{i}" for i in range(1, len(comps) + 1)]
 
@@ -126,12 +127,13 @@ def test_put_edits_persist_and_validate(client, headers, fresh_seed):
     model = _generate(client, headers)["support_model"]
     sid, landscape = model["id"], model["landscape"]
     landscape["components"][0]["name"] = "Renamed node"
-    landscape["open_questions"][0] = "Answered: yes"
+    landscape["open_questions"][0]["answer"] = "Yes, the vendor owns L2"
     res = _put(client, headers, sid, landscape)
     assert res.status_code == 200, res.text
     again = client.get(f"{API}/transitions/TR-0001/support-model", headers=headers("U11")).json()
     assert again["landscape"]["components"][0]["name"] == "Renamed node"
-    assert again["landscape"]["open_questions"][0] == "Answered: yes"
+    saved = again["landscape"]["open_questions"]
+    assert saved[0]["answer"] == "Yes, the vendor owns L2" and saved[1]["answer"] == ""
 
     first = landscape["components"][0]
     dup = {**landscape, "components": [*landscape["components"], dict(first)]}
@@ -274,7 +276,7 @@ def test_question_draft(client, headers, db, fresh_seed):
     draft = db.get(OrionDraft, res.json()["draft_id"])
     assert draft.kind == "Input request" and draft.status == "Draft"
     assert draft.created_source == "Orion agent" and len(draft.to) == 1
-    assert model["landscape"]["open_questions"][1].split("?")[0][:20] in draft.body_html
+    assert model["landscape"]["open_questions"][1]["question"].split("?")[0][:20] in draft.body_html
     bad_index = client.post(
         f"{API}/support-models/{model['id']}/questions/9/draft", headers=headers()
     )
@@ -313,8 +315,12 @@ def test_landscape_limits_duplicates_and_cycles(client, headers, fresh_seed):
         for i in range(30)
     ]
     assert _put(client, headers, sid, {**ls, "components": many}).status_code == 422
-    big = {**ls, "open_questions": ["x" * 50_000]}
+    big = {**ls, "open_questions": [{"question": "x" * 50_000}]}
     assert _put(client, headers, sid, big).status_code == 422
+    long_answer = {**ls, "open_questions": [{"question": "q?", "answer": "x" * 2001}]}
+    assert _put(client, headers, sid, long_answer).status_code == 422
+    fifty_one = {**ls, "open_questions": [{"question": f"q{i}?"} for i in range(51)]}
+    assert _put(client, headers, sid, fifty_one).status_code == 422
     a = {"id": "c1", "name": "A", "type": "Team", "relation": "child_of:B"}
     b = {"id": "c2", "name": "B", "type": "Team", "relation": "child_of:A"}
     assert _put(client, headers, sid, {**ls, "components": [a, b]}).status_code == 422
@@ -332,3 +338,84 @@ def test_superseded_model_cannot_export_pptx(client, headers, db, fresh_seed):
     assert gen.status_code == 200, gen.text
     res = client.post(f"{API}/support-models/{first['id']}/pptx", headers=headers("U01"))
     assert res.status_code == 409, res.text
+
+
+def test_old_string_questions_load_unanswered(client, headers, fresh_seed):
+    """Landscapes saved before answers existed (plain strings) load and save unchanged."""
+    model = _generate(client, headers)["support_model"]
+    old = {**model["landscape"], "open_questions": ["Who is on call?", "Where is it hosted?"]}
+    res = _put(client, headers, model["id"], old)
+    assert res.status_code == 200, res.text
+    saved = client.get(f"{API}/transitions/TR-0001/support-model", headers=headers("U11")).json()
+    assert saved["landscape"]["open_questions"] == [
+        {"question": "Who is on call?", "answer": ""},
+        {"question": "Where is it hosted?", "answer": ""},
+    ]
+
+
+def test_voc_sample_questions_start_unanswered(client, headers, fresh_seed):
+    out = _generate(client, headers, "TR-0001", url="https://confluence.example/wiki/VOC-design")
+    questions = out["support_model"]["landscape"]["open_questions"]
+    assert questions and all(q["answer"] == "" for q in questions)
+
+
+def test_pptx_shows_answered_and_open_questions(client, headers, db, fresh_seed):
+    import io
+
+    from pptx import Presentation
+
+    from app.models import Evidence
+
+    model = _generate(client, headers)["support_model"]
+    landscape = model["landscape"]
+    landscape["open_questions"][0]["answer"] = "The vendor owns L2; we own L3"
+    assert _put(client, headers, model["id"], landscape).status_code == 200
+    out = client.post(f"{API}/support-models/{model['id']}/pptx", headers=headers("U01")).json()
+    db.expire_all()
+    path = db.get(Evidence, out["evidence_id"]).file_path
+    from app.services.factory import get_document_store
+
+    data = get_document_store().read(path)
+    deck = Presentation(io.BytesIO(data))
+    text = "\n".join(
+        p.text
+        for sh in deck.slides[4].shapes
+        if sh.has_text_frame
+        for p in sh.text_frame.paragraphs
+    )
+    first_q = landscape["open_questions"][0]["question"]
+    assert "Answered questions" in text and f"Q: {first_q[:40]}" in text
+    assert "A: The vendor owns L2; we own L3" in text
+    assert landscape["open_questions"][1]["question"][:40] in text
+    assert "1. " + landscape["open_questions"][1]["question"][:30] in text
+    assert first_q[:40] not in text.split("\nOpen questions\n", 1)[1]
+
+
+def test_agree_audits_only_linked_items_that_change(client, headers, db, fresh_seed):
+    model = _generate(client, headers)["support_model"]
+    linked = db.scalars(
+        select(TransitionItem).where(
+            TransitionItem.transition_id == "TR-0001",
+            TransitionItem.linked_module == "SUPPORT_MODEL",
+        )
+    ).all()
+    already = next(i for i in linked if i.applicability == "Applies")
+    already.status = "Complete" if already.playbook_item.lens != "Compliance" else "Compliant"
+    already_id, kept_status = already.id, already.status
+    db.commit()
+    sent = client.post(f"{API}/support-models/{model['id']}/send-for-review", headers=headers())
+    rid = sent.json()["approval"]["request_id"]
+    for step, user in ((1, "U11"), (2, "U12")):
+        url = f"{API}/approvals/{rid}/steps/{step}/approve"
+        assert client.post(url, json={}, headers=headers(user)).status_code == 200
+    db.expire_all()
+    rows = db.scalars(
+        select(AuditEvent).where(
+            AuditEvent.entity == "TransitionItem", AuditEvent.note == "Support model agreed"
+        )
+    ).all()
+    assert already_id not in {r.entity_id for r in rows}
+    assert db.get(TransitionItem, already_id).status == kept_status
+    assert all(
+        r.actor_type == "Workflow rule" and r.before["status"] != r.after["status"] for r in rows
+    )

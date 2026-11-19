@@ -14,13 +14,21 @@ from app.schemas.leadership import LeadershipUpdateOut
 
 
 class InsightActionOut(BaseModel):
-    """A button on an insight. M2: ``kind="link"`` navigates to ``href``. M8 adds proposal kinds that a
-    permitted human accepts (BR-050)."""
+    """A button on an insight. ``kind="link"`` navigates to ``href``.
+
+    ``kind="draft_chaser"`` is a typed action (BR-050: Orion only suggests, the human clicks): the
+    frontend shows ``label`` as a button that calls, as the signed-in user,
+    ``POST /api/v1/orion/drafts/chaser`` with ``{"transition_id": transition_id, "item_ids":
+    [item_id]}`` and then opens the returned draft in the drafts queue (nothing is sent). ``href``
+    stays filled (the gap in the workspace) as a fallback for clients that only know links.
+    ``transition_id`` / ``item_id`` are null for plain links."""
 
     label: str
-    kind: str = "link"
+    kind: str = "link"  # "link" | "draft_chaser" (more kinds may be added)
     href: str | None = None
     proposal_id: int | None = None
+    transition_id: str | None = None
+    item_id: str | None = None
 
 
 class InsightOut(BaseModel):

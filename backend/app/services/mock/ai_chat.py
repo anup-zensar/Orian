@@ -395,6 +395,15 @@ def _n(count: int, word: str) -> str:
     return f"{count} {word}" if count == 1 else f"{count} {word}s"
 
 
+def _human_date(value: Any) -> str:
+    """ "2026-11-18" -> "18 Nov 2026" (the app's date style); anything else is returned as text."""
+    try:
+        day = date.fromisoformat(str(value))
+    except ValueError:
+        return str(value)
+    return f"{day.day} {day.strftime('%b %Y')}"
+
+
 def leadership_update(scope_data: Mapping[str, Any]) -> str:
     """Markdown from ``domain.leadership.collect_scope_data`` output. First line ``# <title>``;
     sections ``## Headline``, ``## Status by portfolio`` (and by gate), ``## Top risks and
@@ -413,7 +422,7 @@ def leadership_update(scope_data: Mapping[str, Any]) -> str:
     today = d.get("today", "")
 
     rag = Counter(t.get("rag") for t in transitions)
-    lines = [f"# {title}", "", f"_As of {today}_", "", "## Headline", ""]
+    lines = [f"# {title}", "", f"_As of {_human_date(today)}_", "", "## Headline", ""]
     head = (
         f"{_n(len(transitions), 'transition')} in scope: {rag.get('Red', 0)} Red, "
         f"{rag.get('Amber', 0)} Amber, {rag.get('Green', 0)} Green"
@@ -423,7 +432,7 @@ def leadership_update(scope_data: Mapping[str, Any]) -> str:
     lines.append(head + ".")
     for a in approvals[:2]:
         lines.append(
-            f"{a['type']} approved for {a['name']} on {a['date']}"
+            f"{a['type']} approved for {a['name']} on {_human_date(a['date'])}"
             + (f" (by {a['approver']})" if a.get("approver") else "")
             + "."
         )
@@ -459,7 +468,7 @@ def leadership_update(scope_data: Mapping[str, Any]) -> str:
         "|---|---|---|---|---|",
     ]
     for t in transitions:
-        when = t.get("next_decision") or "-"
+        when = _human_date(t["next_decision"]) if t.get("next_decision") else "-"
         if t.get("days") is not None:
             when += f" ({t['days']} d)"
         lines.append(
@@ -472,7 +481,7 @@ def leadership_update(scope_data: Mapping[str, Any]) -> str:
 
     lines += ["", "## Decisions due in the next 30 days", ""]
     lines += [
-        f"- {x['gate_short']} decision for {x['name']} on {x['date']} ({_n(x['days'], 'day')}), "
+        f"- {x['gate_short']} decision for {x['name']} on {_human_date(x['date'])} ({_n(x['days'], 'day')}), "
         f"status {x['rag']}"
         for x in decisions
     ] or ["- No gate decisions due in the next 30 days."]

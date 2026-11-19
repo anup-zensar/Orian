@@ -90,3 +90,24 @@ def test_minimal_and_hostile_landscape():
 def test_theme_is_single_source():
     t = theme()
     assert t["footer"] == "Confidential" and len(t["header_bg"]) == 6
+
+
+def test_questions_slide_shows_answers_and_lists_open_ones():
+    landscape = {
+        **_voc(),
+        "open_questions": [
+            {"question": "Who owns L2?", "answer": "The vendor"},
+            {"question": "Who is on call?", "answer": "  "},
+            "Where is it hosted?",  # a landscape stored before answers existed
+        ],
+    }
+    text = _texts(_open(landscape).slides[4])
+    answered, open_part = text.split("\nOpen questions\n", 1)
+    assert "Q: Who owns L2?" in answered and "A: The vendor" in answered
+    assert "1. Who is on call?" in open_part and "2. Where is it hosted?" in open_part
+    assert "Who owns L2?" not in open_part
+
+
+def test_questions_slide_without_answers_keeps_the_open_list():
+    text = _texts(_open(_voc()).slides[4])
+    assert "Answered questions" not in text and "1. Confirm L2/L3 split" in text

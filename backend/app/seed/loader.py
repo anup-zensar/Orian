@@ -1,15 +1,20 @@
 """Seed loader (spec §11.2, PLAN.md M1.7). Loads ``/seed/*.json`` into an empty database.
 
-Order (spec §11.2): reference -> users -> playbook items -> portfolios -> eval targets ->
-transitions (+ tier assessments) -> items via BR-010 -> synthesised statuses (§11.3) -> flagship
-overrides -> conditions, exceptions, risks, gate history, actions, evidence, eval results ->
-OCET -> "Seeded" audit events.
+Order (spec §11.2, CR-01): CONFIG tables first (seed/config.json: checklists, project types, option
+lists, intake fields, roles, permission matrix, tiering, settings), then reference -> users ->
+playbook items -> portfolios -> eval targets -> transitions (+ tier assessments) -> items via BR-010
+-> synthesised statuses (§11.3) -> flagship overrides -> conditions, exceptions, risks, gate history,
+actions, evidence, eval results -> OCET -> "Seeded" audit events -> message templates (from the
+code defaults) -> ``app_settings.schema_version`` LAST.
 
 Public functions (used by app.main, the admin demo controls and the tests):
 
 * ``seed_all(db)``      - load everything into an EMPTY database (caller commits; one flush for speed).
 * ``seed_if_empty(db)`` - run ``seed_all`` + commit when the users table is empty; True if it seeded.
 * ``reset_and_seed()``  - drop + recreate all tables, then seed in a new session (NFR-06, < 10 s).
+* ``startup_data_fix(db)`` - idempotent fixes of older data (legacy "all four project types" lists
+  on library items become [] = all, so a project type added later gets the item).
+Both seeding wrappers call ``cfg.invalidate()`` after the commit (config + permission caches).
 
 Assumptions used here: A-05 (IRM U14), A-06 (tier assessments), A-07 (flagship critical gap
 S45-014), A-08/A-36 (pinned items in synthesis), A-10 (linked modules), A-29 (seeded scope is
@@ -27,10 +32,10 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app import clock
+from app import clock, permissions
 from app import db as database
 from app.config import get_settings
-from app.domain import audit
+from app.domain import audit, cfg, cfg_defaults
 from app.models import (
     Action,
     AIProfile,
@@ -38,6 +43,7 @@ from app.models import (
     ApprovalRequest,
     ApprovalStep,
     AppSetting,
+    Checklist,
     Condition,
     EvalResult,
     EvalTarget,
@@ -45,15 +51,24 @@ from app.models import (
     ExceptionRecord,
     FlavourRule,
     GateReview,
+    IntakeField,
+    MessageTemplate,
     OcetEstimate,
     OcetLine,
     OcetVersion,
+    OptionItem,
+    OptionList,
+    PermissionText,
     PlaybookItem,
     Portfolio,
     ReferenceData,
     ReminderRule,
     Risk,
+    Role,
+    RolePermission,
     TierAssessment,
+    TierQuestion,
+    TierRule,
     Transition,
     TransitionItem,
     User,
@@ -66,7 +81,6 @@ from app.rules.checklist import (
 )
 from app.rules.constants import (
     ACTOR_SYSTEM,
-    AI_PROJECT_TYPES,
     APPLIES,
     GAP_STATUSES,
     GATE_ORDER,
@@ -78,7 +92,10 @@ from app.rules.constants import (
 )
 from app.rules.synthesis import Pin, Snapshot, SynthItem, synthesize
 
+# Legacy export: the four project types of the first demo. Library items that list all of them mean
+# "every project type" and are stored as [] (CR-01 1.1). Kept for domain/admin.py until A2 removes it.
 ALL_PROJECT_TYPES = ["Agentic AI", "Normal", "Combined", "Infrastructure"]
+_LEGACY_ALL_TYPES = frozenset(ALL_PROJECT_TYPES)
 IRM_USER_ID = "U14"  # A-05: the only IRM
 ORION_SOURCE_LABEL = "Portfolio golden set (client prototype, approximate)"
 FW_SHEET = "Operate Readiness Framework"
@@ -160,19 +177,149 @@ def _linked_module(item_id: str, source_sheet: str, lens: str) -> str | None:
 # --- reference, users, library -----------------------------------------------------------------
 
 
-def _reference_rows(ref: dict[str, Any]) -> list[Any]:
-    rows: list[Any] = [ReferenceData(key="reference", data=ref)]
-    for pt in ref["project_types"]:
+def _applies(types: list[str]) -> list[str]:
+    """[] = every project type (also future ones); the legacy four-type list is turned into []."""
+    return [] if set(types) >= _LEGACY_ALL_TYPES else list(types)
+
+
+def _config_rows(conf: dict[str, Any]) -> list[Any]:
+    """CR-01 configuration tables from ``seed/config.json``."""
+    rows: list[Any] = []
+    for c in conf["checklists"]:
+        rows.append(
+            Checklist(
+                code=c["code"],
+                label=c["label"],
+                description=c.get("description", ""),
+                active=c.get("active", True),
+                sort_order=c["sort_order"],
+                is_builtin=c.get("is_builtin", False),
+                tier_filtered=c.get("tier_filtered", False),
+                kind=c["kind"],
+            )
+        )
+    for pt in conf["project_types"]:
         rows.append(
             FlavourRule(
                 project_type=pt["code"],
                 checklists=list(pt["checklists"]),
                 requires_tiering=bool(pt.get("requires_tiering", False)),
                 note=pt.get("note"),
+                label=pt.get("label") or pt["code"],
+                description=pt.get("description", ""),
+                active=pt.get("active", True),
+                sort_order=pt["sort_order"],
+                has_ai_profile=bool(pt.get("has_ai_profile", False)),
+                has_eval_metrics=bool(pt.get("has_eval_metrics", False)),
+                required_intake_fields=list(pt.get("required_intake_fields", [])),
+                synonyms=list(pt.get("synonyms", [])),
+                color=pt.get("color"),
             )
         )
+    for i, ol in enumerate(conf["option_lists"]):
+        rows.append(
+            OptionList(
+                key=ol["key"],
+                label=ol["label"],
+                description=ol.get("description", ""),
+                is_builtin=ol.get("is_builtin", True),
+                structural=ol.get("structural", False),
+                meta_fields=list(ol.get("meta_fields", [])),
+                group=ol.get("group", ""),
+                sort_order=i,
+            )
+        )
+    return rows
+
+
+def _config_item_rows(conf: dict[str, Any]) -> list[Any]:
+    """Rows that reference the config tables above (flushed after them)."""
+    rows: list[Any] = []
+    for ol in conf["option_lists"]:
+        for order, it in enumerate(ol["items"]):
+            rows.append(
+                OptionItem(
+                    list_key=ol["key"],
+                    value=it["value"],
+                    label=it.get("label") or it["value"],
+                    description=it.get("description", ""),
+                    meta=dict(it.get("meta", {})),
+                    active=True,
+                    sort_order=order,
+                )
+            )
+    for f in conf["intake_fields"]:
+        rows.append(
+            IntakeField(**{k: v for k, v in f.items() if k in IntakeField.__table__.columns})
+        )
+    for r in conf["roles"]:
+        rows.append(Role(**{k: v for k, v in r.items() if k in Role.__table__.columns}))
+    reasons = _denial_texts(conf)
+    for perm, role_codes in _permission_matrix(conf).items():
+        rows.extend(RolePermission(perm=perm, role_code=code) for code in sorted(role_codes))
+    for perm, meta in conf["permission_meta"].items():
+        rows.append(
+            PermissionText(
+                perm=perm,
+                label=meta["label"],
+                description=meta.get("description", ""),
+                area=meta.get("area", ""),
+                denial_reason=reasons.get(perm, ""),
+                is_custom=False,
+            )
+        )
+    for q in conf["tier_questions"]:
+        rows.append(TierQuestion(**q))
+    for tr in conf["tier_rules"]:
+        rows.append(TierRule(**tr))
+    rows.append(AppSetting(key="cfg.tiers", value=conf["tiers"]))
+    rows.append(AppSetting(key="cfg.tier_dimensions", value=conf["tier_dimensions"]))
+    for key, value in conf["settings"].items():
+        rows.append(AppSetting(key=key, value=value))
+    return rows
+
+
+def _permission_matrix(conf: dict[str, Any]) -> dict[str, set[str]]:
+    """perm -> role codes: ``permissions.MATRIX`` (code defaults) plus codes only config.json knows."""
+    matrix = {p.value: {r.value for r in rs} for p, rs in permissions.MATRIX.items()}
+    for perm, role_codes in conf["role_permissions"].items():
+        matrix.setdefault(perm, set(role_codes))
+    return matrix
+
+
+def _denial_texts(conf: dict[str, Any]) -> dict[str, str]:
+    texts = dict(conf["permission_denial_reasons"])
+    texts.update({p.value: t for p, t in permissions.DEFAULT_DENIAL_REASONS.items()})
+    return texts
+
+
+def _template_rows() -> list[MessageTemplate]:
+    """One row per message template, from the code defaults (cfg_defaults.DEFAULT_TEMPLATES)."""
+    return [
+        MessageTemplate(
+            key=key,
+            name=name,
+            subject=subject,
+            body=body,
+            enabled=True,
+            placeholders=cfg_defaults.placeholder_specs(key),
+        )
+        for key, (name, subject, body, _src) in cfg_defaults.DEFAULT_TEMPLATES.items()
+    ]
+
+
+def _reference_rows(ref: dict[str, Any], conf: dict[str, Any]) -> list[Any]:
+    rows: list[Any] = [ReferenceData(key="reference", data=ref)]
+    chain_labels = conf.get("approval_chain_labels", {})
+    mock_role = conf["settings"]["cfg.mock_approver"]["mock_role"]
     for chain_type, steps in ref["approval_chains"].items():
-        rows.append(ApprovalChainConfig(type=chain_type, steps=steps))
+        rows.append(
+            ApprovalChainConfig(
+                type=chain_type,
+                steps=[dict(st, is_mock=st["role"] == mock_role) for st in steps],
+                label=chain_labels.get(chain_type),
+            )
+        )
     for order, (rid, name, desc, autonomous, params) in enumerate(REMINDER_RULES):
         rows.append(
             ReminderRule(
@@ -213,7 +360,7 @@ def _library_rows(
                 applicable_tiers=[],
                 mandatory=fw["mandatory"],
                 mandatory_rule="always",
-                applies_to_project_types=list(fw["applies_to_project_types"]),
+                applies_to_project_types=_applies(list(fw["applies_to_project_types"])),
                 owner_role_hint=fw["action_owner"],
                 automation_tag=fw.get("automation_tag", ""),
                 phase_window=fw.get("phase_window", ""),
@@ -244,7 +391,7 @@ def _library_rows(
                 tier_unspecified=ai["tier_unspecified"],
                 mandatory=ai["mandatory"],
                 mandatory_rule="always",
-                applies_to_project_types=list(ai["applies_to_project_types"]),
+                applies_to_project_types=_applies(list(ai["applies_to_project_types"])),
                 source_sheet=ai["source_sheet"],
                 source_cell=ai["source_cell"],
                 note=ai.get("note", ""),
@@ -271,7 +418,7 @@ def _library_rows(
                     kind="Deliverable",
                     mandatory=gs["mandatory"],
                     mandatory_rule="always" if gs["mandatory"] else None,
-                    applies_to_project_types=list(ALL_PROJECT_TYPES),
+                    applies_to_project_types=[],
                     owner_role_hint=gs.get("owner_role_hint", ""),
                     active=True,
                     sort_order=order,
@@ -291,7 +438,7 @@ def _library_rows(
                 kind="Deliverable",
                 mandatory=common["mandatory"],
                 mandatory_rule=common["mandatory_rule"],
-                applies_to_project_types=list(ALL_PROJECT_TYPES),
+                applies_to_project_types=[],
                 owner_role_hint=common.get("owner_role_hint", ""),
                 active=True,
                 sort_order=order,
@@ -336,6 +483,7 @@ def _eval_target_rows(metrics: list[dict[str, Any]]) -> list[EvalTarget]:
                     unit=check.get("unit"),
                     evaluation=metric["evaluation"],
                     confirmed=bool(metric.get("tier_targets_confirmed", False)),
+                    active=True,
                     sort_order=order,
                 )
             )
@@ -769,10 +917,19 @@ def seed_all(db: Session) -> None:
     metrics = _read(seed_dir, "eval_metrics.json")
     transitions = _read(seed_dir, "sample_transitions.json")["transitions"]
     ocet = _read(seed_dir, "ocet_sample.json")
-    flavour = {pt["code"]: list(pt["checklists"]) for pt in ref["project_types"]}
+    conf = _read(seed_dir, "config.json")
+    flavour = {pt["code"]: list(pt["checklists"]) for pt in conf["project_types"]}
+    # project types whose transitions go through tiering get a tier assessment row
+    tiering_types = {pt["code"] for pt in conf["project_types"] if pt.get("requires_tiering")}
+
+    # 0. configuration tables first (CR-01): everything below reads them
+    db.add_all(_config_rows(conf))
+    db.flush()  # option lists / roles ... exist before the rows that point at them
+    db.add_all(_config_item_rows(conf))
+    db.flush()
 
     # 1. reference + users + library + portfolios + eval targets
-    db.add_all(_reference_rows(ref))
+    db.add_all(_reference_rows(ref, conf))
     db.add_all(
         User(
             id=u["id"],
@@ -780,17 +937,27 @@ def seed_all(db: Session) -> None:
             email=u["email"],
             role=u["role"],
             focal_label=u.get("focal_label"),
+            active=True,
+            title=u.get("title"),
         )
         for u in users
     )
     library_rows = _library_rows(framework, ai_items, portfolios)
     db.add_all(library_rows)
+    portfolio_conf = {p["name"]: p for p in conf["portfolios"]}
     db.add_all(
         Portfolio(
             name=p["name"],
             code=p["code"],
             focus_areas=list(p["focus_areas"]),
-            intake_extra_fields=list(p.get("intake_extra_fields", [])),
+            intake_extra_fields=[],  # superseded by intake_fields (CR-01 1.4)
+            label=portfolio_conf[p["name"]].get("label") or p["name"],
+            description=portfolio_conf[p["name"]].get("description", ""),
+            active=True,
+            sort_order=portfolio_conf[p["name"]]["sort_order"],
+            requires_sites=bool(portfolio_conf[p["name"]].get("requires_sites", False)),
+            sites_label=portfolio_conf[p["name"]].get("sites_label", ""),
+            synonyms=list(portfolio_conf[p["name"]].get("synonyms", [])),
         )
         for p in portfolios["portfolios"]
     )
@@ -808,7 +975,7 @@ def seed_all(db: Session) -> None:
     db.flush()
     items_by_transition: dict[str, list[TransitionItem]] = {}
     for src in transitions:
-        if src["project_type"] in AI_PROJECT_TYPES:
+        if src["project_type"] in tiering_types:
             db.add_all(_tier_rows(src, now))
         rows = _build_items(src, library, flavour)
         items_by_transition[src["id"]] = rows
@@ -880,6 +1047,11 @@ def seed_all(db: Session) -> None:
     )
     db.flush()
 
+    # 5. message templates (from the code defaults) and the schema version, LAST
+    db.add_all(_template_rows())
+    db.merge(AppSetting(key=database.SCHEMA_VERSION_KEY, value=database.SCHEMA_VERSION))
+    db.flush()
+
 
 def seed_if_empty(db: Session) -> bool:
     """Seed (and commit) when the users table is empty. Returns True when it seeded."""
@@ -887,6 +1059,7 @@ def seed_if_empty(db: Session) -> bool:
         return False
     seed_all(db)
     db.commit()
+    cfg.invalidate()
     return True
 
 
@@ -900,3 +1073,19 @@ def reset_and_seed() -> None:
         # the dropped tables took the persisted "today_override" setting with them; make it explicit
         db.merge(AppSetting(key="today_override", value=None))
         db.commit()
+    cfg.invalidate()
+
+
+def startup_data_fix(db: Session) -> int:
+    """Idempotent fixes of older data; returns the number of rows changed. Library items that list
+    all four legacy project types become [] ("every type, including future ones")."""
+    changed = 0
+    for row in db.scalars(select(PlaybookItem)).all():
+        types = list(row.applies_to_project_types or [])
+        if types and set(types) >= _LEGACY_ALL_TYPES and len(types) == len(_LEGACY_ALL_TYPES):
+            row.applies_to_project_types = []
+            changed += 1
+    if changed:
+        db.commit()
+        cfg.invalidate()
+    return changed

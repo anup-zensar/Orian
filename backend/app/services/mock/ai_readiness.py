@@ -9,7 +9,8 @@ Both functions only produce text / proposals from facts computed by the rules; n
 
 ``recommend_actions`` takes one mapping per blocker: ``item_id``, ``title``, ``lens``, ``status``,
 ``owner_user_id``, ``owner_name``, ``linked_module``, ``transition_id``, ``is_eval``, ``metric``,
-``target_text``, ``exception_ref`` / ``exception_status`` and ``noncompliant``. A mapping with
+``target_text``, ``exception_ref`` (+ ``exception_approver_name`` / ``exception_approver_role`` = the short role label, of
+the approver it waits for) and ``noncompliant``. A mapping with
 ``ready_for_approval=True`` (plus ``gate``, ``transition_id``) yields the ``request_approval`` proposal.
 """
 
@@ -79,6 +80,14 @@ def _proposal(
     }
 
 
+def _ask_to_approve_exception(gap: Mapping[str, Any], item_id: str) -> str:
+    """ "Ask Fatima Khan (IRM) to approve exception EX-01" (the approver the exception waits for)."""
+    name = gap.get("exception_approver_name")
+    role = gap.get("exception_approver_role")
+    who = f"{name} ({role})" if name and role else "the approver"
+    return f"Ask {who} to approve exception {gap['exception_ref']} for {item_id}"
+
+
 def _one(gap: Mapping[str, Any]) -> dict[str, Any]:
     item_id = str(gap.get("item_id", ""))
     title = _short(str(gap.get("title", "")))
@@ -120,7 +129,7 @@ def _one(gap: Mapping[str, Any]) -> dict[str, Any]:
     if gap.get("owner_user_id"):
         who = f" from {owner}" if owner else ""
         if gap.get("exception_ref"):
-            label = f"Draft a chaser to approve exception {gap['exception_ref']} for {item_id}"
+            label = _ask_to_approve_exception(gap, item_id)
         else:
             label = f"Draft a chaser for {item_id} {title}{who}"
         return _proposal("draft_chaser", item_id, label, [item_id])

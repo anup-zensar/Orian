@@ -163,3 +163,19 @@ def test_not_launched_transition_insight_claims_no_readiness(client, headers, db
     assert "has not been launched yet" in text and "%" not in text
     hrefs = [a["href"] for i in body["insights"] for a in i["actions"]]
     assert "/transitions/TR-0002/scope" in hrefs
+
+
+def test_chaser_insight_carries_a_typed_action(client, headers):
+    top = _ins(client, headers, scope="dashboard")["insights"][0]
+    link, chaser = top["actions"]
+    assert link["kind"] == "link" and link["item_id"] is None
+    assert chaser["kind"] == "draft_chaser" and chaser["label"] == "Draft a chaser"
+    assert chaser["transition_id"] == "TR-0001" and chaser["item_id"] == "S45-014"
+    assert chaser["href"] == "/transitions/TR-0001/gaps?item=S45-014"  # link fallback
+    # the button calls the normal user endpoint as the human: it drafts, nothing is sent
+    res = client.post(
+        f"{API}/orion/drafts/chaser",
+        json={"transition_id": chaser["transition_id"], "item_ids": [chaser["item_id"]]},
+        headers=headers("U01"),
+    )
+    assert res.status_code == 201 and res.json()["status"] == "Draft"

@@ -16,6 +16,8 @@ from sqlalchemy.orm import Session
 
 from app import clock
 from app.config import get_settings
+from app.domain import cfg
+from app.domain.audit_text import describe_event
 from app.domain.control_tower import build_kpis
 from app.domain.metrics import ItemRow, TransitionMetrics, compute_metrics, plural, reference_lists
 from app.domain.transitions import is_involved, sort_register
@@ -239,6 +241,7 @@ def build_recent_activity(db: Session, names: dict[str, str]) -> list[AuditEvent
             before=e.before,
             after=e.after,
             note=e.note,
+            summary=describe_event(e.entity, e.entity_id, e.action),
         )
         for e in events
     ]
@@ -340,6 +343,16 @@ def _my_kpis(
     return tiles
 
 
+def _subtitle(db: Session, user: User, mine: list[Transition]) -> str:
+    """Role label plus the (distinct, sorted) portfolios of the user's active transitions."""
+    portfolios = sorted({t.portfolio for t in mine if t.portfolio})
+    shown = ", ".join(portfolios[:3]) + (
+        f" +{len(portfolios) - 3} more" if len(portfolios) > 3 else ""
+    )
+    label = cfg.role_label(db, user.role)
+    return f"{label} · {shown}" if shown else label
+
+
 def build_dashboard(db: Session, user: User) -> DashboardOut:
     """One metrics computation per request. LEADERSHIP computes the whole portfolio once and takes
     "mine" (Active) from it; every other role computes only its own Active transitions."""
@@ -355,6 +368,7 @@ def build_dashboard(db: Session, user: User) -> DashboardOut:
     names = {m.id: m.transition.name for m in mine}
     base = dict(
         user=UserOut.model_validate(user),
+        subtitle=_subtitle(db, user, mine_rows),
         today=clock.today(),
         recent_activity=build_recent_activity(db, names),
     )

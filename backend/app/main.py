@@ -15,9 +15,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app import clock
+from app import clock, permissions
 from app.config import get_settings
-from app.db import SessionLocal, configure_engine, create_all
+from app.db import SessionLocal, configure_engine, create_all, ensure_schema_version
 from app.deps import get_current_user
 from app.errors import ApiError
 from app.middleware import install_middleware
@@ -29,6 +29,7 @@ from app.routers import (
     approvals,
     audit,
     conditions,
+    config_admin,
     control_tower,
     dashboard,
     defects,
@@ -54,7 +55,7 @@ from app.routers import (
     users,
 )
 from app.scheduler import start_scheduler, stop_scheduler
-from app.seed.loader import seed_if_empty
+from app.seed.loader import seed_if_empty, startup_data_fix
 
 API_PREFIX = "/api/v1"
 ROUTERS = (
@@ -85,6 +86,7 @@ ROUTERS = (
     notifications,
     integrations,
     admin,
+    config_admin,
     audit,
     leadership,
 )
@@ -109,10 +111,13 @@ def restore_today_override() -> None:
 @asynccontextmanager
 async def lifespan(app_: FastAPI) -> AsyncIterator[None]:
     configure_engine()
+    ensure_schema_version()  # CR-01: rebuild + re-seed when the stored schema version differs
     create_all()
     with SessionLocal() as db:
         if seed_if_empty(db):
             logger.info("Database was empty - demo data seeded")
+        startup_data_fix(db)
+        permissions.load_cache(db)  # CR-01: the permission matrix lives in the database
     restore_today_override()
     if get_settings().reminder_job_enabled:
         start_scheduler(app_)

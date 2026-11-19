@@ -9,12 +9,12 @@ from app.db import Base, TimestampMixin
 
 
 class PlaybookItem(TimestampMixin, Base):
-    """One library line. ``source``: FRAMEWORK | AI_PLAYBOOK | PORTFOLIO | COMMON."""
+    """One library line. ``source``: a checklists.code (FRAMEWORK | AI_PLAYBOOK | PORTFOLIO | COMMON | ...)."""
 
     __tablename__ = "playbook_items"
 
     id: Mapped[str] = mapped_column(String(20), primary_key=True)  # FW-001, S45-014, GCC-01, ALL-01
-    source: Mapped[str] = mapped_column(String(20), index=True)
+    source: Mapped[str] = mapped_column(String(40), index=True)
     source_label: Mapped[str] = mapped_column(
         String(80), default=""
     )  # e.g. "AI Playbook Checklist v3.0"
@@ -48,6 +48,8 @@ class PlaybookItem(TimestampMixin, Base):
     linked_module: Mapped[str | None] = mapped_column(
         String(20), nullable=True
     )  # OCET | SUPPORT_MODEL
+    # CR-01: role code that owns the item by default (replaces lens / category / kind string checks)
+    default_owner_role: Mapped[str | None] = mapped_column(String(30), nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
@@ -68,4 +70,5 @@ class EvalTarget(TimestampMixin, Base):
     unit: Mapped[str | None] = mapped_column(String(10), nullable=True)
     evaluation: Mapped[str] = mapped_column(String(10), default="manual")  # auto | manual
     confirmed: Mapped[bool] = mapped_column(Boolean, default=False)  # tier_targets_confirmed
+    active: Mapped[bool] = mapped_column(Boolean, default=True)  # CR-01: metric-level switch
     sort_order: Mapped[int] = mapped_column(Integer, default=0)

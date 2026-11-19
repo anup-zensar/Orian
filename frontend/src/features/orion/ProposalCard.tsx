@@ -146,7 +146,8 @@ export function ProposalCard({ proposal }: { proposal: Proposal }) {
       onError: (e) =>
         setError(
           e instanceof ApiError
-            ? [e.detail, ...e.reasons].join(' ')
+            ? // The reasons usually repeat or explain the detail: show the detail once.
+              [e.detail, ...e.reasons.filter((r) => r !== e.detail)].join(' - ')
             : 'Orion could not run this proposal',
         ),
     });
@@ -206,8 +207,18 @@ export function ProposalCard({ proposal }: { proposal: Proposal }) {
       const fields = (Array.isArray(p.fields) ? p.fields : []) as ExtractedField[];
       const summary = typeof p.summary === 'string' ? p.summary : '';
       const excerpt = typeof p.source_excerpt === 'string' ? p.source_excerpt : '';
+      const warnings = Array.isArray(p.warnings) ? p.warnings.map(String) : [];
       return (
         <>
+          {warnings.length > 0 && (
+            <MessageBar intent="warning" layout="multiline" role="status">
+              <MessageBarBody>
+                {warnings.map((w) => (
+                  <div key={w}>{w}</div>
+                ))}
+              </MessageBarBody>
+            </MessageBar>
+          )}
           {summary && <Caption1>{summary}</Caption1>}
           {renderFieldTable(fields.filter((f) => !isMissing(f)))}
           {fields.some(isMissing) && (
@@ -298,7 +309,7 @@ export function ProposalCard({ proposal }: { proposal: Proposal }) {
       <Body1Strong>{proposal.title}</Body1Strong>
       {renderBody()}
       {error && (
-        <MessageBar intent="error" role="alert">
+        <MessageBar intent="error" layout="multiline" role="alert">
           <MessageBarBody>{error}</MessageBarBody>
         </MessageBar>
       )}

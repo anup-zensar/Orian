@@ -7,8 +7,8 @@
 * ``items``: list of ``{"id", "title", "due_gate_short"?, "owner_name"?, "deep_link"?}`` (Chaser,
   Reminder, Input request)
 * ``deep_link``: overrides the default link (otherwise ``APP_BASE_URL`` + the standard route)
-* Approval request: ``gate``, ``verdict``, ``approver_role``, ``summary``; ``ready`` (R4: the
-  draft is for the OR focal and Send starts the chain) with ``subject``
+* Approval request: ``gate``, ``verdict``, ``approver_role``, ``summary`` (rule R4 uses this
+  same text, addressed to the first approver, with its own subject)
 * Reminder-engine variants (BR-060): Chaser with ``days_overdue``/``action_title`` (R2) or
   ``escalation`` + ``approver_name`` + ``days_pending`` (R3); Reminder with ``pending_step``
   (R3), ``monitoring`` (R6) or ``support_model`` (R7) + ``subject``
@@ -213,24 +213,9 @@ def _input_request(ctx: Mapping[str, Any]) -> DraftText:
     return {"subject": subject, "body_html": body}
 
 
-def _ready_for_gate(ctx: Mapping[str, Any], transition: str, gate: str) -> DraftText:
-    role = str(ctx.get("approver_role") or "the first approver")
-    subject = str(ctx.get("subject") or f"Ready for {gate} - request {role} approval")
-    body = (
-        f"<p>{_greeting(ctx)}</p>"
-        f"<p>{esc(transition)} has no open items left for {esc(gate)}. "
-        f"Sending this starts the approval chain with {esc(role)}.</p>"
-        + _link_para(ctx, "Review readiness in Orion")
-        + _sign_off(ctx)
-    )
-    return {"subject": subject, "body_html": body}
-
-
 def _approval_request(ctx: Mapping[str, Any]) -> DraftText:
     transition = str(ctx.get("transition_name", ""))
     gate = str(ctx.get("gate_short") or ctx.get("gate") or "gate")
-    if ctx.get("ready"):
-        return _ready_for_gate(ctx, transition, gate)
     link = ctx.get("deep_link") or f"{_base()}/transitions/{ctx.get('transition_id', '')}/gates"
     verdict = str(ctx.get("verdict") or "").strip()
     role = str(ctx.get("approver_role") or "").strip()

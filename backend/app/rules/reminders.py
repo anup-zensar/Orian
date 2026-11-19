@@ -316,7 +316,7 @@ def evaluate_r4(
 ) -> list[ReminderCandidate]:
     """R4 - ready for a decision gate. For each transition with a ``next_decision_gate`` where ALL
     applicable items with ``gate_index <= index of the decision gate`` are done_or_covered AND no
-    ``open_approval_chain``: one candidate to the OR focal, kind "Approval request", subject_key
+    ``open_approval_chain`` (and there is at least one such item): one candidate to the OR focal, kind "Approval request", subject_key
     f"ready:{gate}", payload {transition_name, gate, gate_label, first_approver_role,
     subject: "Ready for <gate short> - request <first approver role> approval"} (e.g. "Ready for
     ATD - request OLM approval"), action {"type": "request_approval", "gate": <decision gate>} so
@@ -329,8 +329,8 @@ def evaluate_r4(
             continue
         limit = GATE_ORDER[gate]
         scoped = [i for i in items if i.transition_id == t.transition_id and i.gate_index <= limit]
-        if any(not i.done_or_covered for i in scoped):
-            continue
+        if not scoped or any(not i.done_or_covered for i in scoped):
+            continue  # no applicable items = the assessment is not launched: nothing is "ready"
         short = GATE_SHORT.get(gate, gate)
         role = t.first_approver_role or "approver"
         out.append(

@@ -7,6 +7,12 @@ import {
   Body1,
   Button,
   Caption1,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
   Field,
   Input,
   MessageBar,
@@ -260,6 +266,7 @@ interface OrionPrefill {
   missing: string[];
   ambiguous: string[];
   excerpt: string;
+  warnings: string[];
 }
 
 function readPrefill(proposal: Proposal): OrionPrefill {
@@ -272,6 +279,7 @@ function readPrefill(proposal: Proposal): OrionPrefill {
     missing: arr(p.missing_fields).map(String),
     ambiguous: arr(p.ambiguous_fields).map(String),
     excerpt: typeof p.source_excerpt === 'string' ? p.source_excerpt : '',
+    warnings: arr(p.warnings).map(String),
   };
 }
 
@@ -531,8 +539,29 @@ function IntakeForm(props: {
     });
   };
 
+  // A-80: the first attempt is sent without confirm_duplicate; a 409 opens the duplicate dialog.
+  const [duplicate, setDuplicate] = useState<{ reasons: string[]; body: TransitionCreate } | null>(
+    null,
+  );
+  const send = (body: TransitionCreate) =>
+    create.mutate(body, {
+      onSuccess: (t) => {
+        setDuplicate(null);
+        navigate(`/transitions/${t.id}/${t.requires_tiering ? 'tiering' : 'scope'}`);
+      },
+      onError: (e) => {
+        if (!body.confirm_duplicate && e instanceof ApiError && e.status === 409 && e.reasons[0]) {
+          setDuplicate({ reasons: e.reasons, body });
+        } else {
+          setDuplicate(null);
+          showError(e);
+        }
+      },
+    });
+
   const onSubmit = handleSubmit((v) => {
     const body: TransitionCreate = {
+      confirm_duplicate: false,
       name: v.name.trim(),
       servicenow_project_id: v.servicenow_project_id.trim() || null,
       project_type: v.project_type,
@@ -557,11 +586,7 @@ function IntakeForm(props: {
       irm_user_id: v.irm_user_id || null,
       next_decision_date: v.next_decision_date || null,
     };
-    create.mutate(body, {
-      onSuccess: (t) =>
-        navigate(`/transitions/${t.id}/${t.requires_tiering ? 'tiering' : 'scope'}`),
-      onError: showError,
-    });
+    send(body);
   });
 
   const submit = (
@@ -572,6 +597,15 @@ function IntakeForm(props: {
 
   return (
     <form onSubmit={onSubmit} noValidate className={s.layout}>
+      {duplicate && (
+        <DuplicateDialog
+          reasons={duplicate.reasons}
+          busy={create.isPending}
+          onOpen={(id) => navigate(`/transitions/${id}`)}
+          onCreateAnyway={() => send({ ...duplicate.body, confirm_duplicate: true })}
+          onClose={() => setDuplicate(null)}
+        />
+      )}
       <SectionCard title="Transition details">
         <div className={s.grid}>
           <div className={s.full}>
@@ -609,7 +643,7 @@ function IntakeForm(props: {
           </div>
           {snMessage && (
             <div className={s.full}>
-              <MessageBar intent="warning" role="status">
+              <MessageBar intent="warning" layout="multiline" role="status">
                 <MessageBarBody>{snMessage}</MessageBarBody>
               </MessageBar>
             </div>
@@ -826,41 +860,104 @@ function IntakeForm(props: {
   );
 }
 
+/** A-80: an active transition already exists for this ServiceNow project. */
+function DuplicateDialog(props: {
+  reasons: string[];
+  busy: boolean;
+  onOpen: (id: string) => void;
+  onCreateAnyway: () => void;
+  onClose: () => void;
+}) {
+  const existingId = /TR-\d+/.exec(props.reasons[0] ?? '')?.[0] ?? null;
+  return (
+    <Dialog open onOpenChange={(_, d) => !d.open && props.onClose()}>
+      <DialogSurface style={{ maxWidth: 600 }}>
+        <DialogBody>
+          <DialogTitle>A transition already exists for this ServiceNow project</DialogTitle>
+          <DialogContent>
+            {props.reasons.map((r) => (
+              <Body1 key={r} block>
+                {r}
+              </Body1>
+            ))}
+          </DialogContent>
+          <DialogActions>
+            {existingId && (
+              <Button
+                appearance="primary"
+                style={{ whiteSpace: 'nowrap' }}
+                onClick={() => props.onOpen(existingId)}
+              >
+                Open {existingId}
+              </Button>
+            )}
+            <Button
+              style={{ whiteSpace: 'nowrap' }}
+              disabled={props.busy}
+              onClick={props.onCreateAnyway}
+            >
+              Create anyway
+            </Button>
+            <Button appearance="subtle" onClick={props.onClose}>
+              Cancel
+            </Button>
+          </DialogActions>
+        </DialogBody>
+      </DialogSurface>
+    </Dialog>
+  );
+}
+
 /** Banner of a pre-filled intake (CR-02): the human still checks and clicks Create. */
 function OrionBanner({ orion }: { orion: OrionPrefill }) {
   const [hidden, setHidden] = useState(false);
   const [showExcerpt, setShowExcerpt] = useState(false);
-  if (hidden) return null;
   const labelOf = (n: string) => orion.fields.find((f) => f.name === n)?.label ?? n;
   return (
     <div style={{ marginBottom: tokens.spacingVerticalL }}>
-      <MessageBar intent="info" role="status">
-        <MessageBarBody>
-          <AiBadge /> Pre-filled by Orion from your description - check and create
-          {orion.missing.length > 0 && (
-            <div>
-              <Caption1>
-                Orion could not find: {orion.missing.map(labelOf).join(', ')}. Please enter them.
-              </Caption1>
-            </div>
-          )}
-          {showExcerpt && orion.excerpt && (
-            <pre style={{ whiteSpace: 'pre-wrap', margin: '8px 0 0', fontSize: 12 }}>
-              {orion.excerpt}
-            </pre>
-          )}
-        </MessageBarBody>
-        <MessageBarActions>
-          {orion.excerpt && (
-            <Button size="small" onClick={() => setShowExcerpt((v) => !v)}>
-              {showExcerpt ? 'Hide source excerpt' : 'View source excerpt'}
+      {!hidden && (
+        <MessageBar intent="info" role="status">
+          <MessageBarBody>
+            <AiBadge /> Pre-filled by Orion from your description - check and create
+            {orion.missing.length > 0 && (
+              <div>
+                <Caption1>
+                  Orion could not find: {orion.missing.map(labelOf).join(', ')}. Please enter them.
+                </Caption1>
+              </div>
+            )}
+            {showExcerpt && orion.excerpt && (
+              <pre style={{ whiteSpace: 'pre-wrap', margin: '8px 0 0', fontSize: 12 }}>
+                {orion.excerpt}
+              </pre>
+            )}
+          </MessageBarBody>
+          <MessageBarActions>
+            {orion.excerpt && (
+              <Button size="small" onClick={() => setShowExcerpt((v) => !v)}>
+                {showExcerpt ? 'Hide source excerpt' : 'View source excerpt'}
+              </Button>
+            )}
+            <Button size="small" onClick={() => setHidden(true)}>
+              Dismiss
             </Button>
-          )}
-          <Button size="small" onClick={() => setHidden(true)}>
-            Dismiss
-          </Button>
-        </MessageBarActions>
-      </MessageBar>
+          </MessageBarActions>
+        </MessageBar>
+      )}
+      {orion.warnings.length > 0 && (
+        <MessageBar
+          intent="warning"
+          layout="multiline"
+          role="status"
+          style={{ marginTop: tokens.spacingVerticalS }}
+        >
+          <MessageBarBody>
+            {orion.warnings.map((w) => (
+              <div key={w}>{w}</div>
+            ))}
+          </MessageBarBody>
+        </MessageBar>
+      )}
     </div>
   );
 }

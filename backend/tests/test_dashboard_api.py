@@ -159,3 +159,28 @@ def test_dashboard_excludes_not_launched_from_portfolio_averages(client, headers
     scores = [r["overall_readiness"] for r in rows.json() if r["assessment_launched"]]
     assert tiles[portfolio]["grey"] >= 1
     assert tiles[portfolio]["average_readiness"] == int(sum(scores) / len(scores) + 0.5)
+
+
+def test_subtitle_is_role_label_plus_portfolios(client, headers):
+    d = _dash(client, headers, "U01")
+    assert d["subtitle"].startswith("OR focal (S&T)")
+    assert "OR focal A" not in d["subtitle"]  # the login placeholder is not repeated
+    assert " · " in d["subtitle"] and "GCC" in d["subtitle"]
+    leadership = _dash(client, headers, "U15")["subtitle"]
+    assert leadership.startswith("Leadership")
+
+
+def test_seed_events_sit_at_the_start_of_the_demo_day(client, headers, db):
+    """The demo clock uses the real time of day, so seed events must never sort after later work."""
+    from datetime import datetime, time
+
+    from sqlalchemy import select
+
+    from app import clock
+    from app.models import AuditEvent
+
+    seeded = db.scalars(select(AuditEvent).where(AuditEvent.action == "seeded")).all()
+    assert seeded and all(e.at == datetime.combine(clock.today(), time.min) for e in seeded)
+    events = _dash(client, headers, "U01")["recent_activity"]
+    ats = [e["at"] for e in events]
+    assert ats == sorted(ats, reverse=True)

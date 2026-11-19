@@ -65,7 +65,7 @@ class ApprovalStep(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     request_id: Mapped[str] = mapped_column(ForeignKey("approval_requests.id"), index=True)
     step: Mapped[int] = mapped_column(Integer)
-    role: Mapped[str] = mapped_column(String(20))  # PLANNER | OLM | IRM | ARCHITECT | CISO_BISO
+    role: Mapped[str] = mapped_column(String(30))  # PLANNER | OLM | IRM | ARCHITECT | CISO_BISO
     label: Mapped[str] = mapped_column(String(120), default="")
     approver_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     status: Mapped[str] = mapped_column(

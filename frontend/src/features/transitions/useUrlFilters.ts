@@ -22,15 +22,31 @@ export const FILTER_KEYS = [
 ] as const;
 
 export type FilterKey = (typeof FILTER_KEYS)[number];
+interface RemovedFilter {
+  key: FilterKey;
+  value: string;
+}
+
 export type UrlFilters = Partial<Record<FilterKey, string>>;
 
 const RAGS = ['Red', 'Amber', 'Green', 'Grey'];
 const STATUSES = ['Active', 'Closed'];
 const INTEGER = /^\d+$/;
 
-/** Is ``value`` acceptable for ``key``? ``gates`` is undefined until the reference data loads. */
-function isValid(key: FilterKey, value: string, gates: string[] | undefined): boolean {
+interface Known {
+  gates?: string[];
+  portfolios?: string[];
+  regions?: string[];
+}
+
+/** Is ``value`` acceptable for ``key``? Lists are undefined until the reference data loads. */
+function isValid(key: FilterKey, value: string, known: Known): boolean {
+  const { gates, portfolios, regions } = known;
   switch (key) {
+    case 'portfolio':
+      return !portfolios || portfolios.includes(value);
+    case 'region':
+      return !regions || regions.includes(value);
     case 'rag':
       return RAGS.includes(value);
     case 'status':
@@ -52,22 +68,24 @@ export function useUrlFilters() {
   const [params, setParams] = useSearchParams();
   const ref = useReference();
   const gates = ref.data?.gates.map((g) => g.code);
+  const portfolios = ref.data?.portfolios;
+  const regions = ref.data?.regions;
   // The dropped keys travel in the (replaced) history entry's state; the next navigation clears them.
   const location = useLocation();
-  const removed = ((location.state as { removedFilters?: FilterKey[] } | null)?.removedFilters ??
-    []) as FilterKey[];
+  const removed = ((location.state as { removedFilters?: RemovedFilter[] } | null)
+    ?.removedFilters ?? []) as RemovedFilter[];
 
   const { filters, invalid } = useMemo(() => {
     const out: UrlFilters = {};
-    const bad: FilterKey[] = [];
+    const bad: RemovedFilter[] = [];
     for (const key of FILTER_KEYS) {
       const value = params.get(key);
       if (!value) continue;
-      if (isValid(key, value, gates)) out[key] = value;
-      else bad.push(key);
+      if (isValid(key, value, { gates, portfolios, regions })) out[key] = value;
+      else bad.push({ key, value });
     }
     return { filters: out, invalid: bad };
-  }, [params, gates]);
+  }, [params, gates, portfolios, regions]);
 
   // Drop the invalid values from the URL (replace: no extra history entry) and remember why.
   useEffect(() => {
@@ -75,7 +93,7 @@ export function useUrlFilters() {
     setParams(
       (prev) => {
         const next = new URLSearchParams(prev);
-        for (const key of invalid) next.delete(key);
+        for (const { key } of invalid) next.delete(key);
         return next;
       },
       { replace: true, state: { removedFilters: invalid } },
@@ -108,10 +126,16 @@ export function useUrlFilters() {
     });
   }, [setParams]);
 
-  const notice =
-    removed.length > 0
-      ? `Removed invalid filter: ${removed.map((k) => k.replace(/_/g, ' ')).join(', ')}`
-      : undefined;
+  // Unknown portfolio/region values get their own wording; the rest keep the generic one.
+  const named = removed.filter((r) => r.key === 'portfolio' || r.key === 'region');
+  const others = removed.filter((r) => r.key !== 'portfolio' && r.key !== 'region');
+  const parts = [
+    ...named.map((r) => `Unknown ${r.key} "${r.value}" - showing all.`),
+    ...(others.length > 0
+      ? [`Removed invalid filter: ${others.map((r) => r.key.replace(/_/g, ' ')).join(', ')}`]
+      : []),
+  ];
+  const notice = parts.length > 0 ? parts.join(' ') : undefined;
 
   return { filters, update, clear, activeCount: Object.keys(filters).length, notice };
 }

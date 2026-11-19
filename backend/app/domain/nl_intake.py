@@ -879,7 +879,7 @@ def extract_transition_proposal(
         ).first()
         if existing:
             warnings.append(
-                f"{existing} already exists for {prj_id} - open it instead of creating a duplicate"
+                f"{existing} already exists for {prj_id} - open it, or confirm to create a second transition"
             )
     payload.warnings = warnings
     proposal = create_proposal(
@@ -1104,6 +1104,33 @@ def handle_commands(
     return ChatOut(messages=messages)
 
 
+def _transition_picker_form(
+    db: Session,
+    user: User,
+    intent: str,
+    args: dict[str, Any],
+    context: ChatContext,
+    orion_chat: Any,
+) -> list[Any]:
+    """Form-first (spec 8.15): without a transition, a chase / reminder / readiness request gets the
+    existing quick-action form with its transition picker instead of a plain-text question. A chaser
+    uses the "Draft owner reminders" form. Other intents have no matching form (empty list)."""
+    quick = _QUICK_ACTION_OF.get(intent) or (
+        "draft_owner_reminders" if intent == "draft_chaser" else None
+    )
+    if quick is None or quick == "create_leadership_update":
+        return []
+    items = [i for i in args.get("item_ids", []) if i]
+    intro = (
+        f"Which transition is {', '.join(items)} on? Pick it and I will draft the reminders for "
+        "its owners - nothing is sent until you do."
+        if items and intent == "draft_chaser"
+        else "Which transition is this for? Pick it below."
+    )
+    form = orion_chat.quick_action_form(db, user, quick, None, defaults={})
+    return [_text(intro), *form.messages]
+
+
 def _run_command(
     db: Session,
     user: User,
@@ -1135,6 +1162,9 @@ def _run_command(
         if transition is None:
             return [_text(f"I could not find transition {tid}.")]
     if intent in _NEEDS_TRANSITION and transition is None:
+        form = _transition_picker_form(db, user, intent, args, context, orion_chat)
+        if form:
+            return form
         return [
             _text(
                 "Which transition is this for? Name it (for example TR-0001) or open it first. "

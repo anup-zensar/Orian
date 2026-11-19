@@ -56,14 +56,14 @@ import json
 from datetime import date
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
 from app.access import ensure_open, is_assigned, transition_denial
 from app.domain import audit
-from app.errors import Conflict, Forbidden, NotFound
+from app.errors import BadRequest, Conflict, Forbidden, NotFound
 from app.models import OrionProposal, Transition, TransitionItem, User
 from app.permissions import DENIAL_REASONS, Perm, has_perm
 from app.rules.constants import ACTOR_HUMAN, DECISION_GATES, STATUSES_BY_LENS
@@ -117,6 +117,21 @@ def _item_of(db: Session, transition_id: str, item_id: str) -> TransitionItem | 
     ).first()
 
 
+def _validate_decisions(decisions: Any) -> None:
+    """Every accept_applicability decision must be a valid scope decision (ValueError otherwise)."""
+    from pydantic import ValidationError
+
+    from app.schemas.scope import ScopeDecisionIn
+
+    if not isinstance(decisions, list):
+        raise ValueError("decisions must be a list")
+    try:
+        for d in decisions:
+            ScopeDecisionIn(item_id=d["item_id"], applies=d["applies"], reason=d.get("reason"))
+    except (ValidationError, KeyError, TypeError, AttributeError) as exc:
+        raise ValueError("Each decision needs item_id and applies Yes, No or To confirm") from exc
+
+
 def _validate_payload(
     db: Session, kind: str, payload: dict[str, Any], transition_id: str | None
 ) -> dict[str, Any]:
@@ -136,6 +151,8 @@ def _validate_payload(
             raise ValueError("Unknown owner")
         if kind == "request_approval" and payload["gate"] not in DECISION_GATES:
             raise ValueError("request_approval needs an AtD or AtO gate")
+        if kind == "accept_applicability":
+            _validate_decisions(payload["decisions"])
         return payload  # type: ignore[no-any-return]
     model: type[BaseModel] = PAYLOAD_MODELS[kind]
     unknown = set(payload) - set(model.model_fields)
@@ -244,6 +261,9 @@ def accept_denial(db: Session, user: User, row: OrionProposal) -> str | None:
     if row.status != "Open":
         return f"Already {row.status.lower()}"
     if row.kind == "create_transition":
+        creator_id = (row.payload or {}).get(CREATOR_KEY)
+        if creator_id is not None and creator_id != user.id:
+            return "Only the person who asked Orion can open this pre-filled form"
         perm = Perm.CREATE_TRANSITION
         return None if has_perm(user.role, perm) else DENIAL_REASONS[perm]
     t = db.get(Transition, row.transition_id) if row.transition_id else None
@@ -297,14 +317,21 @@ def proposal_out(db: Session, proposal: OrionProposal, user: User) -> ProposalOu
 
 
 def can_view(db: Session, user: User, row: OrionProposal) -> bool:
-    """A proposal is visible to its creator, an Admin, and (for transition-bound kinds) the people
-    assigned to that transition. A create_transition prefill (pasted source text) is private to its
-    creator. Rows without a recorded creator (older data) stay visible to every signed-in user."""
-    creator = (row.payload or {}).get(CREATOR_KEY)
-    if creator is None or creator == user.id or user.role == "ADMIN":
+    """A proposal is visible to its creator, an Admin (read-only for a create_transition prefill) and the people
+    assigned to that transition - but only when the creator is assigned to it too, so an unassigned
+    user cannot put a card in someone else's list (A-76). A create_transition prefill (pasted source
+    text) is private to its creator; the Admin can read it but not accept or dismiss it. Rows without a recorded creator (older data)
+    stay visible to every signed-in user."""
+    creator_id = (row.payload or {}).get(CREATOR_KEY)
+    if creator_id is None or creator_id == user.id:
         return True
+    if user.role == "ADMIN":
+        return True  # read-only: accept_denial stops an Admin from accepting a private prefill
     t = db.get(Transition, row.transition_id) if row.transition_id else None
-    return t is not None and is_assigned(user, t)
+    if t is None:
+        return False  # create_transition: creator (and the Admin, read-only) only
+    creator = db.get(User, creator_id)
+    return is_assigned(user, t) and creator is not None and is_assigned(creator, t)
 
 
 def list_proposals(
@@ -405,10 +432,16 @@ def _execute(
         from app.domain import scope as scope_domain
         from app.schemas.scope import ScopeDecisionIn, ScopeUpdateIn
 
-        decisions = [
-            ScopeDecisionIn(item_id=d["item_id"], applies=d["applies"], reason=d.get("reason"))
-            for d in p["decisions"]
-        ]
+        try:
+            decisions = [
+                ScopeDecisionIn(item_id=d["item_id"], applies=d["applies"], reason=d.get("reason"))
+                for d in p["decisions"]
+            ]
+        except (ValidationError, KeyError, TypeError, AttributeError) as exc:
+            raise BadRequest(
+                "Stored proposal is invalid",
+                ["decisions need item_id and applies Yes/No/To confirm"],
+            ) from exc
         scope_domain.update_scope(
             db, user, t, ScopeUpdateIn(decisions=decisions, source="orion_recommendation")
         )

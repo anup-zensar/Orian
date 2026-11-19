@@ -1,10 +1,13 @@
 // Filter bar shared by the Transitions page and the Control tower (spec 8.2, 8.3). Every control reads
 // and writes the URL query through useUrlFilters, so deep links and the back button work (spec 12).
+import { useState } from 'react';
 import {
   Button,
-  Caption1,
   Field,
   Input,
+  MessageBar,
+  MessageBarActions,
+  MessageBarBody,
   Select,
   Switch,
   Tag,
@@ -76,6 +79,7 @@ function tileFilterTags(f: UrlFilters): { key: FilterKey; label: string }[] {
 export function FilterBar({ filters, update, clear, showMine, notice }: Props) {
   const s = useStyles();
   const ref = useReference();
+  const [dismissed, setDismissed] = useState<string | null>(null);
   const tags = tileFilterTags(filters);
   const hasAny = Object.keys(filters).length > 0;
 
@@ -144,10 +148,21 @@ export function FilterBar({ filters, update, clear, showMine, notice }: Props) {
           Clear filters
         </Button>
       </div>
-      {notice && (
-        <Caption1 role="status" style={{ display: 'block', marginBottom: 8 }}>
-          {notice}
-        </Caption1>
+      {notice && dismissed !== notice && (
+        <MessageBar intent="info" role="status" style={{ marginBottom: 8 }}>
+          <MessageBarBody>{notice}</MessageBarBody>
+          <MessageBarActions
+            containerAction={
+              <Button
+                appearance="transparent"
+                size="small"
+                aria-label="Dismiss"
+                icon={<Dismiss12Regular />}
+                onClick={() => setDismissed(notice)}
+              />
+            }
+          />
+        </MessageBar>
       )}
       {tags.length > 0 && (
         <div className={s.tags} aria-label="Active tile filters">

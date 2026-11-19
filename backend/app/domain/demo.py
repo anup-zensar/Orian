@@ -206,8 +206,9 @@ def fast_forward(db: Session, transition_id: str, user: User) -> FastForwardOut:
         verdict = compute_readiness_check(db, transition, transition.current_gate, user).verdict
     except Exception:  # noqa: BLE001 - the verdict text is informational only
         verdict = None
-    # Storyline step 9: once the items are done, rule R4 drafts "Ready for AtD" for the OR focal
-    # (a draft only; nothing is sent). Other rules are left to the scheduler / Run engine now.
+    # Storyline step 9: once the items are done, rule R4 drafts "Ready for AtD" in the OR focal's
+    # queue (To = OLM, Cc = OR focal; a draft only, nothing is sent).
+    # Other rules are left to the scheduler / Run engine now.
     r4_drafts = 0
     try:
         from app.domain.reminders import run_reminders

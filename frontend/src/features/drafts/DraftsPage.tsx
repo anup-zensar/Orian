@@ -47,14 +47,24 @@ const useStyles = makeStyles({
   rowSelected: { backgroundColor: tokens.colorBrandBackground2 },
   subject: { fontWeight: tokens.fontWeightSemibold },
   scroll: { overflowX: 'auto' },
-  table: { minWidth: '1040px' },
+  table: { minWidth: '640px' },
   cKind: { width: '76px' },
-  cTransition: { width: '150px' },
-  cTo: { width: '190px', overflowWrap: 'anywhere' },
-  cSubject: { minWidth: '260px', overflowWrap: 'anywhere' },
-  cSource: { width: '150px', overflow: 'hidden' },
-  cStatus: { width: '80px' },
-  cCreated: { width: '110px' },
+  cTransition: { width: '140px' },
+  cTo: { width: '160px', overflowWrap: 'anywhere' },
+  cSubject: { minWidth: '200px', overflowWrap: 'anywhere' },
+  // Status stays visible at the right edge while the wide table scrolls (1024 px, A-80 follow-up).
+  cStatus: {
+    width: '120px',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    position: 'sticky',
+    right: 0,
+    zIndex: 1,
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderLeft: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  cStatusSelected: { backgroundColor: tokens.colorBrandBackground2 },
 });
 
 function DraftDetail({ draftId, onClose }: { draftId: number; onClose: () => void }) {
@@ -209,9 +219,7 @@ export function DraftsPage() {
                 <TableHeaderCell className={s.cTransition}>Transition</TableHeaderCell>
                 <TableHeaderCell className={s.cTo}>Recipients</TableHeaderCell>
                 <TableHeaderCell className={s.cSubject}>Subject</TableHeaderCell>
-                <TableHeaderCell className={s.cSource}>Source</TableHeaderCell>
                 <TableHeaderCell className={s.cStatus}>Status</TableHeaderCell>
-                <TableHeaderCell className={s.cCreated}>Created</TableHeaderCell>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -244,27 +252,33 @@ export function DraftsPage() {
                     <Caption1>{d.to.join(', ')}</Caption1>
                   </TableCell>
                   <TableCell className={s.cSubject}>
-                    <span className={s.subject}>{d.subject}</span>
-                  </TableCell>
-                  <TableCell className={s.cSource}>
+                    <div>
+                      <span className={s.subject}>{d.subject}</span>
+                    </div>
                     <SourceLabel label={d.source_label} />
                   </TableCell>
-                  <TableCell className={s.cStatus}>
-                    <Badge
-                      appearance="outline"
-                      color={
-                        d.status === 'Sent' ? 'success' : d.status === 'Draft' ? 'brand' : 'subtle'
-                      }
-                    >
-                      {d.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className={s.cCreated}>
+                  <TableCell
+                    className={mergeClasses(s.cStatus, d.id === draftId && s.cStatusSelected)}
+                  >
+                    <div>
+                      <Badge
+                        appearance="outline"
+                        color={
+                          d.status === 'Sent'
+                            ? 'success'
+                            : d.status === 'Draft'
+                              ? 'brand'
+                              : 'subtle'
+                        }
+                      >
+                        {d.status}
+                      </Badge>
+                    </div>
                     <Tooltip
                       content={dayjs(d.created_at).format('D MMM YYYY HH:mm')}
                       relationship="label"
                     >
-                      <span>{dayjs(d.created_at).fromNow()}</span>
+                      <Caption1>{dayjs(d.created_at).fromNow()}</Caption1>
                     </Tooltip>
                   </TableCell>
                 </TableRow>

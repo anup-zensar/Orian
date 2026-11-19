@@ -1,11 +1,17 @@
 """GET /api/v1/reference payload (spec §9: gates, lenses, statuses, options, tiers, questions, rag rule,
-roles, ocet config) – everything the UI needs for forms, chips and labels."""
+roles, ocet config) – everything the UI needs for forms, chips and labels.
+
+CR-01: every existing key keeps its shape (additive changes only, tests/test_config_reference_compat.py).
+New keys: ``lists`` (all option lists), ``intake_fields``, ``checklists``, ``labels``, ``thresholds``,
+``gate_labels``, ``approval_chain_labels``; ``project_types``, ``portfolio_details``, ``roles``,
+``gates`` and ``approval_chains`` gain fields. Inactive values are left out unless the request has
+``?include_inactive=true`` (the UI's reference query does, and filters on ``active`` itself)."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class GateOut(BaseModel):
@@ -14,6 +20,7 @@ class GateOut(BaseModel):
     label: str
     short: str
     type: str  # stage_review | decision | closure
+    description: str = ""
 
 
 class LensOut(BaseModel):
@@ -29,6 +36,16 @@ class ProjectTypeOut(BaseModel):
     checklists: list[str]
     requires_tiering: bool
     note: str | None = None
+    # CR-01 (design 1.1): behaviour flags and display
+    label: str = ""
+    description: str = ""
+    active: bool = True
+    sort_order: int = 0
+    has_ai_profile: bool = False
+    has_eval_metrics: bool = False
+    required_intake_fields: list[str] = []
+    synonyms: list[str] = []
+    color: str | None = None
 
 
 class IntakeExtraFieldOut(BaseModel):
@@ -46,9 +63,22 @@ class PortfolioDetailOut(BaseModel):
     intake_extra_fields: list[IntakeExtraFieldOut]
     golden_set_count: int
     golden_set_mandatory_count: int
+    # CR-01 (design 1.4)
+    label: str = ""
+    description: str = ""
+    requires_sites: bool = False
+    sites_label: str = ""
+    synonyms: list[str] = []
+    active: bool = True
+    sort_order: int = 0
 
 
 class IntakeOptionsOut(BaseModel):
+    """Active VALUES of the intake option lists. The six below always exist; further lists of the
+    "Intake" group are added as extra keys (``dict[str, list[str]]``, design 4)."""
+
+    model_config = ConfigDict(extra="allow")
+
     audience: list[str]
     write_actions: list[str]
     sensitive_data: list[str]
@@ -75,11 +105,77 @@ class ApprovalChainStepOut(BaseModel):
     step: int
     role: str
     label: str
+    is_mock: bool = False  # CR-01: a mocked step (e.g. CISO/BISO, acted for by IRM in demo mode)
 
 
 class RoleOut(BaseModel):
     code: str
     label: str
+    # CR-01 (design 1.6)
+    short_label: str = ""
+    phrase_label: str = ""
+    active: bool = True
+    is_builtin: bool = True
+    has_transition_slot: bool = False
+    transition_column: str | None = None
+    can_approve: bool = False
+    sort_order: int = 0
+    color: str | None = None
+
+
+class OptionOut(BaseModel):
+    """One item of an option list (``ReferenceOut.lists[key]``)."""
+
+    value: str
+    label: str
+    description: str = ""
+    meta: dict[str, Any] = {}
+    active: bool = True
+
+
+class IntakeFieldRefOut(BaseModel):
+    """One intake form field (design 1.5). ``option_list``: list key for select / multiselect (the
+    virtual lists ``project_types`` and ``portfolios`` come from their own keys); for type ``user``
+    the role code whose users are offered."""
+
+    key: str
+    label: str
+    help: str = ""
+    builtin: bool = False
+    structural: bool = False
+    type: str
+    option_list: str | None = None
+    visible: bool = True
+    required_mode: str = "never"
+    required_for_project_types: list[str] = []
+    applies_to_project_types: list[str] = []
+    applies_to_portfolios: list[str] = []
+    section: str = ""
+    sort_order: int = 0
+    show_on_overview: bool = False
+    filterable: bool = False
+    form: str = "intake"
+    min: float | None = None
+    max: float | None = None
+    max_length: int | None = None
+    active: bool = True
+
+
+class ChecklistRefOut(BaseModel):
+    code: str
+    label: str
+    description: str = ""
+    kind: str  # library | portfolio_golden | common
+    tier_filtered: bool = False
+    is_builtin: bool = False
+    active: bool = True
+    sort_order: int = 0
+
+
+class GateLabelOut(BaseModel):
+    label: str
+    short: str
+    description: str = ""
 
 
 class ChecklistCountsOut(BaseModel):
@@ -145,3 +241,13 @@ class ReferenceOut(BaseModel):
     checklist_counts: ChecklistCountsOut
     enums: EnumsOut
     app: AppInfoOut
+    # --- CR-01 additions (design 4) ---
+    lists: dict[str, list[OptionOut]] = {}
+    intake_fields: list[IntakeFieldRefOut] = []
+    checklists: list[ChecklistRefOut] = []
+    labels: dict[str, str] = {}  # display overrides of workflow vocabulary
+    thresholds: dict[str, Any] = (
+        {}
+    )  # display subset: rag, insights, calendar_horizon_days, default_tier ...
+    gate_labels: dict[str, GateLabelOut] = {}
+    approval_chain_labels: dict[str, str] = {}

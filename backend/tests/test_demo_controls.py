@@ -237,7 +237,12 @@ def test_fast_forward_and_ac07_ready(client, headers, fresh_seed, db):
 
     db.expire_all()
     r4 = db.scalars(select(OrionDraft).where(OrionDraft.transition_id == "TR-0001")).all()
-    assert [d.status for d in r4 if "Ready for AtD" in d.subject] == ["Draft"]
+    ready = [d for d in r4 if "Ready for AtD" in d.subject]
+    assert [d.status for d in ready] == ["Draft"]
+    # the draft IS the approval request: To = the OLM, Cc = the OR focal (Asha sends it)
+    from app.models import User
+
+    assert ready[0].to == [db.get(User, "U12").email] and ready[0].cc == [db.get(User, "U01").email]
 
     db.expire_all()
     events = db.scalars(

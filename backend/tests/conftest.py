@@ -10,8 +10,9 @@ Fixtures other test modules can rely on:
 * ``client``     - session-scoped ``TestClient(app)``; its lifespan creates the tables and seeds.
 * ``db``         - a SQLAlchemy ``Session`` on the test database (function scoped, closed after).
 * ``headers``    - helper ``headers("U14")`` -> ``{"X-Demo-User": "U14"}`` (default user ``U01``).
-* ``fresh_seed`` - re-seeds the database before the test AND after it. Use it in every test that
-  writes data; plain read tests share the seeded database and must not write.
+* ``fresh_seed`` - re-seeds the database before the test AND after it (and calls ``cfg.invalidate()``,
+  CR-01). Use it in every test that writes data; plain read tests share the seeded database and must
+  not write.
 
 Demo users: U01-U09 OR focals, U10 PM, U11 Architect, U12 OLM, U13 Planner, U14 IRM,
 U15 Leadership, U16 Admin. The flagship transition is ``TR-0001`` (Mobility Knowledge Agent).
@@ -47,6 +48,7 @@ from sqlalchemy.orm import Session  # noqa: E402
 
 from app import clock  # noqa: E402
 from app.db import SessionLocal, get_engine  # noqa: E402
+from app.domain import cfg  # noqa: E402
 from app.main import app  # noqa: E402
 from app.seed.loader import reset_and_seed  # noqa: E402
 
@@ -82,8 +84,10 @@ def headers() -> Callable[[str], dict[str, str]]:
 def fresh_seed(client: TestClient) -> Iterator[None]:
     """Pristine seeded data for tests that mutate; restored again afterwards."""
     reset_and_seed()
+    cfg.invalidate()  # CR-01: config + permission caches must not outlive the data they were read from
     yield
     reset_and_seed()
+    cfg.invalidate()
 
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:

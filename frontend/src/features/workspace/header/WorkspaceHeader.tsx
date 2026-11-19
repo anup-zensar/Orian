@@ -1,12 +1,16 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Badge,
   Body1,
   Button,
   Caption1,
+  Input,
   MessageBar,
   MessageBarActions,
   MessageBarBody,
+  Popover,
+  PopoverSurface,
+  PopoverTrigger,
   Subtitle1,
   Switch,
   Tooltip,
@@ -20,6 +24,7 @@ import { useApiErrorToast } from '../../../hooks/useApiErrorToast';
 import { daysLabel, formatDate, toRag } from '../../../lib/format';
 import { useTransitionAccess, type TransitionDetail } from '../../transition/api';
 import { useOrionPanel } from '../../orion/panelContext';
+import { useUpdateTransition } from '../../intake/api';
 import { useSetAutonomous } from '../api';
 import { GateStepper } from './GateStepper';
 
@@ -63,6 +68,53 @@ const useStyles = makeStyles({
     fontWeight: tokens.fontWeightSemibold,
   },
 });
+
+/** "Set date" link next to an empty Next decision (A-79): a small popover calling PATCH. */
+function SetDecisionDate({ transitionId }: { transitionId: string }) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState('');
+  const update = useUpdateTransition(transitionId);
+  const showError = useApiErrorToast();
+  const save = () =>
+    update.mutate(
+      { next_decision_date: value },
+      {
+        onSuccess: () => setOpen(false),
+        onError: showError,
+      },
+    );
+  return (
+    <Popover open={open} onOpenChange={(_, d) => setOpen(d.open)} positioning="below-start">
+      <PopoverTrigger disableButtonEnhancement>
+        <Button
+          appearance="transparent"
+          style={{
+            minWidth: 0,
+            padding: 0,
+            height: 'auto',
+            font: 'inherit',
+            color: tokens.colorBrandForegroundLink,
+          }}
+        >
+          Set date
+        </Button>
+      </PopoverTrigger>
+      <PopoverSurface>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Input
+            type="date"
+            aria-label="Next decision date"
+            value={value}
+            onChange={(_, d) => setValue(d.value)}
+          />
+          <Button appearance="primary" disabled={!value || update.isPending} onClick={save}>
+            Save
+          </Button>
+        </div>
+      </PopoverSurface>
+    </Popover>
+  );
+}
 
 /** Workspace header (spec 8.7): identity, flavour chips, gate stepper, readiness, decision, actions. */
 export function WorkspaceHeader({ detail }: { detail: TransitionDetail }) {
@@ -157,10 +209,21 @@ export function WorkspaceHeader({ detail }: { detail: TransitionDetail }) {
         />
         <div className={s.fact}>
           <Caption1>Next decision</Caption1>
-          <Body1>
-            {formatDate(detail.next_decision_date)}
-            {detail.next_decision_date ? ` (${daysLabel(detail.days_to_next_decision)})` : ''}
-          </Body1>
+          {detail.next_decision_date ? (
+            <Body1>
+              {formatDate(detail.next_decision_date)} ({daysLabel(detail.days_to_next_decision)})
+            </Body1>
+          ) : (
+            <Body1>
+              Not set
+              {access.can('edit_transition') && detail.status !== 'Closed' && (
+                <>
+                  {' '}
+                  <SetDecisionDate transitionId={detail.id} />
+                </>
+              )}
+            </Body1>
+          )}
         </div>
         <div className={s.fact}>
           <Caption1>OR focal</Caption1>

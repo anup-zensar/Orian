@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
+from app.domain import cfg
 from app.models import (
     Action,
     ApprovalRequest,
@@ -515,7 +516,7 @@ def compute_readiness_check(
         result.blocking,
         key=lambda b: _priority(b, {k: v.linked_module for k, v in facts.items()}),
     )
-    gaps = [_gap(b, inputs, facts, transition, ctx) for b in ordered]
+    gaps = [_gap(db, b, inputs, facts, transition, ctx) for b in ordered]
     if can_request:
         gaps.append({"ready_for_approval": True, "gate": gate, "transition_id": transition.id})
     ai = get_ai_service()
@@ -600,7 +601,19 @@ def _blocker_title(b: rules.BlockingItem, inputs: GateInputs, ctx: rules.GateCon
     )
 
 
+def _exception_approver(db: Session, inputs: GateInputs, ref: str | None) -> User | None:
+    """Who a pending exception is waiting for (None when unknown)."""
+    record = next((e for e in inputs.exceptions if e.ref == ref), None)
+    request = db.get(ApprovalRequest, record.approval_request_id) if record else None
+    if request is None or record is None or not record.status.startswith("Pending"):
+        return None
+    from app.domain.approvals import pending_approver  # late import (cycles)
+
+    return pending_approver(db, request)
+
+
 def _gap(
+    db: Session,
     b: rules.BlockingItem,
     inputs: GateInputs,
     facts: dict[str, rules.GateItemFact],
@@ -623,6 +636,8 @@ def _gap(
         }
     fact = facts.get(b.item_id)
     owner = inputs.users.get(row.owner_user_id) if row.owner_user_id else None
+    exception_ref = fact.exception_ref if fact else None
+    approver = _exception_approver(db, inputs, exception_ref) if exception_ref else None
     return {
         "item_id": b.item_id,
         "title": inputs.titles.get(b.item_id, ""),
@@ -634,5 +649,7 @@ def _gap(
         "linked_module": row.linked_module,
         "transition_id": transition.id,
         "noncompliant": b.lens == "Compliance" and b.status == "Non-compliant",
-        "exception_ref": fact.exception_ref if fact else None,
+        "exception_ref": exception_ref,
+        "exception_approver_name": approver.name if approver else None,
+        "exception_approver_role": cfg.role_short_label(db, approver.role) if approver else None,
     }

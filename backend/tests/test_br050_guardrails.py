@@ -111,7 +111,7 @@ def test_static_no_mutating_domain_import():
             if module.startswith("app.domain.") and module != "app.domain.nl_intake":
                 assert set(names) <= allowed.get(module, set()), (rel, module, names)
             if module == "app.domain":
-                assert set(names) <= {"orion_chat", "nl_intake"}, (rel, names)
+                assert set(names) <= {"orion_chat", "nl_intake", "cfg"}, (rel, names)
             assert not module.startswith("app.routers") or module == "app.routers.reference", (
                 rel,
                 module,

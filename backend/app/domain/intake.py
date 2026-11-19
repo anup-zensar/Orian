@@ -279,10 +279,17 @@ def _person_name(db: Session, user_id: str | None) -> str:
 
 
 def _check_update_access(
-    db: Session, user: User, t: Transition, values: dict[str, Any], sent: set[str]
+    db: Session,
+    user: User,
+    t: Transition,
+    values: dict[str, Any],
+    sent: set[str],
+    raw_sites: list[dict[str, str]],
 ) -> None:
     """Per-group access of PATCH (BE#2). Only fields whose value really changes are checked."""
     changing = {f for f in sent - {"sites"} if values[f] != getattr(t, f)}
+    if "sites" in sent and _normalise_sites(raw_sites, values["portfolio"]) != (t.sites or []):
+        changing.add("sites")  # sites are workflow data: an Admin may not edit them (A-75)
     people = set(ASSIGN_LOW_FIELDS) | set(ASSIGN_HIGH_FIELDS)
     if user.role == "ADMIN" and changing - people:
         # R-01: an Admin may re-assign people and configure, never edit workflow data (dates, blocker
@@ -361,7 +368,7 @@ def update_transition(db: Session, user: User, t: Transition, body: TransitionUp
     else:
         raw_sites = _normalise_sites_raw(t.sites)
 
-    _check_update_access(db, user, t, values, sent)
+    _check_update_access(db, user, t, values, sent, raw_sites)
     ensure_open(t)
 
     reasons = _validate(db, values, sent, raw_sites=raw_sites)

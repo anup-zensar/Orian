@@ -169,3 +169,39 @@ def test_chat_is_deterministic(client, headers):
     b = _post(client, headers, {"message": "show red transitions"}).json()
     a_check, b_check = a["messages"], b["messages"]
     assert a_check == b_check
+
+
+def test_who_owns_reads_as_a_sentence(client, headers):
+    one = _msgs(
+        _post(
+            client,
+            headers,
+            {"message": "who owns S45-014", "context": {"transition_id": "TR-0001"}},
+        )
+    )
+    assert one[0]["type"] == "text"
+    assert one[0]["text"].endswith(
+        "is owned by Fatima Khan (IRM) on Mobility Knowledge Agent (TR-0001)"
+    )
+    assert one[0]["text"].startswith("S45-014 ")
+    many = _msgs(_post(client, headers, {"message": "who owns S45-014"}))
+    texts = [m["text"] for m in many if m["type"] == "text"]
+    assert len(texts) > 1 and all(" is owned by " in t and t.startswith("S45-014 ") for t in texts)
+
+
+def test_chase_without_a_transition_returns_a_form_with_a_picker(client, headers):
+    msgs = _msgs(_post(client, headers, {"message": "chase the owner of S3-019"}))
+    assert msgs[0]["type"] == "text" and "S3-019" in msgs[0]["text"]
+    form = next(m for m in msgs if m["type"] == "form")
+    assert form["quick_action"] == "draft_owner_reminders"
+    picker = next(f for f in form["fields"] if f["kind"] == "transition")
+    assert picker["options"] and picker["default"] is None
+    # with a transition in context the proposal flow is unchanged (no form)
+    ctx = _msgs(
+        _post(
+            client,
+            headers,
+            {"message": "chase the owner of S3-019", "context": {"transition_id": "TR-0001"}},
+        )
+    )
+    assert not any(m["type"] == "form" for m in ctx)

@@ -91,6 +91,17 @@ def current_step(request: ApprovalRequest) -> ApprovalStep | None:
     return next((s for s in request.steps if s.status == "Pending"), None)
 
 
+def pending_approver(db: Session, request: ApprovalRequest) -> User | None:
+    """The person whose decision a Pending request is waiting for (the current step's approver;
+    the mocked CISO/BISO step is acted for by the transition's IRM). None when not pending."""
+    step = current_step(request) if request.status == "Pending" else None
+    transition = db.get(Transition, request.transition_id)
+    if step is None or transition is None:
+        return None
+    recipients = _recipients(db, transition, step)
+    return db.get(User, recipients[0]) if recipients else None
+
+
 def is_mock_step(step: ApprovalStep) -> bool:
     return step.role == MOCK_ROLE and step.approver_user_id is None
 
@@ -269,7 +280,7 @@ def _notify_step(
         f'<p><a href="{escape_text(link)}">Open in Orion</a></p>'
         "<p>Orion, on behalf of the OR team</p>"
     )
-    # People already addressed by a draft that is being sent get the in-app notice only (one email).
+    # People already addressed by a draft that is being sent get no second email (one email).
     quiet = (
         {u.id for u in db.scalars(select(User).where(User.email.in_(list(skip_email_for)))).all()}
         if skip_email_for
@@ -290,7 +301,15 @@ def _notify_step(
         )
     muted = [uid for uid in recipients if uid in quiet]
     if muted:
-        deliver(db, user_ids=muted, text=text, link=inbox_link(request))
+        # no second email, but the approver still gets the one actionable approval card
+        deliver(
+            db,
+            user_ids=muted,
+            text=text,
+            link=inbox_link(request),
+            teams_card=_card(db, request, step, transition),
+            related_ids=[transition.id, request.id],
+        )
 
 
 def _notify_requester(

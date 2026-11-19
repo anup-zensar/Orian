@@ -57,7 +57,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
-from app.domain import nl_intake
+from app.domain import cfg, nl_intake
 from app.domain.leadership import generate_update, leadership_out
 from app.domain.metrics import compute_metrics
 from app.domain.readiness_check import compute_readiness_check
@@ -459,22 +459,28 @@ def _owner_answer(db: Session, item_id: str, context_tid: str | None) -> list[An
                 f"I could not find item {item_id}" + (f" in {context_tid}." if context_tid else ".")
             )
         ]
-    users = {u.id: u.name for u in db.scalars(select(User)).all()}
+    users = {u.id: u for u in db.scalars(select(User)).all()}
     names = {t.id: t.name for t in db.scalars(select(Transition)).all()}
-    lines = []
-    for r in rows[:6]:
-        owner = users.get(r.owner_user_id or "", "nobody yet")
-        lines.append(f"{names.get(r.transition_id, r.transition_id)} ({r.transition_id}): {owner}")
     title = rows[0].playbook_item.title
-    more = f" (+{len(rows) - 6} more)" if len(rows) > 6 else ""
+    messages: list[Any] = []
+    for r in rows[:6]:
+        owner = users.get(r.owner_user_id or "")
+        where = f"{names.get(r.transition_id, r.transition_id)} ({r.transition_id})"
+        if owner:
+            text = f"{item_id} {title} is owned by {owner.name} ({cfg.role_short_label(db, owner.role)}) on {where}"
+        else:
+            text = f"{item_id} {title} has no owner yet on {where}"
+        messages.append(_text(text))
+    if len(rows) > 6:
+        messages.append(_text(f"(+{len(rows) - 6} more transitions)"))
     first = rows[0]
-    return [
-        _text(f"{item_id} ({title}) is owned by - " + "; ".join(lines) + more + "."),
+    messages.append(
         LinkMessage(
             label=f"Open {item_id}",
             href=f"/transitions/{first.transition_id}/assessment?item={item_id}",
-        ),
-    ]
+        )
+    )
+    return messages
 
 
 def _red_table(db: Session) -> list[Any]:

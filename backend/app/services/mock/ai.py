@@ -92,6 +92,18 @@ def _link(label: str, href: str) -> dict[str, Any]:
     return {"label": label, "kind": "link", "href": href, "proposal_id": None}
 
 
+def _draft_chaser(label: str, transition_id: str, item_id: str, href: str) -> dict[str, Any]:
+    """Typed action: the frontend calls POST /orion/drafts/chaser as the human (BR-050)."""
+    return {
+        "label": label,
+        "kind": "draft_chaser",
+        "href": href,
+        "proposal_id": None,
+        "transition_id": transition_id,
+        "item_id": item_id,
+    }
+
+
 def _dashboard_insights(data: Mapping[str, Any]) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for f in data["critical_transitions"][:3]:
@@ -103,7 +115,7 @@ def _dashboard_insights(data: Mapping[str, Any]) -> list[dict[str, Any]]:
             what += f", +{n - 1} more"
         when = _when(f)
         lead = f"{f['name']}: {when}, blocked by" if when else f"{f['name']}: blocked by"
-        # Real chasers (Orion drafts, the human sends) arrive with M5 / M8: M2 only links to the gap.
+        # The button drafts a chaser (Orion drafts, the human sends); href is the link fallback.
         chaser = f"/transitions/{f['id']}/gaps" + (f"?item={first['id']}" if first else "")
         out.append(
             _insight(
@@ -116,7 +128,13 @@ def _dashboard_insights(data: Mapping[str, Any]) -> list[dict[str, Any]]:
                 + (
                     []
                     if data["user"].get("role") == "LEADERSHIP"  # read-only: no drafting
-                    else [_link("Draft a chaser", chaser)]
+                    else [
+                        (
+                            _draft_chaser("Draft a chaser", f["id"], first["id"], chaser)
+                            if first
+                            else _link("Draft a chaser", chaser)
+                        )
+                    ]
                 ),
             )
         )

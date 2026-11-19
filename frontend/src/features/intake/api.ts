@@ -38,6 +38,16 @@ export function useCreateTransition() {
   });
 }
 
+/** PATCH /transitions/{id}: only the fields present in the body change. */
+export function useUpdateTransition(transitionId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: S['TransitionUpdateIn']) =>
+      apiFetch<TransitionDetailOut>(`/transitions/${tid(transitionId)}`, { method: 'PATCH', body }),
+    onSuccess: () => invalidateTransitionData(queryClient, transitionId),
+  });
+}
+
 /** Live BR-011 proposal; refetched on every change of the inputs (no persistence). */
 export function useTierProposal(input: TierProposeIn, enabled: boolean) {
   return useQuery({

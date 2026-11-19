@@ -32,13 +32,23 @@ import { GuardedButton } from '../../records/common';
 import { useRecordStyles, usePerm, useUrlParams } from '../../records/hooks';
 import type { TabProps } from '../types';
 
-function Head({ cols, widths }: { cols: string[]; widths?: Array<number | undefined> }) {
+function Head({
+  cols,
+  widths,
+  stickyEnd,
+}: {
+  cols: string[];
+  widths?: Array<number | undefined>;
+  /** Class of the sticky last (action) column, when the table has one. */
+  stickyEnd?: string;
+}) {
   return (
     <TableHeader>
       <TableRow>
         {cols.map((c, i) => (
           <TableHeaderCell
             key={c || 'actions'}
+            className={stickyEnd && i === cols.length - 1 ? stickyEnd : undefined}
             style={widths?.[i] ? { width: widths[i] } : undefined}
           >
             {c}
@@ -97,18 +107,22 @@ export function ConditionsTab({ transitionId }: TabProps) {
           <EmptyState message="No conditions set." />
         ) : (
           <div className={s.tableWrap}>
-            <Table aria-label="Conditions" size="small" style={{ minWidth: 1000 }}>
+            <Table aria-label="Conditions" size="small" style={{ minWidth: 620 }}>
               <Head
-                cols={['ID', 'Item', 'Set at', 'Due', 'Owner', 'Status', 'Condition', '']}
-                widths={[76, 76, 76, 90, 120, 76, undefined, 90]}
+                cols={['ID / item', 'Set at - due', 'Owner', 'Status', 'Condition', '']}
+                widths={[80, 110, 100, 70, undefined, 80]}
+                stickyEnd={s.stickyEnd}
               />
               <TableBody>
                 {conditions.data.map((c) => (
                   <TableRow key={c.id}>
-                    <TableCell>{c.id}</TableCell>
-                    <TableCell>{c.item_id ?? '–'}</TableCell>
-                    <TableCell>{c.set_at_gate_short}</TableCell>
-                    <TableCell>{c.due_gate_short}</TableCell>
+                    <TableCell>
+                      <div>{c.id}</div>
+                      <div className={s.muted}>{c.item_id ?? '–'}</div>
+                    </TableCell>
+                    <TableCell>
+                      {c.set_at_gate_short} → {c.due_gate_short}
+                    </TableCell>
                     <TableCell>{c.owner?.name ?? '–'}</TableCell>
                     <TableCell>
                       <Badge appearance="tint" color={c.status === 'Open' ? 'warning' : 'success'}>
@@ -119,7 +133,7 @@ export function ConditionsTab({ transitionId }: TabProps) {
                       {c.text}
                       {c.close_note && <div className={s.muted}>Closed: {c.close_note}</div>}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className={s.stickyEnd}>
                       {c.status === 'Open' && (
                         <GuardedButton
                           size="small"

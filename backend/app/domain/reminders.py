@@ -303,14 +303,6 @@ def _message_context(
             escalation=bool(p["escalation"]),
             pending_step=not p["escalation"],
         )
-    elif c.rule_id == "R4":
-        ctx.update(
-            ready=True,
-            gate=p["gate"],
-            gate_short=GATE_SHORT.get(p["gate"], p["gate"]),
-            approver_role=p["first_approver_role"],
-            subject=p["subject"],
-        )
     elif c.rule_id == "R5":
         ctx["items"] = [
             {
@@ -506,14 +498,20 @@ def run_reminders(
         recipient = users.get(c.recipient_user_id)
         if recipient is None:
             continue
-        ctx = _message_context(c, t, users)
-        text = get_ai_service().draft_message(c.kind, ctx)
         cc = [users[u].email for u in c.cc_user_ids if u in users]
+        to = [recipient.email]
+        if c.rule_id == "R4":
+            # The message IS the approval request (spec 7.8, storyline step 9): To = first
+            # approver, Cc = OR focal; it stays in the OR focal's queue (only she may send it).
+            to, cc, text = drafts.approval_request_message(db, t, c.payload["gate"], recipient)
+            text = {**text, "subject": c.payload["subject"]}
+        else:
+            text = get_ai_service().draft_message(c.kind, _message_context(c, t, users))
         draft = drafts.create_draft(
             db,
             kind=c.kind,
             transition=t,
-            to=[recipient.email],
+            to=to,
             cc=cc,
             subject=text["subject"],
             body_html=text["body_html"],

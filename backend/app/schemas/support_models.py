@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 from app.schemas.approvals import ApprovalStatus, ApprovalStepOut
 
@@ -65,6 +65,23 @@ class SourceIO(BaseModel):
     )  # diagram/page name, or recording timestamp such as "walkthrough.mp4 @ 12:40"
 
 
+class OpenQuestionIO(BaseModel):
+    """An open question for the architect and its answer. Answered = non-empty ``answer``.
+    A plain string (landscapes stored before answers existed) loads as an unanswered question."""
+
+    question: Text = Field(min_length=1)
+    answer: str = Field(default="", max_length=2000)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _from_plain_string(cls, value: object) -> object:
+        return {"question": value} if isinstance(value, str) else value
+
+    @property
+    def answered(self) -> bool:
+        return bool(self.answer.strip())
+
+
 class LandscapeIn(BaseModel):
     """Editable landscape (request body of PUT, and shape of the generated JSON)."""
 
@@ -76,7 +93,7 @@ class LandscapeIn(BaseModel):
     components: list[ComponentIO] = Field(default=[], max_length=24)
     support_tiers: SupportTiersIO = SupportTiersIO()
     contacts: list[ContactIO] = Field(default=[], max_length=50)
-    open_questions: list[Text] = Field(default=[], max_length=50)
+    open_questions: list[OpenQuestionIO] = Field(default=[], max_length=50)
     sources: list[SourceIO] = Field(default=[], max_length=30)
 
 

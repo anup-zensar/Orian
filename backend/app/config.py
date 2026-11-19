@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     app_base_url: str = "http://localhost:5173"  # used for deep links in emails / cards
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     max_upload_mb: int = 25  # A-24: upload size limit
+    # CR-01 design 3: a database whose schema version differs from the code is dropped, re-created
+    # and re-seeded at startup (demo data is synthetic). false = refuse to start with a clear error.
+    schema_auto_reset: bool = True
 
     @field_validator("ai_mode", "mail_mode", mode="before")
     @classmethod

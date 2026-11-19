@@ -5,7 +5,14 @@ import {
   Info20Filled,
   Warning20Filled,
 } from '@fluentui/react-icons';
+import { useNavigate } from 'react-router';
+import { Button } from '@fluentui/react-components';
 import type { Insights } from '../api/types';
+import { useDraftChaser } from '../features/drafts/api';
+import { ReasonButton } from '../features/gates/ReasonButton';
+import { useSuccessToast } from '../features/gates/useSuccessToast';
+import { useTransitionAccess } from '../features/transition/api';
+import { useApiErrorToast } from '../hooks/useApiErrorToast';
 import { lensColors, ragColors } from '../theme/tokens';
 import { AiBadge } from './AiBadge';
 import { AppLink } from './AppLink';
@@ -36,6 +43,46 @@ const SEVERITY = {
   success: { Icon: CheckmarkCircle20Filled, color: ragColors.Green.border, label: 'Good news' },
 } as const;
 
+type InsightAction = Insights['insights'][number]['actions'][number];
+
+/** Typed insight action (spec 8.2, BR-050): a button that calls the normal user endpoint as the
+ * signed-in human. Only "draft_chaser" exists today; it drafts, nothing is sent. */
+function InsightActionButton({ action }: { action: InsightAction }) {
+  const navigate = useNavigate();
+  const showError = useApiErrorToast();
+  const showSuccess = useSuccessToast();
+  const transitionId = action.transition_id ?? '';
+  const chaser = useDraftChaser(transitionId);
+  const access = useTransitionAccess(transitionId);
+  const itemIds = action.item_id ? [action.item_id] : [];
+  return (
+    <ReasonButton
+      size="small"
+      appearance="primary"
+      disabled={chaser.isPending}
+      reasons={[access.reason('send_drafts')]}
+      onClick={() =>
+        chaser.mutate(itemIds, {
+          onSuccess: (d) =>
+            showSuccess(
+              'Chaser drafted',
+              <Button
+                appearance="transparent"
+                size="small"
+                onClick={() => navigate(`/drafts?draft=${d.id}`)}
+              >
+                Open drafts
+              </Button>,
+            ),
+          onError: showError,
+        })
+      }
+    >
+      {chaser.isPending ? 'Drafting...' : action.label}
+    </ReasonButton>
+  );
+}
+
 interface Props {
   title: string;
   data: Insights | undefined;
@@ -45,7 +92,7 @@ interface Props {
 }
 
 /** Orion insights card (spec 8.1, 8.2). Always labelled AI + "Orion agent" (BR-050). Action buttons
- * are navigation links in M2 (A-52); insights never write data. */
+ * are links, or typed actions that the signed-in human triggers (BR-050). */
 export function InsightsCard({ title, data, isLoading, error, onRetry }: Props) {
   const s = useStyles();
   return (
@@ -73,6 +120,9 @@ export function InsightsCard({ title, data, isLoading, error, onRetry }: Props) 
           {data.insights.map((ins) => {
             const sev = SEVERITY[ins.severity as keyof typeof SEVERITY] ?? SEVERITY.info;
             // Only real navigation links: no disabled look-alike buttons.
+            const typed = (ins.actions ?? []).filter(
+              (a) => a.kind === 'draft_chaser' && a.transition_id,
+            );
             const links = (ins.actions ?? []).filter((a) => a.kind === 'link' && a.href);
             return (
               <li key={ins.id} className={s.item}>
@@ -86,8 +136,11 @@ export function InsightsCard({ title, data, isLoading, error, onRetry }: Props) 
                 </span>
                 <div className={s.body}>
                   <span>{ins.text}</span>
-                  {links.length > 0 && (
+                  {(links.length > 0 || typed.length > 0) && (
                     <div className={s.actions}>
+                      {typed.map((a) => (
+                        <InsightActionButton key={a.label} action={a} />
+                      ))}
                       {links.map((a) => (
                         <AppLink key={a.label} to={a.href as string}>
                           {a.label}

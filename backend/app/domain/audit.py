@@ -9,7 +9,7 @@ linked items), ``Orion agent`` (AI drafted/proposed something – never a decisi
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -46,8 +46,14 @@ def record(
     if actor_type not in ACTOR_TYPES:
         raise ValueError(f"Unknown actor_type {actor_type!r}")
     actor_id = actor.id if isinstance(actor, User) else actor
+    at = clock.now()
+    if actor_type == "System" and action == "seeded":
+        # The demo clock keeps the demo date but uses the real time of day, so a later action on the
+        # same demo date could carry an earlier time than the seed. Seed events sit at the start of
+        # their day, so the newest activity always sorts first.
+        at = datetime.combine(clock.today(), time.min)
     event = AuditEvent(
-        at=clock.now(),
+        at=at,
         actor_user_id=actor_id,
         actor_type=actor_type,
         transition_id=transition_id,

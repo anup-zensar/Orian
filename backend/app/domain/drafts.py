@@ -23,6 +23,7 @@ from app.errors import BadRequest, Conflict, Forbidden
 from app.models import (
     ApprovalChainConfig,
     ApprovalRequest,
+    ExceptionRecord,
     OrionDraft,
     OutboxMessage,
     Transition,
@@ -303,7 +304,13 @@ def send_draft(
         get_mail_service(db).send_mail(mailbox, to, cc, draft.subject, draft.body_html, related)
     ]
     db.flush()
-    known = db.scalars(select(User).where(User.email.in_([*to, *cc]))).all()
+    # An approval-request draft: the chain already posted the approver's actionable approval card
+    # (and the OR focal needs none), so no second, generic Teams card.
+    known = (
+        []
+        if kind == "request_approval"
+        else db.scalars(select(User).where(User.email.in_([*to, *cc]))).all()
+    )
     if known:
         message_ids.append(
             get_notification_service(db).post_teams_card(
@@ -347,6 +354,27 @@ def _days_to_decision(transition: Transition) -> int | None:
     return (transition.next_decision_date - clock.today()).days
 
 
+def _chaser_recipient(
+    db: Session, row: TransitionItem, waiting: dict[str, str], item_id: str
+) -> User | None:
+    """Who a chaser about this item goes to: the item owner, or - when the item waits for a
+    decision on a pending exception - the approver of that exception (recorded in ``waiting``)."""
+    from app.domain.approvals import pending_approver  # another area; imported late
+
+    record = db.scalars(
+        select(ExceptionRecord).where(
+            ExceptionRecord.transition_item_id == row.id,
+            ExceptionRecord.status.like("Pending%"),
+        )
+    ).first()
+    request = db.get(ApprovalRequest, record.approval_request_id) if record else None
+    approver = pending_approver(db, request) if request is not None else None
+    if record is not None and approver is not None:
+        waiting[item_id] = record.ref
+        return approver
+    return db.get(User, row.owner_user_id) if row.owner_user_id else None
+
+
 def draft_chaser(
     db: Session,
     *,
@@ -387,9 +415,9 @@ def draft_chaser(
         )
 
     owners: dict[str, User] = {}
+    waiting_on_exception: dict[str, str] = {}  # item id -> exception ref waiting for a decision
     for i in wanted:
-        owner_id = rows[i].owner_user_id
-        owner = db.get(User, owner_id) if owner_id else None
+        owner = _chaser_recipient(db, rows[i], waiting_on_exception, i)
         if owner is not None:
             owners.setdefault(owner.id, owner)
     focal = _or_focal(db, transition)
@@ -400,10 +428,13 @@ def draft_chaser(
     for i in wanted:
         row = rows[i]
         owner = db.get(User, row.owner_user_id) if row.owner_user_id else None
+        title = row.playbook_item.title
+        if i in waiting_on_exception:
+            title += f" - exception {waiting_on_exception[i]} is waiting for your approval"
         items_ctx.append(
             {
                 "id": i,
-                "title": row.playbook_item.title,
+                "title": title,
                 "due_gate_short": GATE_SHORT.get(row.due_gate, row.due_gate),
                 "owner_name": owner.name if owner else "",
             }
@@ -460,6 +491,39 @@ def draft_approval_request(
         raise Conflict(
             "Approval already requested", [f"{pending.id} is already pending for this gate"]
         )
+    to, cc, text = approval_request_message(db, transition, gate, user, check=check)
+    return create_draft(
+        db,
+        kind="Approval request",
+        transition=transition,
+        to=to,
+        cc=cc,
+        subject=text["subject"],
+        body_html=text["body_html"],
+        created_source="Orion agent",
+        action={"type": "request_approval", "gate": gate},
+        related_ids=[transition.id],
+    )
+
+
+def approval_request_message(
+    db: Session,
+    transition: Transition,
+    gate: str,
+    user: User,
+    *,
+    check: Any = None,
+) -> tuple[list[str], list[str], dict[str, str]]:
+    """Addressing and text of the approval-request message for a decision gate: To = the approver
+    of the chain's first step (from the chain definition, e.g. AtD -> the transition's OLM), Cc = the
+    OR focal. Shared by the "Request approval" draft (M5) and rule R4's "Ready for <gate>" draft, so
+    the message the OR focal sends IS the approval request. ``user`` is only used to evaluate the
+    readiness check (read-only). Returns (to, cc, {"subject", "body_html"})."""
+    from app.domain.readiness_check import compute_readiness_check  # another area; imported late
+
+    if check is None:
+        check = compute_readiness_check(db, transition, gate, user)
+    chain_type = "AtD" if gate == "SG4_ATD" else "AtO"
     config = db.get(ApprovalChainConfig, chain_type)
     first_role = sorted(config.steps, key=lambda s: s["step"])[0]["role"] if config else "OLM"
     approver_id = default_approver(db, transition, first_role)
@@ -474,21 +538,10 @@ def draft_approval_request(
         "gate_short": GATE_SHORT[gate],
         "days": _days_to_decision(transition),
         "verdict": check.verdict_label,
-        "approver_role": first_role,
+        # The message is addressed to the approver, so the "First approver: <role>" line is left out.
+        "approver_role": "",
         "recipient_name": approver.name if approver else "",
         "or_focal_name": focal.name if focal else "",
         "summary": check.narrative,
     }
-    text = get_ai_service().draft_message("approval request", ctx)
-    return create_draft(
-        db,
-        kind="Approval request",
-        transition=transition,
-        to=to,
-        cc=cc,
-        subject=text["subject"],
-        body_html=text["body_html"],
-        created_source="Orion agent",
-        action={"type": "request_approval", "gate": gate},
-        related_ids=[transition.id],
-    )
+    return to, cc, get_ai_service().draft_message("approval request", ctx)

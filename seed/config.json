@@ -1,0 +1,2932 @@
+{
+  "note": "CR-01 configuration seed (generated from the code constants, then hand-editable). Codes and keys are immutable; labels are editable. Message templates and the role_permissions matrix default are written by the loader from code (app.domain.cfg_defaults / app.permissions).",
+  "checklists": [
+    {
+      "code": "FRAMEWORK",
+      "label": "Operate Readiness Framework",
+      "description": "The 72 framework activities.",
+      "kind": "library",
+      "tier_filtered": false,
+      "sort_order": 0,
+      "is_builtin": true,
+      "active": true
+    },
+    {
+      "code": "AI_PLAYBOOK",
+      "label": "AI Playbook",
+      "description": "AI Playbook checklist; items are filtered by the risk tier.",
+      "kind": "library",
+      "tier_filtered": true,
+      "sort_order": 1,
+      "is_builtin": true,
+      "active": true
+    },
+    {
+      "code": "PORTFOLIO",
+      "label": "Portfolio golden set",
+      "description": "Items chosen by the transition's portfolio.",
+      "kind": "portfolio_golden",
+      "tier_filtered": false,
+      "sort_order": 2,
+      "is_builtin": true,
+      "active": true
+    },
+    {
+      "code": "COMMON",
+      "label": "Common items",
+      "description": "Added to every transition.",
+      "kind": "common",
+      "tier_filtered": false,
+      "sort_order": 3,
+      "is_builtin": true,
+      "active": true
+    }
+  ],
+  "project_types": [
+    {
+      "code": "Normal",
+      "label": "Normal",
+      "checklists": [
+        "FRAMEWORK"
+      ],
+      "requires_tiering": false,
+      "note": null,
+      "description": "",
+      "sort_order": 0,
+      "has_ai_profile": false,
+      "has_eval_metrics": false,
+      "required_intake_fields": [],
+      "synonyms": [],
+      "color": null
+    },
+    {
+      "code": "Infrastructure",
+      "label": "Infrastructure",
+      "checklists": [
+        "FRAMEWORK"
+      ],
+      "requires_tiering": false,
+      "note": "Appears in client sample data; behaves like Normal – confirm",
+      "description": "",
+      "sort_order": 1,
+      "has_ai_profile": false,
+      "has_eval_metrics": false,
+      "required_intake_fields": [],
+      "synonyms": [],
+      "color": null
+    },
+    {
+      "code": "Agentic AI",
+      "label": "Agentic AI",
+      "checklists": [
+        "FRAMEWORK",
+        "AI_PLAYBOOK"
+      ],
+      "requires_tiering": true,
+      "note": null,
+      "description": "",
+      "sort_order": 2,
+      "has_ai_profile": true,
+      "has_eval_metrics": true,
+      "required_intake_fields": [
+        "audience",
+        "write_actions",
+        "sensitive_data"
+      ],
+      "synonyms": [],
+      "color": null
+    },
+    {
+      "code": "Combined",
+      "label": "Combined",
+      "checklists": [
+        "FRAMEWORK",
+        "AI_PLAYBOOK"
+      ],
+      "requires_tiering": true,
+      "note": null,
+      "description": "",
+      "sort_order": 3,
+      "has_ai_profile": true,
+      "has_eval_metrics": true,
+      "required_intake_fields": [
+        "audience",
+        "write_actions",
+        "sensitive_data"
+      ],
+      "synonyms": [],
+      "color": null
+    }
+  ],
+  "portfolios": [
+    {
+      "name": "GCC",
+      "label": "GCC",
+      "description": "",
+      "sort_order": 0,
+      "requires_sites": false,
+      "sites_label": "",
+      "synonyms": []
+    },
+    {
+      "name": "eMobility",
+      "label": "eMobility",
+      "description": "",
+      "sort_order": 1,
+      "requires_sites": false,
+      "sites_label": "",
+      "synonyms": []
+    },
+    {
+      "name": "Global Marketing",
+      "label": "Global Marketing",
+      "description": "",
+      "sort_order": 2,
+      "requires_sites": false,
+      "sites_label": "",
+      "synonyms": []
+    },
+    {
+      "name": "Fleets",
+      "label": "Fleets",
+      "description": "",
+      "sort_order": 3,
+      "requires_sites": false,
+      "sites_label": "",
+      "synonyms": []
+    },
+    {
+      "name": "Telecoms",
+      "label": "Telecoms",
+      "description": "",
+      "sort_order": 4,
+      "requires_sites": false,
+      "sites_label": "",
+      "synonyms": []
+    },
+    {
+      "name": "Retail Site Systems",
+      "label": "Retail Site Systems",
+      "description": "",
+      "sort_order": 5,
+      "requires_sites": true,
+      "sites_label": "In-scope sites (Site ID + Site key)",
+      "synonyms": []
+    }
+  ],
+  "option_lists": [
+    {
+      "key": "regions",
+      "label": "Regions",
+      "description": "Regions offered at intake. Add markets to turn Market into a dropdown.",
+      "group": "Setup",
+      "structural": false,
+      "meta_fields": [
+        {
+          "key": "markets",
+          "type": "list",
+          "label": "Markets / countries"
+        }
+      ],
+      "items": [
+        {
+          "value": "Global",
+          "label": "Global",
+          "description": "",
+          "meta": {
+            "markets": []
+          }
+        },
+        {
+          "value": "Europe & South Africa",
+          "label": "Europe & South Africa",
+          "description": "",
+          "meta": {
+            "markets": []
+          }
+        },
+        {
+          "value": "Asia Pacific",
+          "label": "Asia Pacific",
+          "description": "",
+          "meta": {
+            "markets": []
+          }
+        },
+        {
+          "value": "Americas",
+          "label": "Americas",
+          "description": "",
+          "meta": {
+            "markets": []
+          }
+        },
+        {
+          "value": "Central Apps",
+          "label": "Central Apps",
+          "description": "",
+          "meta": {
+            "markets": []
+          }
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "audience",
+      "label": "Audience",
+      "description": "",
+      "group": "Intake",
+      "structural": false,
+      "meta_fields": [
+        {
+          "key": "fact",
+          "type": "text",
+          "label": "Fact text used by tier rules"
+        }
+      ],
+      "items": [
+        {
+          "value": "Internal department",
+          "label": "Internal department",
+          "description": "",
+          "meta": {
+            "fact": "Internal audience"
+          }
+        },
+        {
+          "value": "Enterprise",
+          "label": "Enterprise",
+          "description": "",
+          "meta": {
+            "fact": "Enterprise audience"
+          }
+        },
+        {
+          "value": "External",
+          "label": "External",
+          "description": "",
+          "meta": {
+            "fact": "External audience"
+          }
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "write_actions",
+      "label": "Write actions",
+      "description": "",
+      "group": "Intake",
+      "structural": false,
+      "meta_fields": [
+        {
+          "key": "fact",
+          "type": "text",
+          "label": "Fact text used by tier rules"
+        }
+      ],
+      "items": [
+        {
+          "value": "No",
+          "label": "No",
+          "description": "",
+          "meta": {
+            "fact": "No write actions"
+          }
+        },
+        {
+          "value": "Yes",
+          "label": "Yes",
+          "description": "",
+          "meta": {
+            "fact": "Write actions: yes"
+          }
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "sensitive_data",
+      "label": "Sensitive data",
+      "description": "",
+      "group": "Intake",
+      "structural": false,
+      "meta_fields": [
+        {
+          "key": "fact",
+          "type": "text",
+          "label": "Fact text used by tier rules"
+        }
+      ],
+      "items": [
+        {
+          "value": "No",
+          "label": "No",
+          "description": "",
+          "meta": {
+            "fact": "No sensitive data"
+          }
+        },
+        {
+          "value": "Personal sensitive",
+          "label": "Personal sensitive",
+          "description": "",
+          "meta": {
+            "fact": "Personal sensitive data"
+          }
+        },
+        {
+          "value": "SOX / MC",
+          "label": "SOX / MC",
+          "description": "",
+          "meta": {
+            "fact": "SOX / MC data"
+          }
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "target_gate",
+      "label": "Target gate",
+      "description": "",
+      "group": "Intake",
+      "structural": false,
+      "meta_fields": [
+        {
+          "key": "gate_code",
+          "type": "gate",
+          "label": "Gate"
+        }
+      ],
+      "items": [
+        {
+          "value": "SG0-SG2",
+          "label": "SG0-SG2",
+          "description": "",
+          "meta": {
+            "gate_code": "SG2"
+          }
+        },
+        {
+          "value": "SG3",
+          "label": "SG3",
+          "description": "",
+          "meta": {
+            "gate_code": "SG3"
+          }
+        },
+        {
+          "value": "AtD",
+          "label": "AtD",
+          "description": "",
+          "meta": {
+            "gate_code": "SG4_ATD"
+          }
+        },
+        {
+          "value": "AtO",
+          "label": "AtO",
+          "description": "",
+          "meta": {
+            "gate_code": "SG6_ATO"
+          }
+        },
+        {
+          "value": "Closure",
+          "label": "Closure",
+          "description": "",
+          "meta": {
+            "gate_code": "CLOSURE"
+          }
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "investment_type",
+      "label": "Investment type",
+      "description": "",
+      "group": "Intake",
+      "structural": false,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "Run",
+          "label": "Run",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Change",
+          "label": "Change",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Grow",
+          "label": "Grow",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "delivery_method",
+      "label": "Delivery method",
+      "description": "",
+      "group": "Intake",
+      "structural": false,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "Waterfall",
+          "label": "Waterfall",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Agile",
+          "label": "Agile",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "AI / Agentic",
+          "label": "AI / Agentic",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "severities",
+      "label": "Gap severities",
+      "description": "Exactly one severity counts as critical; it drives RAG and the gate checks.",
+      "group": "Readiness",
+      "structural": false,
+      "meta_fields": [
+        {
+          "key": "rank",
+          "type": "number",
+          "label": "Rank (1 = most severe)"
+        },
+        {
+          "key": "counts_as_critical",
+          "type": "boolean",
+          "label": "Counts as critical"
+        },
+        {
+          "key": "color",
+          "type": "token",
+          "label": "Colour"
+        }
+      ],
+      "items": [
+        {
+          "value": "Critical",
+          "label": "Critical",
+          "description": "",
+          "meta": {
+            "rank": 1,
+            "counts_as_critical": true,
+            "color": "danger"
+          }
+        },
+        {
+          "value": "Major",
+          "label": "Major",
+          "description": "",
+          "meta": {
+            "rank": 2,
+            "counts_as_critical": false,
+            "color": "warning"
+          }
+        },
+        {
+          "value": "Minor",
+          "label": "Minor",
+          "description": "",
+          "meta": {
+            "rank": 3,
+            "counts_as_critical": false,
+            "color": "informative"
+          }
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "design_effectiveness",
+      "label": "Design effectiveness",
+      "description": "",
+      "group": "Readiness",
+      "structural": false,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "–",
+          "label": "–",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Yes",
+          "label": "Yes",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "No",
+          "label": "No",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "N/A",
+          "label": "N/A",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "evidence_types",
+      "label": "Evidence types",
+      "description": "",
+      "group": "Records",
+      "structural": false,
+      "meta_fields": [
+        {
+          "key": "needs",
+          "type": "select",
+          "label": "Needs",
+          "options": [
+            "file",
+            "url",
+            "text",
+            "none"
+          ]
+        },
+        {
+          "key": "system",
+          "type": "boolean",
+          "label": "Created by the system only"
+        }
+      ],
+      "items": [
+        {
+          "value": "Document",
+          "label": "Document",
+          "description": "",
+          "meta": {
+            "needs": "file",
+            "system": false
+          }
+        },
+        {
+          "value": "Link",
+          "label": "Link",
+          "description": "",
+          "meta": {
+            "needs": "url",
+            "system": false
+          }
+        },
+        {
+          "value": "Email sign-off",
+          "label": "Email sign-off",
+          "description": "",
+          "meta": {
+            "needs": "text",
+            "system": false
+          }
+        },
+        {
+          "value": "Recording",
+          "label": "Recording",
+          "description": "",
+          "meta": {
+            "needs": "file",
+            "system": false
+          }
+        },
+        {
+          "value": "Generated",
+          "label": "Generated",
+          "description": "",
+          "meta": {
+            "needs": "none",
+            "system": true
+          }
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "action_priorities",
+      "label": "Action priorities",
+      "description": "",
+      "group": "Records",
+      "structural": false,
+      "meta_fields": [
+        {
+          "key": "color",
+          "type": "token",
+          "label": "Colour"
+        }
+      ],
+      "items": [
+        {
+          "value": "High",
+          "label": "High",
+          "description": "",
+          "meta": {
+            "color": "danger"
+          }
+        },
+        {
+          "value": "Medium",
+          "label": "Medium",
+          "description": "",
+          "meta": {
+            "color": "warning"
+          }
+        },
+        {
+          "value": "Low",
+          "label": "Low",
+          "description": "",
+          "meta": {
+            "color": "success"
+          }
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "defect_priorities",
+      "label": "Defect priorities",
+      "description": "",
+      "group": "Records",
+      "structural": false,
+      "meta_fields": [
+        {
+          "key": "color",
+          "type": "token",
+          "label": "Colour"
+        }
+      ],
+      "items": [
+        {
+          "value": "P1",
+          "label": "P1",
+          "description": "",
+          "meta": {
+            "color": "danger"
+          }
+        },
+        {
+          "value": "P2",
+          "label": "P2",
+          "description": "",
+          "meta": {
+            "color": "warning"
+          }
+        },
+        {
+          "value": "P3",
+          "label": "P3",
+          "description": "",
+          "meta": {
+            "color": "informative"
+          }
+        },
+        {
+          "value": "P4",
+          "label": "P4",
+          "description": "",
+          "meta": {
+            "color": "subtle"
+          }
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "risk_ratings",
+      "label": "Risk ratings",
+      "description": "",
+      "group": "Records",
+      "structural": false,
+      "meta_fields": [
+        {
+          "key": "color",
+          "type": "token",
+          "label": "Colour"
+        }
+      ],
+      "items": [
+        {
+          "value": "High",
+          "label": "High",
+          "description": "",
+          "meta": {
+            "color": "danger"
+          }
+        },
+        {
+          "value": "Medium",
+          "label": "Medium",
+          "description": "",
+          "meta": {
+            "color": "warning"
+          }
+        },
+        {
+          "value": "Low",
+          "label": "Low",
+          "description": "",
+          "meta": {
+            "color": "success"
+          }
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "risk_gap_categories",
+      "label": "Risk acceptance gap categories",
+      "description": "",
+      "group": "Records",
+      "structural": false,
+      "meta_fields": [
+        {
+          "key": "endorsement",
+          "type": "text",
+          "label": "Endorsement route"
+        }
+      ],
+      "items": [
+        {
+          "value": "Service model gaps",
+          "label": "Service model gaps",
+          "description": "",
+          "meta": {
+            "endorsement": "Portfolio SOM Lead"
+          }
+        },
+        {
+          "value": "Finance gaps",
+          "label": "Finance gaps",
+          "description": "",
+          "meta": {
+            "endorsement": "Portfolio SOM Lead + Finance lead"
+          }
+        },
+        {
+          "value": "Vendor issues",
+          "label": "Vendor issues",
+          "description": "",
+          "meta": {
+            "endorsement": "Portfolio SOM Lead + Vendor management lead"
+          }
+        },
+        {
+          "value": "Technical / solution issues",
+          "label": "Technical / solution issues",
+          "description": "",
+          "meta": {
+            "endorsement": "Portfolio SOM Lead + Architect / Product"
+          }
+        },
+        {
+          "value": "Others",
+          "label": "Others",
+          "description": "",
+          "meta": {
+            "endorsement": "Portfolio SOM Lead"
+          }
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "risk_acceptance_then",
+      "label": "Risk acceptance, then",
+      "description": "",
+      "group": "Records",
+      "structural": false,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "Mobility BISO focal",
+          "label": "Mobility BISO focal",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Portfolio business approval",
+          "label": "Portfolio business approval",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Head of SOM approval (SVP for high/critical residual risk)",
+          "label": "Head of SOM approval (SVP for high/critical residual risk)",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "support_file_kinds",
+      "label": "Support model file kinds",
+      "description": "",
+      "group": "Support model",
+      "structural": false,
+      "meta_fields": [
+        {
+          "key": "extensions",
+          "type": "list",
+          "label": "File extensions"
+        }
+      ],
+      "items": [
+        {
+          "value": "recording",
+          "label": "recording",
+          "description": "",
+          "meta": {
+            "extensions": [
+              ".mp4",
+              ".m4a"
+            ]
+          }
+        },
+        {
+          "value": "transcript",
+          "label": "transcript",
+          "description": "",
+          "meta": {
+            "extensions": [
+              ".vtt",
+              ".txt"
+            ]
+          }
+        },
+        {
+          "value": "design",
+          "label": "design",
+          "description": "",
+          "meta": {
+            "extensions": [
+              ".docx",
+              ".pdf"
+            ]
+          }
+        },
+        {
+          "value": "diagram",
+          "label": "diagram",
+          "description": "",
+          "meta": {
+            "extensions": [
+              ".png",
+              ".jpg"
+            ]
+          }
+        },
+        {
+          "value": "other",
+          "label": "other",
+          "description": "",
+          "meta": {
+            "extensions": []
+          }
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "support_relations",
+      "label": "Support model relations",
+      "description": "",
+      "group": "Support model",
+      "structural": false,
+      "meta_fields": [
+        {
+          "key": "color",
+          "type": "token",
+          "label": "Colour"
+        }
+      ],
+      "items": [
+        {
+          "value": "bidirectional",
+          "label": "bidirectional",
+          "description": "",
+          "meta": {
+            "color": "brand"
+          }
+        },
+        {
+          "value": "inbound",
+          "label": "inbound",
+          "description": "",
+          "meta": {
+            "color": "informative"
+          }
+        },
+        {
+          "value": "outbound",
+          "label": "outbound",
+          "description": "",
+          "meta": {
+            "color": "success"
+          }
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "support_component_types",
+      "label": "Support model component types",
+      "description": "",
+      "group": "Support model",
+      "structural": false,
+      "meta_fields": [
+        {
+          "key": "color",
+          "type": "token",
+          "label": "Colour"
+        }
+      ],
+      "items": [
+        {
+          "value": "Integration",
+          "label": "Integration",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Data flow",
+          "label": "Data flow",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Identity",
+          "label": "Identity",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Team",
+          "label": "Team",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Process",
+          "label": "Process",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Data platform",
+          "label": "Data platform",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "File transfer",
+          "label": "File transfer",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Middleware",
+          "label": "Middleware",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "ocet_categories",
+      "label": "OCET categories",
+      "description": "",
+      "group": "OCET",
+      "structural": false,
+      "meta_fields": [
+        {
+          "key": "default_growth_pct",
+          "type": "number",
+          "label": "Default growth % per year"
+        },
+        {
+          "key": "default_owner_role",
+          "type": "role",
+          "label": "Default input owner role"
+        }
+      ],
+      "items": [
+        {
+          "value": "Hosting / cloud",
+          "label": "Hosting / cloud",
+          "description": "",
+          "meta": {
+            "default_growth_pct": 10,
+            "default_owner_role": null
+          }
+        },
+        {
+          "value": "Application maintenance (AMS)",
+          "label": "Application maintenance (AMS)",
+          "description": "",
+          "meta": {
+            "default_growth_pct": 3,
+            "default_owner_role": null
+          }
+        },
+        {
+          "value": "Licences",
+          "label": "Licences",
+          "description": "",
+          "meta": {
+            "default_growth_pct": 0,
+            "default_owner_role": null
+          }
+        },
+        {
+          "value": "Third-party support",
+          "label": "Third-party support",
+          "description": "",
+          "meta": {
+            "default_growth_pct": 0,
+            "default_owner_role": null
+          }
+        },
+        {
+          "value": "AI tokens / inference",
+          "label": "AI tokens / inference",
+          "description": "",
+          "meta": {
+            "default_growth_pct": 15,
+            "default_owner_role": null
+          }
+        },
+        {
+          "value": "Other",
+          "label": "Other",
+          "description": "",
+          "meta": {
+            "default_growth_pct": 0,
+            "default_owner_role": null
+          }
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "ocet_pricing_basis",
+      "label": "OCET pricing basis",
+      "description": "",
+      "group": "OCET",
+      "structural": false,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "Fixed (contract)",
+          "label": "Fixed (contract)",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Consumption-based",
+          "label": "Consumption-based",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "ocet_currencies",
+      "label": "OCET currencies",
+      "description": "",
+      "group": "OCET",
+      "structural": false,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "USD",
+          "label": "USD",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "EUR",
+          "label": "EUR",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "GBP",
+          "label": "GBP",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "owner_hints",
+      "label": "Default owner hints",
+      "description": "A keyword in a library item's owner hint selects the default owner role (first keyword wins).",
+      "group": "Checklist",
+      "structural": false,
+      "meta_fields": [
+        {
+          "key": "role_code",
+          "type": "role",
+          "label": "Owner role"
+        }
+      ],
+      "items": [
+        {
+          "value": "s&t",
+          "label": "s&t",
+          "description": "",
+          "meta": {
+            "role_code": "OR_FOCAL"
+          }
+        },
+        {
+          "value": "architect",
+          "label": "architect",
+          "description": "",
+          "meta": {
+            "role_code": "ARCHITECT"
+          }
+        },
+        {
+          "value": "architecture",
+          "label": "architecture",
+          "description": "",
+          "meta": {
+            "role_code": "ARCHITECT"
+          }
+        },
+        {
+          "value": "som",
+          "label": "som",
+          "description": "",
+          "meta": {
+            "role_code": "OLM"
+          }
+        },
+        {
+          "value": "olm",
+          "label": "olm",
+          "description": "",
+          "meta": {
+            "role_code": "OLM"
+          }
+        },
+        {
+          "value": "project",
+          "label": "project",
+          "description": "",
+          "meta": {
+            "role_code": "PM"
+          }
+        },
+        {
+          "value": "pm",
+          "label": "pm",
+          "description": "",
+          "meta": {
+            "role_code": "PM"
+          }
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "operating_rhythm",
+      "label": "Operating rhythm",
+      "description": "",
+      "group": "Control tower",
+      "structural": false,
+      "meta_fields": [
+        {
+          "key": "cadence",
+          "type": "text",
+          "label": "Cadence"
+        },
+        {
+          "key": "looks_at",
+          "type": "text",
+          "label": "Looks at"
+        },
+        {
+          "key": "produces",
+          "type": "text",
+          "label": "Produces"
+        }
+      ],
+      "items": [
+        {
+          "value": "OR team stand-up",
+          "label": "OR team stand-up",
+          "description": "",
+          "meta": {
+            "cadence": "Weekly",
+            "looks_at": "Red/amber transitions, overdue deliverables",
+            "produces": "Owners and dates for blockers"
+          }
+        },
+        {
+          "value": "Portfolio / regional SME review",
+          "label": "Portfolio / regional SME review",
+          "description": "",
+          "meta": {
+            "cadence": "Fortnightly",
+            "looks_at": "Portfolio heatmap, \"to confirm\" applicability",
+            "produces": "Golden-set updates, confirmed scope"
+          }
+        },
+        {
+          "value": "IRM checkpoint",
+          "label": "IRM checkpoint",
+          "description": "",
+          "meta": {
+            "cadence": "Before each gate",
+            "looks_at": "Open compliance controls, exceptions",
+            "produces": "IRM attestation or exception"
+          }
+        },
+        {
+          "value": "Leadership update",
+          "label": "Leadership update",
+          "description": "",
+          "meta": {
+            "cadence": "Monthly",
+            "looks_at": "LT brief, escalations, decisions due",
+            "produces": "Decisions, support, risk acceptance"
+          }
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "glossary",
+      "label": "Glossary (Orion answers)",
+      "description": "Terms Orion explains in chat. The description is the answer.",
+      "group": "Orion",
+      "structural": false,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "OCET",
+          "label": "OCET",
+          "description": "OCET is the Operate Cost Estimate Template: the run-cost estimate of a transition (cloud, licences, support). It is versioned, approved by the Planner and the OLM, and linked to the checklist items FW-008 and S45-006.",
+          "meta": {}
+        },
+        {
+          "value": "AtD",
+          "label": "AtD",
+          "description": "AtD (Agreement to Deploy) is the decision gate before go-live. The OR focal records Approve, Approve with conditions or Return after the approval chain has agreed.",
+          "meta": {}
+        },
+        {
+          "value": "AtO",
+          "label": "AtO",
+          "description": "AtO (Agreement to Operate) is the decision gate after hypercare, when the service is handed over to run. It follows the same approval chain as AtD.",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "evidence_statuses",
+      "label": "Evidence statuses",
+      "description": "Behaviour depends on these values - only the labels can change.",
+      "group": "Workflow vocabulary",
+      "structural": true,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "Submitted",
+          "label": "Submitted",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Accepted",
+          "label": "Accepted",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Rejected",
+          "label": "Rejected",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "action_statuses",
+      "label": "Action statuses",
+      "description": "Behaviour depends on these values - only the labels can change.",
+      "group": "Workflow vocabulary",
+      "structural": true,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "Open",
+          "label": "Open",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "In progress",
+          "label": "In progress",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Done",
+          "label": "Done",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Cancelled",
+          "label": "Cancelled",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "condition_statuses",
+      "label": "Condition statuses",
+      "description": "Behaviour depends on these values - only the labels can change.",
+      "group": "Workflow vocabulary",
+      "structural": true,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "Open",
+          "label": "Open",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Closed",
+          "label": "Closed",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "exception_statuses",
+      "label": "Exception statuses",
+      "description": "Behaviour depends on these values - only the labels can change.",
+      "group": "Workflow vocabulary",
+      "structural": true,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "Draft",
+          "label": "Draft",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Pending IRM",
+          "label": "Pending IRM",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Pending CISO/BISO",
+          "label": "Pending CISO/BISO",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Approved",
+          "label": "Approved",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Rejected",
+          "label": "Rejected",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "defect_statuses",
+      "label": "Defect statuses",
+      "description": "Behaviour depends on these values - only the labels can change.",
+      "group": "Workflow vocabulary",
+      "structural": true,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "Open",
+          "label": "Open",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Resolved",
+          "label": "Resolved",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "draft_kinds",
+      "label": "Draft kinds",
+      "description": "Behaviour depends on these values - only the labels can change.",
+      "group": "Workflow vocabulary",
+      "structural": true,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "Reminder",
+          "label": "Reminder",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Chaser",
+          "label": "Chaser",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Input request",
+          "label": "Input request",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Approval request",
+          "label": "Approval request",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Leadership update",
+          "label": "Leadership update",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "approval_types",
+      "label": "Approval types",
+      "description": "Behaviour depends on these values - only the labels can change.",
+      "group": "Workflow vocabulary",
+      "structural": true,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "OCET",
+          "label": "OCET",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "AtD",
+          "label": "AtD",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "AtO",
+          "label": "AtO",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "SUPPORT_MODEL",
+          "label": "SUPPORT_MODEL",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "EXCEPTION",
+          "label": "EXCEPTION",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "RISK_ACCEPTANCE",
+          "label": "RISK_ACCEPTANCE",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "applicability",
+      "label": "Applicability",
+      "description": "Behaviour depends on these values - only the labels can change.",
+      "group": "Workflow vocabulary",
+      "structural": true,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "Applies",
+          "label": "Applies",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Not applicable",
+          "label": "Not applicable",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "To confirm",
+          "label": "To confirm",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "item_statuses_business",
+      "label": "Business item statuses",
+      "description": "Behaviour depends on these values - only the labels can change.",
+      "group": "Workflow vocabulary",
+      "structural": true,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "Not started",
+          "label": "Not started",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "In progress",
+          "label": "In progress",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Complete",
+          "label": "Complete",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Gap",
+          "label": "Gap",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "N/A",
+          "label": "N/A",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "item_statuses_technical",
+      "label": "Technical item statuses",
+      "description": "Behaviour depends on these values - only the labels can change.",
+      "group": "Workflow vocabulary",
+      "structural": true,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "Not started",
+          "label": "Not started",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "In progress",
+          "label": "In progress",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Complete",
+          "label": "Complete",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Gap",
+          "label": "Gap",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "N/A",
+          "label": "N/A",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "item_statuses_compliance",
+      "label": "Compliance item statuses",
+      "description": "Behaviour depends on these values - only the labels can change.",
+      "group": "Workflow vocabulary",
+      "structural": true,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "Not started",
+          "label": "Not started",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "In review",
+          "label": "In review",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Compliant",
+          "label": "Compliant",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Compliant with conditions",
+          "label": "Compliant with conditions",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Non-compliant",
+          "label": "Non-compliant",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Not applicable",
+          "label": "Not applicable",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "actor_types",
+      "label": "Actor types",
+      "description": "Behaviour depends on these values - only the labels can change.",
+      "group": "Workflow vocabulary",
+      "structural": true,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "Human",
+          "label": "Human",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Workflow rule",
+          "label": "Workflow rule",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Orion agent",
+          "label": "Orion agent",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "System",
+          "label": "System",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    },
+    {
+      "key": "rag_words",
+      "label": "RAG words",
+      "description": "Behaviour depends on these values - only the labels can change.",
+      "group": "Workflow vocabulary",
+      "structural": true,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "Red",
+          "label": "Red",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Amber",
+          "label": "Amber",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Green",
+          "label": "Green",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Grey",
+          "label": "Grey",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": true
+    }
+  ],
+  "intake_fields": [
+    {
+      "key": "name",
+      "label": "Solution / transition name",
+      "help": "",
+      "type": "text",
+      "option_list": null,
+      "visible": true,
+      "required_mode": "always",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": 200,
+      "builtin": true,
+      "structural": true,
+      "active": true,
+      "sort_order": 0
+    },
+    {
+      "key": "project_type",
+      "label": "Project type",
+      "help": "",
+      "type": "select",
+      "option_list": "project_types",
+      "visible": true,
+      "required_mode": "always",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": true,
+      "structural": true,
+      "active": true,
+      "sort_order": 1
+    },
+    {
+      "key": "portfolio",
+      "label": "Mobility landscape category (portfolio)",
+      "help": "",
+      "type": "select",
+      "option_list": "portfolios",
+      "visible": true,
+      "required_mode": "always",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": true,
+      "structural": true,
+      "active": true,
+      "sort_order": 2
+    },
+    {
+      "key": "region",
+      "label": "Region",
+      "help": "",
+      "type": "select",
+      "option_list": "regions",
+      "visible": true,
+      "required_mode": "always",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": true,
+      "structural": true,
+      "active": true,
+      "sort_order": 3
+    },
+    {
+      "key": "market",
+      "label": "Market / country",
+      "help": "e.g. India, Netherlands, Multi-market",
+      "type": "text",
+      "option_list": null,
+      "visible": true,
+      "required_mode": "never",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": 120,
+      "builtin": true,
+      "structural": false,
+      "active": true,
+      "sort_order": 4
+    },
+    {
+      "key": "audience",
+      "label": "Audience",
+      "help": "",
+      "type": "select",
+      "option_list": "audience",
+      "visible": true,
+      "required_mode": "by_project_type",
+      "required_for_project_types": [
+        "Agentic AI",
+        "Combined"
+      ],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": true,
+      "structural": false,
+      "active": true,
+      "sort_order": 5
+    },
+    {
+      "key": "write_actions",
+      "label": "Write actions",
+      "help": "",
+      "type": "select",
+      "option_list": "write_actions",
+      "visible": true,
+      "required_mode": "by_project_type",
+      "required_for_project_types": [
+        "Agentic AI",
+        "Combined"
+      ],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": true,
+      "structural": false,
+      "active": true,
+      "sort_order": 6
+    },
+    {
+      "key": "sensitive_data",
+      "label": "Sensitive data",
+      "help": "",
+      "type": "select",
+      "option_list": "sensitive_data",
+      "visible": true,
+      "required_mode": "by_project_type",
+      "required_for_project_types": [
+        "Agentic AI",
+        "Combined"
+      ],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": true,
+      "structural": false,
+      "active": true,
+      "sort_order": 7
+    },
+    {
+      "key": "target_gate",
+      "label": "Target gate",
+      "help": "",
+      "type": "select",
+      "option_list": "target_gate",
+      "visible": true,
+      "required_mode": "never",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": true,
+      "structural": false,
+      "active": true,
+      "sort_order": 8
+    },
+    {
+      "key": "investment_type",
+      "label": "Investment type",
+      "help": "",
+      "type": "select",
+      "option_list": "investment_type",
+      "visible": true,
+      "required_mode": "never",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": true,
+      "structural": false,
+      "active": true,
+      "sort_order": 9
+    },
+    {
+      "key": "delivery_method",
+      "label": "Delivery method",
+      "help": "",
+      "type": "select",
+      "option_list": "delivery_method",
+      "visible": true,
+      "required_mode": "never",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": true,
+      "structural": false,
+      "active": true,
+      "sort_order": 10
+    },
+    {
+      "key": "description",
+      "label": "Description",
+      "help": "",
+      "type": "textarea",
+      "option_list": null,
+      "visible": true,
+      "required_mode": "never",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": true,
+      "structural": false,
+      "active": true,
+      "sort_order": 11
+    },
+    {
+      "key": "or_focal_user_id",
+      "label": "OR focal",
+      "help": "",
+      "type": "user",
+      "option_list": "OR_FOCAL",
+      "visible": true,
+      "required_mode": "always",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": true,
+      "structural": true,
+      "active": true,
+      "sort_order": 12
+    },
+    {
+      "key": "pm_user_id",
+      "label": "PM",
+      "help": "",
+      "type": "user",
+      "option_list": "PM",
+      "visible": true,
+      "required_mode": "never",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": true,
+      "structural": false,
+      "active": true,
+      "sort_order": 13
+    },
+    {
+      "key": "architect_user_id",
+      "label": "Architect",
+      "help": "",
+      "type": "user",
+      "option_list": "ARCHITECT",
+      "visible": true,
+      "required_mode": "never",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": true,
+      "structural": false,
+      "active": true,
+      "sort_order": 14
+    },
+    {
+      "key": "olm_user_id",
+      "label": "OLM",
+      "help": "",
+      "type": "user",
+      "option_list": "OLM",
+      "visible": true,
+      "required_mode": "never",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": true,
+      "structural": false,
+      "active": true,
+      "sort_order": 15
+    },
+    {
+      "key": "irm_user_id",
+      "label": "IRM",
+      "help": "",
+      "type": "user",
+      "option_list": "IRM",
+      "visible": true,
+      "required_mode": "never",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": true,
+      "structural": false,
+      "active": true,
+      "sort_order": 16
+    },
+    {
+      "key": "next_decision_date",
+      "label": "Next decision date",
+      "help": "",
+      "type": "date",
+      "option_list": null,
+      "visible": true,
+      "required_mode": "never",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": true,
+      "structural": false,
+      "active": true,
+      "sort_order": 17
+    }
+  ],
+  "roles": [
+    {
+      "code": "OR_FOCAL",
+      "label": "OR focal (S&T)",
+      "short_label": "OR focal",
+      "phrase_label": "OR focal",
+      "description": "",
+      "active": true,
+      "is_builtin": true,
+      "has_transition_slot": true,
+      "transition_column": "or_focal_user_id",
+      "can_approve": true,
+      "sort_order": 0,
+      "color": null
+    },
+    {
+      "code": "PM",
+      "label": "Project manager",
+      "short_label": "PM",
+      "phrase_label": "project manager",
+      "description": "",
+      "active": true,
+      "is_builtin": true,
+      "has_transition_slot": true,
+      "transition_column": "pm_user_id",
+      "can_approve": true,
+      "sort_order": 1,
+      "color": null
+    },
+    {
+      "code": "ARCHITECT",
+      "label": "Solution architect",
+      "short_label": "Architect",
+      "phrase_label": "architect",
+      "description": "",
+      "active": true,
+      "is_builtin": true,
+      "has_transition_slot": true,
+      "transition_column": "architect_user_id",
+      "can_approve": true,
+      "sort_order": 2,
+      "color": null
+    },
+    {
+      "code": "OLM",
+      "label": "SOM OLM (Ops lead)",
+      "short_label": "OLM",
+      "phrase_label": "OLM",
+      "description": "",
+      "active": true,
+      "is_builtin": true,
+      "has_transition_slot": true,
+      "transition_column": "olm_user_id",
+      "can_approve": true,
+      "sort_order": 3,
+      "color": null
+    },
+    {
+      "code": "PLANNER",
+      "label": "Planner (Finance)",
+      "short_label": "Planner",
+      "phrase_label": "Planner",
+      "description": "",
+      "active": true,
+      "is_builtin": true,
+      "has_transition_slot": false,
+      "transition_column": null,
+      "can_approve": true,
+      "sort_order": 4,
+      "color": null
+    },
+    {
+      "code": "IRM",
+      "label": "IRM (Compliance)",
+      "short_label": "IRM",
+      "phrase_label": "IRM",
+      "description": "",
+      "active": true,
+      "is_builtin": true,
+      "has_transition_slot": true,
+      "transition_column": "irm_user_id",
+      "can_approve": true,
+      "sort_order": 5,
+      "color": null
+    },
+    {
+      "code": "LEADERSHIP",
+      "label": "Leadership (read-only)",
+      "short_label": "Leadership",
+      "phrase_label": "Leadership",
+      "description": "",
+      "active": true,
+      "is_builtin": true,
+      "has_transition_slot": false,
+      "transition_column": null,
+      "can_approve": true,
+      "sort_order": 6,
+      "color": null
+    },
+    {
+      "code": "ADMIN",
+      "label": "Playbook admin",
+      "short_label": "Admin",
+      "phrase_label": "Admin",
+      "description": "",
+      "active": true,
+      "is_builtin": true,
+      "has_transition_slot": false,
+      "transition_column": null,
+      "can_approve": true,
+      "sort_order": 7,
+      "color": null
+    }
+  ],
+  "role_permissions": {
+    "view": [
+      "ADMIN",
+      "ARCHITECT",
+      "IRM",
+      "LEADERSHIP",
+      "OLM",
+      "OR_FOCAL",
+      "PLANNER",
+      "PM"
+    ],
+    "create_transition": [
+      "ADMIN",
+      "OR_FOCAL",
+      "PM"
+    ],
+    "propose_tier": [
+      "OR_FOCAL"
+    ],
+    "confirm_tier": [
+      "IRM"
+    ],
+    "confirm_scope": [
+      "OR_FOCAL"
+    ],
+    "update_bt_status": [
+      "ARCHITECT",
+      "OLM",
+      "OR_FOCAL",
+      "PM"
+    ],
+    "update_c_status": [
+      "IRM"
+    ],
+    "manage_evidence": [
+      "ARCHITECT",
+      "IRM",
+      "OLM",
+      "OR_FOCAL",
+      "PM"
+    ],
+    "review_evidence_bt": [
+      "OR_FOCAL"
+    ],
+    "review_evidence_c": [
+      "IRM"
+    ],
+    "manage_actions": [
+      "ARCHITECT",
+      "IRM",
+      "OLM",
+      "OR_FOCAL",
+      "PM"
+    ],
+    "record_stage_review": [
+      "OR_FOCAL"
+    ],
+    "record_gate_decision": [
+      "OR_FOCAL"
+    ],
+    "edit_ocet": [
+      "ARCHITECT",
+      "OR_FOCAL",
+      "PM"
+    ],
+    "edit_support_model": [
+      "ARCHITECT",
+      "OR_FOCAL"
+    ],
+    "send_drafts": [
+      "OR_FOCAL"
+    ],
+    "admin": [
+      "ADMIN"
+    ],
+    "manage_conditions": [
+      "IRM",
+      "OR_FOCAL"
+    ],
+    "request_exception": [
+      "IRM",
+      "OR_FOCAL"
+    ],
+    "manage_risks": [
+      "IRM",
+      "OR_FOCAL"
+    ],
+    "manage_defects": [
+      "ARCHITECT",
+      "OLM",
+      "OR_FOCAL",
+      "PM"
+    ],
+    "edit_eval_results": [
+      "ARCHITECT",
+      "OR_FOCAL",
+      "PM"
+    ],
+    "edit_ai_profile": [
+      "ARCHITECT",
+      "OR_FOCAL",
+      "PM"
+    ],
+    "toggle_autonomous": [
+      "OR_FOCAL"
+    ],
+    "generate_leadership_update": [
+      "ADMIN",
+      "OR_FOCAL"
+    ],
+    "run_reminders": [
+      "ADMIN",
+      "OR_FOCAL"
+    ],
+    "edit_transition": [
+      "ADMIN",
+      "OR_FOCAL"
+    ],
+    "view_all_approvals": [
+      "OR_FOCAL",
+      "ADMIN"
+    ],
+    "see_mock_approvals": [
+      "IRM"
+    ],
+    "see_all_transitions": [
+      "LEADERSHIP"
+    ]
+  },
+  "permission_meta": {
+    "view": {
+      "label": "Use Orion",
+      "description": "",
+      "area": "Access"
+    },
+    "create_transition": {
+      "label": "Create a transition",
+      "description": "",
+      "area": "Transitions"
+    },
+    "edit_transition": {
+      "label": "Edit a transition",
+      "description": "",
+      "area": "Transitions"
+    },
+    "propose_tier": {
+      "label": "Propose the risk tier",
+      "description": "",
+      "area": "Tiering and scope"
+    },
+    "confirm_tier": {
+      "label": "Confirm the risk tier",
+      "description": "",
+      "area": "Tiering and scope"
+    },
+    "confirm_scope": {
+      "label": "Confirm scope and applicability",
+      "description": "",
+      "area": "Tiering and scope"
+    },
+    "update_bt_status": {
+      "label": "Update Business / Technical items",
+      "description": "",
+      "area": "Checklist"
+    },
+    "update_c_status": {
+      "label": "Set compliance status",
+      "description": "",
+      "area": "Checklist"
+    },
+    "manage_evidence": {
+      "label": "Upload or link evidence",
+      "description": "",
+      "area": "Evidence"
+    },
+    "review_evidence_bt": {
+      "label": "Review Business / Technical evidence",
+      "description": "",
+      "area": "Evidence"
+    },
+    "review_evidence_c": {
+      "label": "Review Compliance evidence",
+      "description": "",
+      "area": "Evidence"
+    },
+    "manage_actions": {
+      "label": "Create or close actions",
+      "description": "",
+      "area": "Records"
+    },
+    "manage_conditions": {
+      "label": "Manage conditions",
+      "description": "",
+      "area": "Records"
+    },
+    "request_exception": {
+      "label": "Request an exception",
+      "description": "",
+      "area": "Records"
+    },
+    "manage_risks": {
+      "label": "Manage risks",
+      "description": "",
+      "area": "Records"
+    },
+    "manage_defects": {
+      "label": "Manage hypercare defects",
+      "description": "",
+      "area": "Records"
+    },
+    "record_stage_review": {
+      "label": "Record stage reviews",
+      "description": "",
+      "area": "Gates"
+    },
+    "record_gate_decision": {
+      "label": "Record gate decisions",
+      "description": "",
+      "area": "Gates"
+    },
+    "edit_ocet": {
+      "label": "Edit the OCET",
+      "description": "",
+      "area": "Modules"
+    },
+    "edit_support_model": {
+      "label": "Edit the support model",
+      "description": "",
+      "area": "Modules"
+    },
+    "edit_eval_results": {
+      "label": "Enter eval results",
+      "description": "",
+      "area": "Modules"
+    },
+    "edit_ai_profile": {
+      "label": "Edit the AI profile",
+      "description": "",
+      "area": "Modules"
+    },
+    "send_drafts": {
+      "label": "Send Orion drafts",
+      "description": "",
+      "area": "Orion"
+    },
+    "toggle_autonomous": {
+      "label": "Change autonomous mode",
+      "description": "",
+      "area": "Orion"
+    },
+    "generate_leadership_update": {
+      "label": "Generate leadership updates",
+      "description": "",
+      "area": "Orion"
+    },
+    "run_reminders": {
+      "label": "Run the reminder engine",
+      "description": "",
+      "area": "Orion"
+    },
+    "view_all_approvals": {
+      "label": "See all approval requests",
+      "description": "",
+      "area": "Visibility"
+    },
+    "see_mock_approvals": {
+      "label": "See mocked approval steps",
+      "description": "",
+      "area": "Visibility"
+    },
+    "see_all_transitions": {
+      "label": "See every transition (portfolio view)",
+      "description": "",
+      "area": "Visibility"
+    },
+    "admin": {
+      "label": "Change configuration",
+      "description": "",
+      "area": "Administration"
+    }
+  },
+  "permission_denial_reasons": {
+    "view": "You do not have access to Orion",
+    "create_transition": "Only an OR focal, PM or Admin can create a transition",
+    "propose_tier": "Only the OR focal can propose the tier",
+    "confirm_tier": "Only IRM can confirm the tier",
+    "confirm_scope": "Only the OR focal can confirm scope and applicability",
+    "update_bt_status": "Only the OR focal, PM, Architect or OLM can update Business/Technical items",
+    "update_c_status": "Only IRM can set compliance status",
+    "manage_evidence": "Your role cannot upload or link evidence",
+    "review_evidence_bt": "Only the OR focal can accept or reject Business/Technical evidence",
+    "review_evidence_c": "Only IRM can accept or reject Compliance evidence",
+    "manage_actions": "Your role cannot create or close actions",
+    "record_stage_review": "Only the OR focal can record stage reviews",
+    "record_gate_decision": "Only the OR focal can record gate decisions",
+    "edit_ocet": "Only the OR focal, PM or Architect can edit OCET lines",
+    "edit_support_model": "Only the OR focal or Architect can generate or edit the support model",
+    "send_drafts": "Only the OR focal can send Orion drafts",
+    "admin": "Only the Playbook admin can change configuration",
+    "manage_conditions": "Only the OR focal or IRM can manage conditions",
+    "request_exception": "Only the OR focal or IRM can request an exception",
+    "manage_risks": "Only the OR focal or IRM can manage risks",
+    "manage_defects": "Your role cannot manage hypercare defects",
+    "edit_eval_results": "Only the OR focal, PM or Architect can enter eval results",
+    "edit_ai_profile": "Only the OR focal, PM or Architect can edit the AI profile",
+    "toggle_autonomous": "Only the OR focal can change autonomous mode",
+    "generate_leadership_update": "Only the OR focal can generate and send leadership updates",
+    "run_reminders": "Only the OR focal or Admin can run the reminder engine",
+    "edit_transition": "Only the OR focal of the transition or an Admin can edit it",
+    "view_all_approvals": "Only the OR focal or Admin can see all approvals",
+    "see_mock_approvals": "Only IRM can see the mocked approval steps",
+    "see_all_transitions": "Only Leadership sees the whole portfolio on the dashboard"
+  },
+  "tier_questions": [
+    {
+      "id": "TQ1",
+      "text": "Does the agent communicate directly with external parties (customers, regulators, suppliers)?",
+      "hint": "Tier 3/4",
+      "active": true,
+      "sort_order": 0
+    },
+    {
+      "id": "TQ2",
+      "text": "Does the agent take autonomous write-actions on systems of record (CRM, ERP, payment, marketing platforms)?",
+      "hint": "Tier 4 regardless of audience",
+      "active": true,
+      "sort_order": 1
+    },
+    {
+      "id": "TQ3",
+      "text": "Does the agent operate within a regulated function (pricing, credit eligibility, safety decisions)?",
+      "hint": "Tier 4 regardless of user base",
+      "active": true,
+      "sort_order": 2
+    },
+    {
+      "id": "TQ4",
+      "text": "Is the user base internal, trusted and bounded, with outputs advisory rather than authoritative?",
+      "hint": "Tier 2",
+      "active": true,
+      "sort_order": 3
+    },
+    {
+      "id": "TQ5",
+      "text": "Is the deployment explicitly time-boxed (<90 days), with <100 users and no autonomous write-actions?",
+      "hint": "Tier 1/2",
+      "active": true,
+      "sort_order": 4
+    }
+  ],
+  "tier_rules": [
+    {
+      "id": "RULE-1",
+      "sort_order": 0,
+      "label": "Regulated, autonomous or SOX / MC",
+      "result_tier": 4,
+      "match": "any",
+      "active": true,
+      "conditions": [
+        {
+          "source": "question",
+          "key": "TQ2",
+          "op": "yes",
+          "value": null,
+          "rationale": "TQ2 = yes -> Tier 4"
+        },
+        {
+          "source": "question",
+          "key": "TQ3",
+          "op": "yes",
+          "value": null,
+          "rationale": "TQ3 = yes -> Tier 4"
+        },
+        {
+          "source": "intake",
+          "key": "sensitive_data",
+          "op": "equals",
+          "value": "SOX / MC",
+          "rationale": "Sensitive data SOX / MC -> Tier 4"
+        }
+      ]
+    },
+    {
+      "id": "RULE-2",
+      "sort_order": 1,
+      "label": "External, sensitive or write actions",
+      "result_tier": 3,
+      "match": "any",
+      "active": true,
+      "conditions": [
+        {
+          "source": "question",
+          "key": "TQ1",
+          "op": "yes",
+          "value": null,
+          "rationale": "TQ1 = yes -> Tier 3"
+        },
+        {
+          "source": "intake",
+          "key": "audience",
+          "op": "equals",
+          "value": "External",
+          "rationale": "External audience -> Tier 3"
+        },
+        {
+          "source": "intake",
+          "key": "sensitive_data",
+          "op": "equals",
+          "value": "Personal sensitive",
+          "rationale": "Personal sensitive data -> Tier 3"
+        },
+        {
+          "source": "intake",
+          "key": "write_actions",
+          "op": "equals",
+          "value": "Yes",
+          "rationale": "Write actions = Yes -> Tier 3"
+        }
+      ]
+    },
+    {
+      "id": "RULE-3",
+      "sort_order": 2,
+      "label": "Time-boxed and small",
+      "result_tier": 1,
+      "match": "any",
+      "active": true,
+      "conditions": [
+        {
+          "source": "question",
+          "key": "TQ5",
+          "op": "yes",
+          "value": null,
+          "rationale": "TQ5 = yes -> Tier 1"
+        }
+      ]
+    },
+    {
+      "id": "RULE-4",
+      "sort_order": 3,
+      "label": "Internal, bounded, advisory",
+      "result_tier": 2,
+      "match": "any",
+      "active": true,
+      "conditions": [
+        {
+          "source": "question",
+          "key": "TQ4",
+          "op": "yes",
+          "value": null,
+          "rationale": "TQ4 = yes -> Tier 2"
+        }
+      ]
+    }
+  ],
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "Low risk, productivity-centric",
+      "definition": "Individual / immediate team productivity with low authority, bounded assist/read use cases, reversible outcomes; no write to enterprise source systems; non-sensitive (internal) data; pre-approved tools; no MC data.",
+      "examples": "Internal drafting, summarization, search, coding assistance with no sensitive data or actions.",
+      "builder_persona": "Citizen user / General end user"
+    },
+    {
+      "tier": 2,
+      "name": "Medium risk, advisory, limited action",
+      "definition": "Team or department level agents; bounded read/assist, reversible outcomes; non-sensitive data; internal-only approved tools and connectors; no MC data; no write-backs to BC or SOX enterprise systems; limited autonomy within predefined steps.",
+      "examples": "RAG over business knowledge, internal workflow recommendations, controlled tool use.",
+      "builder_persona": "Citizen user* / Pro-dev"
+    },
+    {
+      "tier": 3,
+      "name": "High risk, sensitive, material operational authority/impact",
+      "definition": "Enterprise-shared agents supporting operational processes; controlled write access to BC systems (excluding SOX); broader reach (externally facing); workflow execution with human-in-the-loop guardrails; personal sensitive (GDPR) data but no MC.",
+      "examples": "Sensitive data, privileged actions, customer/employee impact, automated decision support.",
+      "builder_persona": "Pro-dev"
+    },
+    {
+      "tier": 4,
+      "name": "Very high risk",
+      "definition": "Potential harm to people (e.g. safety systems) or irreversible actions; high autonomy; MC data; external users or safety/financial (e.g. SOX) critical systems; human oversight of every output required.",
+      "examples": "Autonomous write actions on systems of record, regulated decisions.",
+      "builder_persona": "Pro-dev"
+    }
+  ],
+  "tier_dimensions": [
+    "Blast radius – how many users, transactions or decisions one agent error affects",
+    "Reversibility – can an error be undone? Irreversible actions need a human write-gate",
+    "Regulatory exposure – regulated domain (pricing, credit, consent, energy retail, data residency)?"
+  ],
+  "settings": {
+    "cfg.thresholds": {
+      "rag": {
+        "red_critical_gaps": 2,
+        "red_lens_below": 50,
+        "red_near_days": 7,
+        "amber_critical_gaps": 1,
+        "amber_lens_below": 70
+      },
+      "insights": {
+        "low_readiness_below": 70,
+        "within_days": 45
+      },
+      "calendar_horizon_days": 45,
+      "leadership_decision_window_days": 30,
+      "dashboard": {
+        "my_work_limit": 200,
+        "recent_activity_limit": 10
+      },
+      "narrative_top": 3,
+      "default_tier": 3,
+      "default_pricing_basis": "Fixed (contract)",
+      "default_horizon_years": 5,
+      "default_growth_pct": 0
+    },
+    "cfg.gates": {
+      "SG0": {
+        "label": "SG0 – Initiate & tiering",
+        "short": "SG0",
+        "description": ""
+      },
+      "SG2": {
+        "label": "SG1–SG2 – Scope, blueprint & architecture",
+        "short": "SG0–SG2",
+        "description": ""
+      },
+      "SG3": {
+        "label": "SG3 – Build & test",
+        "short": "SG3",
+        "description": ""
+      },
+      "SG4_ATD": {
+        "label": "SG4 – Agreement to Deploy (AtD)",
+        "short": "AtD",
+        "description": ""
+      },
+      "SG5_HYPERCARE": {
+        "label": "SG4–SG5 – Hypercare",
+        "short": "Hypercare",
+        "description": ""
+      },
+      "SG6_ATO": {
+        "label": "SG6 – Agreement to Operate (AtO)",
+        "short": "AtO",
+        "description": ""
+      },
+      "CLOSURE": {
+        "label": "Project closure",
+        "short": "Closure",
+        "description": ""
+      }
+    },
+    "cfg.gate_outcome_labels": {},
+    "cfg.gate_chain": {
+      "SG4_ATD": "AtD",
+      "SG6_ATO": "AtO"
+    },
+    "cfg.mock_approver": {
+      "mock_role": "CISO_BISO",
+      "approver_role": "IRM",
+      "mock_label": "CISO/BISO"
+    },
+    "cfg.labels": {
+      "status.Not started": "Not started",
+      "rag.Red": "Red",
+      "rag.Amber": "Amber",
+      "rag.Green": "Green",
+      "rag.Grey": "Not started",
+      "eval.banner": "Eval results are entered by the team; Orion never accepts them."
+    },
+    "cfg.lenses": {
+      "Business": {
+        "question": "Is the value, cost and commercial case sound?",
+        "color_hint": "amber",
+        "owner_roles": [
+          "OLM",
+          "PM"
+        ],
+        "signoff_role": "OLM"
+      },
+      "Technical": {
+        "question": "Is it built, tested and runnable to standard?",
+        "color_hint": "blue",
+        "owner_roles": [
+          "PM",
+          "ARCHITECT"
+        ],
+        "signoff_role": "OR_FOCAL"
+      },
+      "Compliance": {
+        "question": "Are policy and regulatory controls met?",
+        "color_hint": "teal",
+        "owner_roles": [
+          "IRM"
+        ],
+        "signoff_role": "IRM"
+      }
+    }
+  },
+  "approval_chain_labels": {
+    "OCET": "OCET approval",
+    "AtD": "Agreement to Deploy",
+    "AtO": "Agreement to Operate",
+    "SUPPORT_MODEL": "Support model approval",
+    "EXCEPTION": "Exception approval"
+  }
+}

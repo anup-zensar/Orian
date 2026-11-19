@@ -5,14 +5,23 @@ SQLite is the demo default; ``DATABASE_URL`` keeps the engine swappable (Azure S
 
 from __future__ import annotations
 
+import json
+import logging
 from collections.abc import Iterator
 from datetime import datetime
 
-from sqlalchemy import DateTime, Engine, create_engine, event
+from sqlalchemy import DateTime, Engine, create_engine, event, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from app import clock
 from app.config import BACKEND_DIR, get_settings
+
+logger = logging.getLogger("orion.db")
+
+# Bump on EVERY model change (new table / column). Version 1 = M1-M9 + CR-02; 2 = CR-01 configuration
+# tables and columns. The demo database is rebuilt and re-seeded when it differs (ensure_schema_version).
+SCHEMA_VERSION = 2
+SCHEMA_VERSION_KEY = "schema_version"  # app_settings key, written LAST by the seed loader
 
 
 class Base(DeclarativeBase):
@@ -79,6 +88,55 @@ def drop_all() -> None:
     from app import models  # noqa: F401 - register all tables
 
     Base.metadata.drop_all(get_engine())
+
+
+def stored_schema_version() -> int | None:
+    """The version recorded in ``app_settings`` (1 when the table exists but has no row), or None
+    when the database is fresh (no ``app_settings`` table)."""
+    engine = get_engine()
+    if not inspect(engine).has_table("app_settings"):
+        return None
+    try:
+        with engine.connect() as conn:
+            raw = conn.execute(
+                text("SELECT value FROM app_settings WHERE key = :k"), {"k": SCHEMA_VERSION_KEY}
+            ).scalar()
+        if raw is None:
+            return 1
+        # a JSON column holding a bare number comes back as a number from raw SQL, else as text
+        return int(raw) if isinstance(raw, int | float) else int(json.loads(raw))
+    except Exception:  # unreadable or malformed row: treat like "no version recorded"
+        return 1
+
+
+def ensure_schema_version() -> bool:
+    """CR-01 design 3: compare the stored schema version with ``SCHEMA_VERSION``.
+
+    * fresh database (no ``app_settings`` table): nothing to do (``create_all`` + seed follow);
+    * equal: nothing to do (modified demo data is kept);
+    * different (older, or newer than this code): drop everything, re-create and re-seed - the
+      demo data is synthetic. ``SCHEMA_AUTO_RESET=false`` raises a clear error instead.
+
+    Returns True when the database was rebuilt. Called by the app lifespan before ``create_all``.
+    """
+    stored = stored_schema_version()
+    if stored is None or stored == SCHEMA_VERSION:
+        return False
+    if not get_settings().schema_auto_reset:
+        raise RuntimeError(
+            f"Database schema version {stored} does not match the code (version {SCHEMA_VERSION}) "
+            "and SCHEMA_AUTO_RESET is false. Migrate the database, or set SCHEMA_AUTO_RESET=true "
+            "to re-create it (this deletes all data)."
+        )
+    logger.warning(
+        "Demo database schema v%s is not v%s: re-creating and re-seeding (demo data is synthetic)",
+        stored,
+        SCHEMA_VERSION,
+    )
+    from app.seed.loader import reset_and_seed  # late import: the loader imports this module
+
+    reset_and_seed()
+    return True
 
 
 def get_db() -> Iterator[Session]:

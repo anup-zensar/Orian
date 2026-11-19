@@ -11,8 +11,13 @@ Where to call it: at the top of every domain function that a HUMAN invokes to ch
 so an Orion proposal accepted by a human inherits the same check (BR-050). System paths - seed loader,
 demo fast-forward, approval completion hooks, the reminder engine and autonomous sends - never call it.
 
-Only this module knows how roles map to transition slots (``assigned_user_id``), so a later generic
-assignment table (e.g. new roles added by an Admin) replaces one function without touching callers.
+Only this module knows how roles map to transition slots (``assigned_user_id``).
+
+CR-01: roles an Admin creates with a transition slot keep their person in ``Transition.role_assignments``
+({role_code: user_id}); the five built-in slots keep their columns. Which roles have a slot, and their
+labels, come from ``app.domain.cfg`` (``TRANSITION_ROLE_COLUMN`` / ``ROLE_LABEL`` below are the
+defaults). The Admin has no workflow override: ADMIN never has a slot, so granting a
+transition-scoped permission to ADMIN has no effect on transitions (design guardrail 11).
 """
 
 from __future__ import annotations
@@ -21,11 +26,13 @@ from collections.abc import Collection
 
 from sqlalchemy.orm import Session
 
+from app.domain import cfg
 from app.errors import Conflict, Forbidden, NotFound
 from app.models import Transition, User
 from app.permissions import DENIAL_REASONS, Perm, has_perm
 
-# Role -> the Transition column holding the person assigned to that role (order = message order).
+# DEFAULT role -> the Transition column holding the person assigned to that role (order = message
+# order). Admin-created slot roles use ``Transition.role_assignments`` instead.
 TRANSITION_ROLE_COLUMN: dict[str, str] = {
     "OR_FOCAL": "or_focal_user_id",
     "PM": "pm_user_id",
@@ -34,6 +41,7 @@ TRANSITION_ROLE_COLUMN: dict[str, str] = {
     "IRM": "irm_user_id",
 }
 
+# DEFAULT role labels for messages; the live ones are ``cfg.role_phrase_label(db, role)``.
 ROLE_LABEL: dict[str, str] = {
     "OR_FOCAL": "OR focal",
     "PM": "project manager",
@@ -71,9 +79,17 @@ PERM_PHRASE: dict[Perm, str] = {
 
 
 def assigned_user_id(transition: Transition, role: str) -> str | None:
-    """The id of the person holding ``role`` on ``transition`` (None for roles without a slot)."""
+    """The id of the person holding ``role`` on ``transition`` (None for roles without a slot or an
+    empty slot): built-in slots read their column, admin-created slot roles ``role_assignments``."""
     column = TRANSITION_ROLE_COLUMN.get(role)
-    return getattr(transition, column) if column else None
+    if column:
+        return getattr(transition, column)
+    return (transition.role_assignments or {}).get(role) or None
+
+
+def slot_role_codes(db: Session) -> list[str]:
+    """Active roles with a transition slot, in display order (the built-in five plus custom ones)."""
+    return [r.code for r in cfg.slot_roles(db)]
 
 
 def is_assigned(user: User, transition: Transition) -> bool:
@@ -107,7 +123,7 @@ def transition_denial(
         return DENIAL_REASONS[perm]
     qualifying = [
         role
-        for role in TRANSITION_ROLE_COLUMN
+        for role in slot_role_codes(db)
         if has_perm(role, perm) and (roles is None or role in roles)
     ]
     if user.role in qualifying and (
@@ -118,16 +134,24 @@ def transition_denial(
     filled = [(role, assigned_user_id(transition, role)) for role in qualifying]
     filled = [(role, uid) for role, uid in filled if uid]
     if not filled:
-        labels = " or ".join(ROLE_LABEL[role] for role in qualifying) or "person"
+        labels = " or ".join(cfg.role_phrase_label(db, role) for role in qualifying) or "person"
         return f"{transition.id} has no {labels} assigned - ask an Admin to assign one"
     if len(filled) == 1:
         role, uid = filled[0]
-        reason = f"Only {_name(db, uid)}, the {ROLE_LABEL[role]} of {transition.id}, can {what}"
+        reason = (
+            f"Only {_name(db, uid)}, the {cfg.role_phrase_label(db, role)} of {transition.id}, "
+            f"can {what}"
+        )
     else:
-        people = ", ".join(f"{_name(db, uid)} ({ROLE_LABEL[role]})" for role, uid in filled)
+        people = ", ".join(
+            f"{_name(db, uid)} ({cfg.role_phrase_label(db, role)})" for role, uid in filled
+        )
         reason = f"Only the people assigned to {transition.id} ({people}) can {what}"
     if user.role in qualifying and assigned_user_id(transition, user.role) is None:
-        reason += f". {transition.id} has no {ROLE_LABEL[user.role]} assigned - ask an Admin to assign one"
+        reason += (
+            f". {transition.id} has no {cfg.role_phrase_label(db, user.role)} assigned"
+            " - ask an Admin to assign one"
+        )
     return reason
 
 

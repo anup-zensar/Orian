@@ -72,7 +72,7 @@ def test_gcc_update_mentions_atd_approval_and_risks(client, db, headers, fresh_s
     )
     db.commit()
     md = _generate(client, headers, "portfolio", "GCC").json()["content_md"]
-    assert "AtD approved for Mobility Knowledge Agent on 2026-11-15 (by Asha Menon)" in md
+    assert "AtD approved for Mobility Knowledge Agent on 15 Nov 2026 (by Asha Menon)" in md
     assert "critical gap" in md  # remaining risks
     assert "Mobility Knowledge Agent" in md.split("## Top risks and blockers")[1]
 
@@ -139,3 +139,11 @@ def test_generation_is_audited_as_orion_and_changes_no_status(client, db, header
     assert event.actor_type == "Orion agent" and event.actor_user_id == "U01"
     assert event.note.startswith("Orion drafted the leadership update for ")
     assert event.transition_id == "TR-0001" and str(res.json()["id"]) == event.entity_id
+
+
+def test_dates_use_the_app_style_not_iso(client, headers, fresh_seed):
+    import re
+
+    md = _generate(client, headers, "all").json()["content_md"]
+    assert "_As of 16 Nov 2026_" in md
+    assert not re.search(r"\b20\d\d-\d\d-\d\d\b", md)
