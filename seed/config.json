@@ -925,7 +925,7 @@
       "items": [
         {
           "value": "bidirectional",
-          "label": "bidirectional",
+          "label": "Both ways",
           "description": "",
           "meta": {
             "color": "brand"
@@ -933,7 +933,7 @@
         },
         {
           "value": "inbound",
-          "label": "inbound",
+          "label": "Inbound (into target)",
           "description": "",
           "meta": {
             "color": "informative"
@@ -941,7 +941,7 @@
         },
         {
           "value": "outbound",
-          "label": "outbound",
+          "label": "Outbound (from target)",
           "description": "",
           "meta": {
             "color": "success"

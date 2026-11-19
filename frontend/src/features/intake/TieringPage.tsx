@@ -314,41 +314,39 @@ function ProposalStep(props: {
             ) : (
               proposeBtn
             )}
-            {me.permissions.includes('confirm_tier') && (
-              <>
-                {confirmReason ? (
-                  <Tooltip content={confirmReason} relationship="description">
-                    <span>
-                      <Button appearance="primary" disabled>
-                        Confirm tier
-                      </Button>
-                    </span>
-                  </Tooltip>
-                ) : (
-                  <Button
-                    appearance="primary"
-                    disabled={confirm.isPending || !storedTier}
-                    onClick={() => storedTier && doConfirm(storedTier)}
-                  >
-                    {`Confirm tier ${storedTier}`}
-                  </Button>
-                )}
-                {canConfirmNow ? (
-                  <Button onClick={() => setChanging((v) => !v)}>Change tier</Button>
-                ) : (
-                  <Tooltip
-                    content={confirmReason ?? 'No tier proposed yet'}
-                    relationship="description"
-                  >
-                    <span>
-                      <Button disabled>Change tier</Button>
-                    </span>
-                  </Tooltip>
-                )}
-              </>
-            )}
+            <>
+              {confirmReason ? (
+                <Tooltip content={confirmReason} relationship="description">
+                  <span>
+                    <Button appearance="primary" disabled>
+                      Confirm tier
+                    </Button>
+                  </span>
+                </Tooltip>
+              ) : (
+                <Button
+                  appearance="primary"
+                  disabled={confirm.isPending || !storedTier}
+                  onClick={() => storedTier && doConfirm(storedTier)}
+                >
+                  {`Confirm tier ${storedTier}`}
+                </Button>
+              )}
+              {canConfirmNow ? (
+                <Button onClick={() => setChanging((v) => !v)}>Change tier</Button>
+              ) : (
+                <Tooltip
+                  content={confirmReason ?? 'No tier proposed yet'}
+                  relationship="description"
+                >
+                  <span>
+                    <Button disabled>Change tier</Button>
+                  </span>
+                </Tooltip>
+              )}
+            </>
           </div>
-          {!can('confirm_tier') && me.permissions.includes('confirm_tier') && (
+          {!can('confirm_tier') && (
             <Caption1>Confirm / change tier: {reasonFor('confirm_tier')}</Caption1>
           )}
           {changing && canConfirmNow && (

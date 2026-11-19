@@ -18,9 +18,10 @@ const useStyles = makeStyles({
     '& table': { borderCollapse: 'collapse', width: '100%' },
     '& th, & td': {
       border: `1px solid ${tokens.colorNeutralStroke2}`,
-      padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+      padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalXS}`,
       textAlign: 'left',
     },
+    '& th': { whiteSpace: 'nowrap' },
     '& code': { fontFamily: tokens.fontFamilyMonospace },
   },
 });

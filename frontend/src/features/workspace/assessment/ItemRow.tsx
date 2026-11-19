@@ -173,7 +173,7 @@ function ItemRowImpl(p: ItemRowProps) {
             )}
             {excluded && (
               <Badge size="small" appearance="outline">
-                excluded{item.excluded_by ? ` by ${item.excluded_by.replace('_', ' ')}` : ''}
+                Not applicable{item.excluded_by ? ` (${item.excluded_by.replace('_', ' ')})` : ''}
               </Badge>
             )}
             {item.covered && (

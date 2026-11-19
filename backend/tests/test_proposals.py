@@ -175,6 +175,10 @@ def test_accept_create_action(client, db, headers, fresh_seed):
     assert len(events) == 1
     assert events[0].actor_type == "Human" and events[0].actor_user_id == FOCAL
     assert events[0].note == f"Accepted Orion proposal {row.id}"
+    created = db.scalars(
+        select(AuditEvent).where(AuditEvent.entity == "Action", AuditEvent.action == "created")
+    ).all()
+    assert any(f"Accepted Orion proposal {row.id}" in e.note for e in created)
 
 
 def test_accept_twice_is_409_and_unknown_is_404(client, db, headers, fresh_seed):

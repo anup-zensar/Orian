@@ -1,111 +1,126 @@
 # Orion – Operate Readiness Agent (demo)
 
-Orion is a working demo for Shell Mobility's Supportability & Transition (S&T) team. It has two parts.
-The first is an Operate Readiness workspace: the system of record and workflow for every transition.
-The second is an AI agent (the Orion panel) that drafts messages, recommends actions, chases owners and generates
-the support model. Every external system and every AI capability in this demo is a deterministic mock behind an
-interface, so the real services can be added later without changing the screens or the business rules.
+Orion is a working demo for Shell Mobility's Supportability & Transition (S&T) team.
+It has two parts: an **Operate Readiness workspace** (the system of record and workflow for every transition) and an
+**AI agent** (the Orion panel) that drafts messages, recommends actions, chases owners and generates the support model.
+Every external system and every AI capability is a deterministic mock behind an interface, so real services can be added
+later without changing the screens or the business rules.
 
-> **Orion recommends and drafts. People decide.** (BR-050)
+> **Golden rule: Orion only drafts and proposes. A permitted person decides.** (BR-050)
 > Orion never changes a status, applicability, tier, evidence acceptance, condition, approval or gate decision.
-> A permitted person clicks. Every screen labels output as either "Orion agent" (AI badge) or "Workflow rule".
+> Every write is audited with an actor type: **Human**, **Workflow rule**, **Orion agent** or **System**.
+> Screens label output as "Orion agent" (AI badge) or "Workflow rule".
 
-- Behaviour spec: [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md)
-- Build plan, status and every assumption (A-01 to A-74): [`PLAN.md`](PLAN.md)
-- Demo storyline with exact clicks (20-30 minutes): [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md)
-- Seed data: [`seed/`](seed/). Client prototype (used only to cross-check form labels): [`reference/`](reference/)
+| Read this | For |
+|---|---|
+| [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) | The presenter's script with exact clicks (about 25 minutes) |
+| [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) | Behaviour spec (source of truth) |
+| [`PLAN.md`](PLAN.md) | Milestones, status, every assumption (A-01 to A-96), open questions |
+| [`seed/`](seed/) | Seed data (source of truth for data). [`reference/`](reference/) is the client prototype, used only to cross-check form labels. |
 
 ---
 
-## 1. Quick start
+## 1. How to run
 
-### Prerequisites
-- **Python 3.14 or newer.** The demo is built and tested on **3.14.7**. The target is **3.15.2**. All pinned packages
-  publish Python 3.15 wheels, so moving is only a rebuild of the virtual environment (A-01). `scripts\setup.ps1`
-  prefers 3.15 when it is installed and falls back to 3.14.
-- **Node.js 22.12 or newer** (tested on 24.x) and npm.
+**You need:** Python 3.14 or newer (built and tested on 3.14.7; target 3.15.2, only a venv rebuild, A-01) and
+Node.js 22.12 or newer with npm.
 
-### Windows (PowerShell)
-
-Run these from the repository root.
-
-| Script | What it does |
-|---|---|
-| `scripts\setup.ps1` | Creates `backend\.venv` and installs backend and frontend dependencies. |
-| `scripts\dev.ps1` | Starts the API on `http://127.0.0.1:8000` (docs at `/docs`) and the web app on `http://127.0.0.1:5173`, each in its own PowerShell window. Close the windows to stop. |
-| `scripts\dev.ps1 -WebPort 5174` | Same, with the web app on another port. Use this if 5173 is taken by another local app. Then open `http://127.0.0.1:5174`. |
-| `scripts\test.ps1` | Backend tests, ruff and black, then frontend type-check and build, then eslint. |
-| `scripts\reset.ps1` | Re-seeds the demo database. Stop the API first, or use **Admin -> Demo controls -> Reset demo data** while it runs. |
-| `scripts\audit.ps1` | Dependency vulnerability scan: `pip-audit` and `npm audit`. |
-
-First run:
+### Windows (PowerShell), from the repository root
 
 ```powershell
-scripts\setup.ps1
-scripts\dev.ps1 -WebPort 5174
+scripts\setup.ps1                  # creates backend\.venv, installs backend and frontend packages
+scripts\dev.ps1                    # API on :8000 and web app on :5173, each in its own window
 ```
 
-The API seeds the database on first start when it is empty (18 transitions). Open the web address, pick a user on the
-login page. There is no password.
+Open `http://127.0.0.1:5173`. If port 5173 is taken by another app, use `scripts\dev.ps1 -WebPort 5174` and open that port instead.
+API docs: `http://127.0.0.1:8000/docs`. The database is created and seeded on first start (18 transitions).
+Pick a user on the login page: there is no password.
+If you use a web port other than 5173, set `APP_BASE_URL=http://127.0.0.1:<port>` in `backend/.env`, otherwise links in e-mails and cards point at 5173.
 
-### macOS / Linux
+### Git Bash
 
-The `Makefile` has these targets. `PY` defaults to `python3`.
+```bash
+cd backend
+python -m venv .venv
+.venv/Scripts/python.exe -m pip install -r requirements-dev.txt -c constraints.txt   # includes pytest and the pinned versions
+.venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8000     # terminal 1, stays in backend/
+cd frontend && npm install && npm run dev                                  # terminal 2, from the repo root
+```
 
-| Target | What it does |
+macOS and Linux: `make setup`, then `make dev` (the venv Python is `backend/.venv/bin/python`).
+`npm run dev` serves the web app on `127.0.0.1:5173` and proxies `/api` to the API (`ORION_API_URL`, default
+`http://127.0.0.1:8000`). Another web port: `npm run dev -- --port 5174`.
+A second copy next to a demo (A-66): start its API on another port with its own `DATABASE_URL` and `STORAGE_DIR`,
+set `ORION_API_URL` to it, and set `APP_BASE_URL` to its web address.
+
+### Tests and checks
+
+| Command | What it runs |
 |---|---|
-| `make setup` | Creates `backend/.venv` and installs backend and frontend dependencies. |
-| `make dev` | Starts the API (:8000) and the web app (:5173). Ctrl+C stops both. (`scripts/dev.sh` does the same.) |
-| `make test` | Backend `pytest`, then frontend `npm run build` (type-check). |
-| `make lint` | ruff and black (backend), eslint (frontend). |
-| `make reset` | Re-seeds the demo database. |
-| `make openapi` | Exports the OpenAPI file and regenerates the frontend API types. |
-| `make audit` | `pip-audit` and `npm audit`. |
+| `cd backend && .venv\Scripts\python.exe -m pytest` | Backend tests (rules, API, permissions, services, security and the full demo storyline). Takes several minutes. Quick check: `.venv\Scripts\python.exe -m pytest tests/test_rules_gates.py`. |
+| `cd frontend && npm run build` | TypeScript strict type-check (`tsc -b`) and production build |
+| `cd frontend && npm run lint` | eslint |
+| `scripts\test.ps1` (Windows) or `make test` and `make lint` | All of the above, plus ruff and black, in one go |
+| `scripts\reset.ps1` or `make reset` | Re-seed the database (stop the API first). If the API is running, use **Admin -> Demo controls -> Reset demo data** instead. |
+| `scripts\audit.ps1` or `make audit` | `pip-audit` and `npm audit` |
 
-### Run a second copy next to the demo (A-66)
-The Vite dev server proxies `/api` to the API. The target is `ORION_API_URL` (environment variable or
-`frontend/.env`). The default is `http://127.0.0.1:8000`. To run a development copy on other ports while a demo copy
-keeps 8000, set `ORION_API_URL=http://127.0.0.1:8010`, start the API on port 8010 with its own `DATABASE_URL` and
-`STORAGE_DIR`, and start the web app with `npm run dev -- --port 5180`.
+After changing a backend response model run `make openapi` or `scripts\gen-api.ps1` to regenerate the frontend API types.
 
-### Configuration: `backend/.env`
-Copy `backend/.env.example` to `backend/.env` and change what you need. No secrets belong in source control (NFR-07).
+### Settings (`backend/.env`, copy from `backend/.env.example`)
 
 | Key | Default | Meaning |
 |---|---|---|
-| `DEMO_MODE` | `true` | Shows **Demo controls** in Admin and enables the `/admin/demo` endpoints. Set `false` for anything that is not a demo. |
-| `AI_MODE` | `mock` | `mock` or `live`. `live` is not built yet: the factory logs a warning and uses the mock (see section 5). |
-| `MAIL_MODE` | `mock` | `mock` or `graph`. `graph` selects the Microsoft Graph stub, which raises "not implemented". |
-| `ORION_MAILBOX` | `orion-noreply@example.com` | Sender address of Orion mail. |
-| `REMINDER_JOB_ENABLED` | `false` | `true` makes APScheduler run the reminder engine every 15 minutes. |
-| `SEED_DATE` | empty | Optional fixed "today" (YYYY-MM-DD) for repeatable demos. Admin can also set "today" in Demo controls. |
+| `DEMO_MODE` | `true` | Shows **Demo controls** in Admin. Set `false` for anything that is not a demo. |
+| `AI_MODE` | `mock` | `mock` or `live`. `live` is not built: the factory logs a warning and uses the mock. |
+| `MAIL_MODE` | `mock` | `mock` or `graph`. `graph` selects a stub that raises "not implemented". |
+| `ORION_MAILBOX` | `orion-noreply@example.com` | Sender of Orion mail |
+| `REMINDER_JOB_ENABLED` | `false` | `true` runs the reminder engine every 15 minutes |
+| `SEED_DATE` | empty | Fixed "today" (YYYY-MM-DD) for repeatable demos |
 | `DATABASE_URL` | `sqlite:///./orion.db` | SQLAlchemy URL. Relative SQLite paths resolve against `backend/`. |
-| `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_KEY`, `AZURE_OPENAI_DEPLOYMENT` | empty | Only for `AI_MODE=live`. |
-| `MOCK_DELAY_MS` | `600` | Simulated latency of the mock services. |
-| `APP_BASE_URL` | `http://localhost:5173` | Used for deep links in emails and cards. Change it if you use another web port. |
-| `CORS_ORIGINS` | `["http://localhost:5173","http://127.0.0.1:5173"]` | Allowed browser origins. Add your web address if you change the port. |
-| `MAX_UPLOAD_MB` | `25` | Upload size limit. Larger requests get 413. |
+| `STORAGE_DIR` | `backend/app/storage` | Uploads and generated PowerPoint files |
+| `MOCK_DELAY_MS` | `600` | Simulated latency of mock services (`0` is snappier) |
+| `SCHEMA_AUTO_RESET` | `true` | A database whose schema version differs from the code is dropped and re-seeded at startup. `false` = refuse to start with an error. |
+| `APP_BASE_URL` | `http://localhost:5173` | Deep links in e-mails and cards. Change it with the web port. |
+| `CORS_ORIGINS` | `["http://localhost:5173","http://127.0.0.1:5173"]` | Allowed browser origins |
+| `MAX_UPLOAD_MB` | `25` | Upload limit (413 above it) |
+| `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_KEY`, `AZURE_OPENAI_DEPLOYMENT` | empty | Only for `AI_MODE=live` |
+
+---
+
+## Words you will meet
+
+| Word | Meaning |
+|---|---|
+| OR | Operate Readiness: getting a project ready to be run by operations |
+| OCET | The operating cost estimate (5-year run-and-maintain), approved by Planner then OLM |
+| AtD / AtO | Agreement to Deploy / Agreement to Operate: the two gate decisions |
+| SG0 to SG6 | The one gate model: SG0, SG2, SG3, AtD, Hypercare, AtO, Closure |
+| IRM | Compliance approver (information risk) |
+| OLM | Operations lead who approves OCET, support model, AtD and AtO |
+| Lens | Business, Technical or Compliance view of the checklist |
+| Golden set | The expected extra items for a portfolio |
+| Flagship | The main demo transition, TR-0001 (Mobility Knowledge Agent) |
 
 ---
 
 ## 2. Demo users
 
-Fictional users. Pick one on the login page; use **Switch user** in the top-right user menu at any time.
+All fictional. On the login page click a name. To change user at any time: top-right **user menu -> Switch user -> name**.
 
-| Id | Name | Role | What they do in the demo |
+| Id | Name | Role | What they show in the demo |
 |---|---|---|---|
-| U01 | Asha Menon | OR focal (A) | Main presenter. Starts transitions, scopes and launches the assessment, drafts and sends chasers, edits OCET and support model, submits for review, closes conditions, records gate decisions. Owns the flagship. |
-| U02-U09 | Rahul Iyer, Neha Kulkarni, Vikram Shah, Priya Nair, Arjun Rao, Kavya Reddy, Sanjay Pillai, Divya Joshi | OR focal (B to I) | Own other seeded transitions. Same rights as Asha on their own transitions only. |
-| U10 | Daniel Brooks | Project manager | PM on the new SMSM Photo Capture transition. Standby user. |
-| U11 | Mei Lin | Architect | Enters the missing OCET monitoring cost. Approves the support model (first review step). |
-| U12 | Sofia Garcia | OLM | Approves OCET (second step), agrees the support model, approves AtD (first step). |
-| U13 | Tom Becker | Planner | Approves OCET (first step). |
-| U14 | Fatima Khan | IRM | Confirms the AI tier. Approves exception EX-01 and the AtD request (second step). The only IRM. |
-| U15 | Laura Evans | Leadership | Read-only view of the portfolio. Sees summary tiles on the dashboard. |
-| U16 | Playbook Admin | Admin | Admin pages: playbook, rules, chains, users and Demo controls (reset, fast-forward, set today, run reminder engine). |
+| U01 | Asha Menon | OR focal (labelled A) | Main presenter, owner of the flagship. Starts transitions, launches the assessment, sends drafts, submits OCET and support model, records gate decisions. |
+| U02-U09 | Rahul Iyer, Neha Kulkarni, Vikram Shah, Priya Nair, Arjun Rao, Kavya Reddy, Sanjay Pillai, Divya Joshi | OR focal (labelled B to I) | Own other seeded transitions. Same rights as Asha, on their own transitions only. |
+| U10 | Daniel Brooks | Project manager | Project manager on the flagship TR-0001 (and on a new transition if chosen at intake). Standby user. |
+| U11 | Mei Lin | Architect | Enters the missing OCET cost. First approver of the support model. |
+| U12 | Sofia Garcia | OLM | Approves OCET (step 2), the support model (step 2) and AtD (step 1). Receives the "Ready for AtD" request. |
+| U13 | Tom Becker | Planner | First approver of OCET. |
+| U14 | Fatima Khan | IRM | Confirms the AI tier. Approves exception EX-01 and the second AtD step. The only IRM. |
+| U15 | Laura Evans | Leadership | Read-only portfolio view. |
+| U16 | Playbook Admin | Admin | Admin page and Demo controls (reset, fast-forward, set today, run reminder engine). |
 
-Access is checked per transition: a role is not enough, the person must also be assigned to that role on that
-transition (`backend/app/access.py`). Where a button is disabled, the tooltip says why.
+A role is not enough: a person must also be assigned to that role **on that transition** (`backend/app/access.py`, A-75).
+A disabled button always says why in its tooltip.
 
 ---
 
@@ -113,148 +128,101 @@ transition (`backend/app/access.py`). Where a button is disabled, the tooltip sa
 
 ```mermaid
 flowchart LR
-  subgraph Browser
+  subgraph Client["Browser or Teams tab (iframe)"]
     SPA["React 18 SPA<br/>Fluent UI v9, TanStack Query<br/>Orion side panel"]
   end
 
-  SPA -->|"HTTPS JSON /api/v1<br/>X-Demo-User (demo only)"| API
+  SPA -->|"JSON /api/v1<br/>X-Demo-User (demo only)"| MW
 
   subgraph Backend["FastAPI backend"]
-    API["Middleware<br/>security headers, CORS, size limit, error converter"]
-    API --> R["routers/<br/>thin HTTP layer"]
+    MW["Middleware<br/>security headers, CORS, size limit"] --> R["routers/<br/>thin HTTP layer"]
     R --> D["domain/<br/>validate, write, audit, notify"]
-    D --> RU["rules/ (pure functions)<br/>checklist, tiering, readiness, RAG,<br/>status, gates, OCET, reminders"]
-    D --> F["services/factory.py<br/>mock or live by config"]
-    D --> DB[("SQLite<br/>orion.db<br/>AuditEvent on every write")]
-    D --> ST[("storage/<br/>uploads, generated PPT")]
-    SCH["APScheduler<br/>reminder job (optional)"] --> D
+    D --> RU["rules/ (pure functions)<br/>checklist, tiering, readiness, RAG,<br/>gates, OCET, reminders"]
+    D --> F["services/factory.py<br/>mock or live, chosen by config"]
+    D --> DB[("SQLite<br/>AuditEvent on every write")]
   end
 
-  subgraph Orion["Orion agent (drafts and proposes only)"]
-    AI["AIService<br/>narrative, recommendations, drafts,<br/>chat, extraction, insights"]
-    PR["Proposals<br/>a person accepts, then the normal<br/>domain function runs as that person"]
-  end
-
-  F --> AI
-  AI --> PR
-  PR -. "accept = human click" .-> D
-
-  F --> M["services/mock/ (default)<br/>Mail, Notification + Adaptive Cards, ServiceNow,<br/>Confluence, DocumentStore, Transcript,<br/>SupportModelGenerator"]
-  F -. "config switch" .-> L["services/live/ (stubs)<br/>Graph, Teams bot, ServiceNow, Confluence,<br/>SharePoint, Azure OpenAI"]
+  F --> AI["AIService (Orion assistant)<br/>drafts, recommendations, chat,<br/>extraction, support model generator"]
+  AI --> PR["Proposals<br/>a person accepts, then the normal<br/>domain function runs as that person"]
+  PR -. "human click" .-> D
+  F --> M["services/mock (default)<br/>Mail, Teams cards, ServiceNow,<br/>Confluence, DocumentStore, Transcript"]
+  F -. "config switch" .-> L["services/live (stubs)<br/>Graph, Teams bot, ServiceNow,<br/>Confluence, SharePoint, Azure OpenAI"]
 ```
 
-### Layers (PLAN.md section 4)
+### Where things live
 
-- **Frontend** (`frontend/src`). The UI only talks to `/api/v1` through one client (`src/api/client.ts`). TypeScript
-  types are generated from the backend OpenAPI file. State is held by TanStack Query. Filters and tabs live in the URL,
-  so every page has a stable deep link. The app runs inside an iframe (Teams tab later): no pop-ups, downloads use
-  fetch plus a temporary link.
-- **routers** (`backend/app/routers`). HTTP only: parse the request, check the permission, call a domain function,
-  return a response model.
-- **domain** (`backend/app/domain`). Everything that touches the database: validation using the rules, writes,
-  the audit event (Human, Workflow rule, Orion agent or System), notifications. Orion proposals reuse these same functions.
-- **rules** (`backend/app/rules`). Pure functions with unit tests, no database and no I/O: checklist assembly, AI tiering,
-  readiness, RAG, status rules, gate validation, OCET maths, reminder triggers. This is where the business rules live.
-- **services** (`backend/app/services`). Every external system and AI capability is a Python `Protocol` in
-  `interfaces.py`. `factory.py` is the only place that picks a mock or live class. Mocks are deterministic and log
-  `[MOCK <Service>] ...` lines.
-- **Orion agent.** `AIService` produces text and structured suggestions from facts the rules computed. It has no
-  write path to decisions. When Orion suggests a change (create a transition, update an item, request approval)
-  it stores a proposal. `POST /orion/proposals/{id}/accept` is a human request: it runs the normal domain function
-  as the signed-in user, with the note "Accepted Orion proposal <id>". A test covers this (BR-050, NFR-04).
-- **Data.** SQLite for the demo. The database URL is configurable for Azure SQL or PostgreSQL later. Seed files in
-  `seed/` are read in place and loaded idempotently; reset takes under 10 seconds.
+| Folder | What is there |
+|---|---|
+| `backend/app/routers` | HTTP only: parse, check permission, call a domain function, return a response model |
+| `backend/app/domain` | Everything that touches the database: writes, audit events, notifications, Orion proposals |
+| `backend/app/rules` | Business rules as pure functions with unit tests (no database, no I/O) |
+| `backend/app/services` | `interfaces.py` (one Protocol per external system), `factory.py` (the only place that picks mock or live), `mock/`, `live/` (stubs), `cards/` (Adaptive Card JSON) |
+| `backend/app/schemas` | Pydantic request and response models |
+| `backend/app/seed`, `seed/` | Idempotent loader, and the JSON seed files it reads |
+| `frontend/src/features` | One folder per area (workspace, gates, ocet, supportModel, orion, drafts, admin, ...) |
+| `frontend/src/components` | Shared UI |
+| `frontend/src/api` | The single typed client (`client.ts`) and generated API types |
+
+The UI only talks to `/api/v1`. Filters and tabs live in the URL, so every page has a stable deep link. The app runs in an
+iframe (no pop-ups; downloads use fetch plus a temporary link). When Orion suggests a change it stores a proposal;
+accepting it (`POST /orion/proposals/{id}/accept`) is a human request that runs the normal domain function as the signed-in user.
 
 ---
 
-## 4. Mock to real service mapping (spec section 10, NFR-10)
+## 4. Mock to real service mapping (spec section 10)
 
-Switching to a live service must not change the routers or the UI (NFR-01). Each live class already exists as a stub
-in `backend/app/services/live/`. The stub's docstring names the real call.
+Each live class already exists as a stub in `backend/app/services/live/`; its docstring names the real call.
+`services/factory.py` is the only place that chooses, using `backend/app/config.py`. Today two switches exist
+(`MAIL_MODE` and `AI_MODE`); for the others the stub is ready and the change is one line in `factory.py`.
 
-| Interface | Real service | What the demo does today | What the live version needs |
+| Interface | Real service | Demo today | Selected by |
 |---|---|---|---|
-| `AIService` | Azure OpenAI / Azure AI Foundry | Template-based text filled with real data, keyword intents for chat, deterministic field extraction against reference data. No randomness. `AI_MODE=live` is accepted but the factory logs a warning and still uses the mock. `live/ai.py` is a stub. | Azure OpenAI deployment and key (from Key Vault). Chat completion and tool calling with the rule-computed facts in the prompt. Fall back to the mock on any error. Numbers and decisions stay in the rules. Deferred, see section 8. |
-| `MailService` | Microsoft Graph | Writes an email row to the Outbox and logs the call it would make. `MAIL_MODE=graph` selects `LiveMailService`, which raises "not implemented". | Graph application permission `Mail.Send`, restricted to the Orion shared mailbox with Exchange RBAC for Applications. Call `POST /users/{mailbox}/sendMail`. Keep the Outbox record. |
-| `NotificationService` (in-app) | Orion database | Notification rows (the bell). | Nothing external. Stays in the database. |
-| `NotificationService.post_teams_card` | Teams bot (Azure Bot Service) | Writes a Teams row to the Outbox with the Adaptive Card JSON. Cards are in `services/cards/` (approval request, reminder digest, OCET approval). The Outbox shows a preview with actions disabled. | Teams app and bot approval, proactive messages to users, `Action.Execute` handler that calls the Approvals API. The card JSON is posted unchanged. Phase 2. |
-| `ServiceNowService` | ServiceNow Table API | Looks up PRJ0052210 and PRJ0049920 in `seed/mock_external_systems.json`. Unknown id gives a friendly "not found". | API access and credentials. `GET /api/now/table/pm_project?number=<id>` and a field mapping. |
-| `ConfluenceService` | Confluence REST API | Returns the first mock page whose `url_contains` matches the URL, else a generic page. | Confluence access. Resolve the page from the URL and read `body.storage` for the support model generator. |
-| `DocumentStore` | SharePoint (Graph drive) | Saves files under `backend/app/storage/<transition>/` and returns a fake `sharepoint.example` link. | SharePoint site and permissions. Upload with Graph drive item calls and store the real link. Evidence holds links, not copies. |
-| `TranscriptService` | Teams/Stream transcripts, Azure AI Speech | Reads `.vtt`, `.txt`, `.docx` for real. Audio and video get a canned snippet and a log line. | Fetch the Teams or Stream transcript, or batch transcription with Azure AI Speech for recordings. |
-| `SupportModelGenerator` | Azure OpenAI multimodal (AI Foundry) | If the transition name or Confluence URL contains the word VOC or Medallia, returns the VOC sample landscape. Otherwise builds a generic landscape. The PPT export is real (python-pptx, 5 slides). | Pipeline: transcript text and diagram images to a multimodal model, structured JSON in the same schema, then human review. The PPT template "PTIV ORB" is still a placeholder (section 7). |
+| `MailService` | Microsoft Graph (`Mail.Send`, shared mailbox, `POST /users/{mailbox}/sendMail`) | Outbox row, logged | `MAIL_MODE`: `mock` or `graph` (stub raises "not implemented") |
+| `NotificationService` (Teams) | Teams bot and Adaptive Cards (Azure Bot Service; `Action.Execute` calls the Approvals API) | Outbox row with the card JSON, actions disabled | Mock only; stub in `live/notification.py` |
+| `ServiceNowService` | ServiceNow Table API (`pm_project`) | Looks up PRJ0052210 and PRJ0049920 in `seed/mock_external_systems.json` | Mock only; stub in `live/servicenow.py` |
+| `ConfluenceService` | Confluence REST API (`body.storage`) | Canned pages matched on the URL | Mock only; stub in `live/confluence.py` |
+| `DocumentStore` | SharePoint (Graph drive). Evidence holds links, not copies. | Files in `STORAGE_DIR`, fake `sharepoint.example` link | Mock only; stub in `live/document_store.py` |
+| `AIService`, `SupportModelGenerator`, `TranscriptService` | Azure OpenAI / AI Foundry (chat, tool calling, multimodal), Teams or Stream transcripts, Azure AI Speech | Templates filled with real data, keyword intents, deterministic extraction. If the transition name or the Confluence URL contains the whole word "VOC" or "Medallia" (any case), it gives the Medallia VOC landscape; otherwise a generic one. | `AI_MODE`: `live` is accepted but logs a warning and uses the mock. Endpoint, key and deployment go in `AZURE_OPENAI_*`. |
+
+Rules and numbers always stay in `rules/`; AI only words them, and a live AI must fall back to the mock on any error.
+The PowerPoint export is real (python-pptx, 5 slides; the "PTIV ORB" template is still a placeholder).
 
 ---
 
-## 5. Security and compliance placeholders (NFR-10)
-
-What is in the demo and what is still to do for production.
+## 5. Security placeholders (demo level, NFR-10)
 
 | Area | In the demo | For production |
 |---|---|---|
-| Sign-in | Demo login: pick a user, no password. The `X-Demo-User` header identifies the user. This is demo only (A-23). It is isolated in `deps.get_current_user`. | **Microsoft Entra ID single sign-on.** Validate the token in `get_current_user`. Map Entra groups to Orion roles. No router change is needed. |
-| Roles | Permission matrix as data in `backend/app/permissions.py` (spec 3.3). 403 responses carry a human reason. | Same matrix, driven by Entra groups. |
-| Per-transition access | `backend/app/access.py`: a role is not enough, the person must be assigned to that role on that transition. Orion proposals inherit the same check. | Keep. Move to a generic assignment table if roles become configurable. |
-| Secrets | None in code. `backend/.env.example` only. | **Azure Key Vault** for the Azure OpenAI key, Graph and ServiceNow credentials. Managed identity where possible. |
-| Data classification | Demo data is synthetic. | Classify OCET and architecture data (support models, diagrams) as **Confidential**. Apply labels and access in SharePoint and in the database. Decide retention. |
-| Audit trail | Every write creates an `AuditEvent` with actor type **Human**, **Workflow rule**, **Orion agent** or **System**, plus before and after values (NFR-03). | Ship audit events to the client's log platform. |
-| Orion as an AI agent | Designed as a **Tier 2** agent under the client's AI Playbook: internal audience, bounded scope, advisory, no writes to systems of record (BR-050). Enforced in the service layer and covered by a test. | Register Orion in the AI inventory. Confirm the tier with the IRM. Run the AI Playbook assessment on Orion itself. |
-| VAPT hygiene (A-24, A-43) | Latest pinned dependencies (`backend/constraints.txt` pins the full set). `pip-audit` and `npm audit` via `scripts\audit.ps1` / `make audit`. CORS allow-list. Security headers: `X-Content-Type-Options`, `Referrer-Policy`, CSP `frame-ancestors` for self and Teams (not `X-Frame-Options: DENY`, because the app must run in a Teams iframe). Upload limits (`MAX_UPLOAD_MB`), filename sanitising, extension checks, path-traversal-safe storage. Draft HTML is sanitised and shown only in a sandboxed iframe. No stack traces or request input in error responses. React Router 7 is used instead of 6 because 6.x has open advisories. | Run the client's VAPT. Review headers behind the real gateway. Re-run the audits on every release. |
+| Sign-in and roles | Pick a user, no password; the `X-Demo-User` header, isolated in `deps.get_current_user` (A-23). Permission matrix in `permissions.py`. | **Entra ID single sign-on** plus role-based access from Entra groups. Only `get_current_user` changes. |
+| Per-transition access | Role plus assignment on that transition; Orion proposals inherit it (A-75) | Keep |
+| Secrets | None in code; `.env.example` only | **Azure Key Vault** for Azure OpenAI, Graph and ServiceNow credentials |
+| Data classification | Synthetic data | Classify OCET and architecture data as **Confidential**; apply labels and retention |
+| Audit | Every write has an `AuditEvent` (actor type, before and after values) | Ship events to the client's log platform |
+| Orion as an AI agent | Designed as a **Tier 2** agent: internal, bounded, advisory, no writes to systems of record | Register Orion in the AI inventory; confirm the tier with the IRM |
+| Web hygiene (A-24) | CORS allow-list, `X-Content-Type-Options`, `Referrer-Policy`, CSP `frame-ancestors` for self and Teams (not `X-Frame-Options: DENY`), upload limits and filename checks, sandboxed draft preview, no stack traces in errors, pinned dependencies | Client VAPT; review headers behind the gateway; re-run `scripts\audit.ps1` every release |
 
 ---
 
-## 6. How the code is organised
+## 6. Admin
 
-```
-README.md  PLAN.md  CLAUDE.md  Makefile
-docs/        REQUIREMENTS.md (spec), DEMO_SCRIPT.md, DEMO_SCRIPT_M5.md (earlier milestone script)
-seed/        JSON seed data: users, transitions, framework, AI playbook, eval metrics, OCET sample, support model samples
-reference/   client HTML prototype (labels only)
-scripts/     setup.ps1, dev.ps1, test.ps1, reset.ps1, audit.ps1, gen-api.ps1, dev.sh
-backend/
-  app/
-    main.py config.py db.py deps.py permissions.py access.py clock.py errors.py middleware.py scheduler.py
-    models/    SQLAlchemy models
-    schemas/   Pydantic request/response models
-    routers/   one module per area, thin
-    domain/    database-aware operations, audit, proposals, reminders
-    rules/     pure business rules
-    services/  interfaces.py, factory.py, mock/, live/ (stubs), cards/ (Adaptive Card JSON), pptx_support_model.py
-    seed/      loader (idempotent), status synthesis
-    storage/   uploaded files and generated PPT
-  tests/       pytest: rules, API, permissions, services, seed, security
-frontend/src/
-  api/         typed client, generated schema
-  features/    one folder per area (intake, workspace, gates, ocet, supportModel, orion, drafts, admin, ...)
-  components/  shared UI   layout/  app shell   theme/  colour tokens   pages/  login
-```
+The **Admin** page (Playbook admin only) has 8 sections in a menu on the left. An admin changes the following without code (A-85):
 
-### Tests and checks
-
-| Command | What it runs |
+| Section | What an admin changes there |
 |---|---|
-| `scripts\test.ps1` (Windows) or `make test` | Everything below in one go (`make test` skips lint; use `make lint`). |
-| `cd backend && .venv\Scripts\python.exe -m pytest -q` | Backend unit and API tests. |
-| `cd backend && .venv\Scripts\ruff.exe check .` and `black.exe --check .` | Backend lint and format. |
-| `cd frontend && npm run build` | TypeScript strict type-check (`tsc -b`) and the production build. |
-| `cd frontend && npm run lint` | eslint. |
-| `scripts\audit.ps1` or `make audit` | Dependency vulnerability scan. |
+| **Checklists & items** | The checklists and the items in them: title, gate, area, which tiers and project types they apply to. |
+| **Project types** | Add or edit a project type: which checklists it uses, whether it needs tiering, an AI profile or eval metrics, and which form fields are required. |
+| **Portfolios** | Add or edit a portfolio (mobility landscape category), its golden-set checklist and whether it needs sites. |
+| **Forms & dropdowns** | The labels, help text, order and visibility of the New transition form fields, extra custom fields, and the values in every dropdown list. |
+| **People & permissions** | Add or deactivate people, rename roles, and decide what each role may do (permission grid). |
+| **Rules & thresholds** | The tiering questions and tier definitions, approval chains, reminder rules, thresholds and AI evaluation targets. |
+| **Messages** | The wording of Orion drafts, e-mails and Teams cards. |
+| **Demo controls** | Reset demo data, fast-forward the flagship, set today's date, run the reminder engine (only when `DEMO_MODE=true`). |
 
-After you change a backend response model, regenerate the frontend types: `make openapi` or `scripts\gen-api.ps1`.
+The gate names, the three lenses (Business, Technical, Compliance) and the Orion guardrails stay fixed.
 
 ---
 
-## 7. Open points for the client (spec section 17)
-
-Assumptions built into the demo, all configurable:
-
-1. The 72 Framework activities apply to every transition. The AI Playbook adds tier-filtered items for Agentic AI and Combined.
-2. The lens (Business, Technical, Compliance) of each Framework activity is a suggested mapping by category. The UI shows "lens suggested".
-3. One gate model: SG0, SG2, SG3, AtD (SG4), Hypercare (SG5), AtO (SG6), Closure.
-4. Approval chains: OCET is Planner then OLM. AtD is OLM then IRM. AtO is IRM then OLM. Support model is Architect then OLM.
-5. Evidence lives in SharePoint (mocked). Orion stores links.
-6. Eval metric targets are the same for every tier until confirmed.
-7. Orion itself is designed as a Tier 2 agent.
+## 7. Open points for the client (spec section 17, PLAN.md section 6)
 
 Questions for the S&T team:
 
@@ -262,39 +230,27 @@ Questions for the S&T team:
 2. Please confirm the lens per Framework activity and the final golden set per portfolio.
 3. What are the tier-specific evaluation thresholds?
 4. Who signs AtD and AtO exactly (SOM, OR focal, IRM)? Is ERS the same as IRM?
-5. OCET: default growth rules, currency, horizon (5 or 6 years), and must the Excel template be kept?
-6. Please share the support model PPT master ("PTIV ORB" format).
+5. OCET: default growth rules, currency, horizon (5 or 6 years); must the Excel template be kept?
+6. Please share the support model PowerPoint master ("PTIV ORB" format).
 7. Access for the real build: ServiceNow API, Confluence, SharePoint site, Orion shared mailbox (Graph), Azure OpenAI / Foundry, Teams app approval.
 
-Further open questions recorded while building (see the assumption in PLAN.md):
-
-8. **Support model regenerated after Agreed (A-70).** A new version created after the model was Agreed leaves the linked items Complete. Should a regenerated model reopen them and restart the review?
-9. **Compliance items and workflow rules (A-10).** The four Compliance-lens support model items stay with the IRM; workflow rules never set Compliance statuses. Is that right?
-10. **SG3 stage review (A-12).** Open Compliance items are shown as information, not blockers. Confirm.
-11. **Approved exceptions (A-09).** An approved exception counts as done for readiness. Confirm.
-12. **CISO/BISO step (A-57).** Mocked in the demo; the IRM approves it. Who approves it in production?
-13. **Tier-excluded items (A-40).** If the tier changes, items that no longer apply become "Not applicable"; statuses and evidence of items that still apply are kept. Confirm.
-14. **Demo shortcuts.** Fast-forward flagship and Set today exist only when `DEMO_MODE=true`. They must be off in any shared environment.
+Assumptions built into the demo (all configurable, details in PLAN.md section 5): the 72 Framework activities apply to every
+transition; lens per activity is a suggested mapping; one gate model (SG0, SG2, SG3, AtD, Hypercare, AtO, Closure);
+approval chains are OCET = Planner then OLM, AtD = OLM then IRM, AtO = IRM then OLM, support model = Architect then OLM;
+evidence lives in SharePoint (mocked); eval targets are the same for every tier; Orion is a Tier 2 agent.
+Still to confirm: whether regenerating the support model after it is Agreed should reopen the linked checklist items (today they stay Complete, A-70), Compliance items stay with the IRM (A-10),
+SG3 shows open Compliance items as information (A-12), an approved exception counts as done (A-09),
+who approves the CISO/BISO step in production (A-57).
 
 ---
 
-## 8. Known gaps and deferred items
+## 8. Known limitations of the demo
 
-Not in the MVP (PLAN.md section 3):
-
-| Item | Spec | State |
-|---|---|---|
-| Teams preview page | FR-120 | Not built. Adaptive Cards are visible in the **Outbox** with actions disabled. In the demo, approvals are done in the **Approvals** inbox (A-13). |
-| Risk acceptance (conditional AtO) | 8.7 f | Not shown. |
-| OCET Excel export | 8.10 | Button hidden. PPT export for the support model is built. |
-| Support Model Retriever | FR-130 | `/support-models` lists generated models only. |
-| Live LLM mode (`AI_MODE=live`) | 10.1 | Stub only. The mock is always used. |
-
-Other known limits:
-
-- Python 3.15.2 is not yet installed on the build machine (blocked by the corporate web filter, A-01). Tests ran on 3.14.7.
-- The support model PPT uses a placeholder template name and look.
-- The M3-M5 review findings in PLAN.md (R-01) and the final polish items (M10) are tracked there.
-- Seeded data is synthetic. Golden sets are approximate (from the client prototype). Readiness for tiny scopes cannot hit the spec's plus or minus 3 points (A-37).
-
-**In progress:** admin no-code configuration (CR-01), so project types, option lists, intake fields, thresholds, chains, rules and templates can be edited in Admin without code changes. This section will be updated when it lands.
+- Every integration and the AI are **mocks**: the same input gives the same output. The Outbox shows the e-mail and Teams card that would be sent.
+- **SQLite** and a local `storage/` folder. A database whose schema version differs from the code is dropped and re-seeded at startup (`SCHEMA_AUTO_RESET`).
+- **Demo clock:** Admin can set "today" and fast-forward the flagship. Both exist only when `DEMO_MODE=true`; switch them off in any shared environment.
+- **No real sign-in:** anyone can pick any user.
+- Not built: Teams preview page (approvals are done in the Approvals inbox, A-13), risk acceptance (conditional AtO), OCET Excel export, Support Model Retriever, live LLM mode.
+- Seed data is synthetic and golden sets are approximate. Readiness for very small scopes cannot always hit the spec's plus or minus 3 points (A-37).
+- The CISO/BISO step of the exception chain has no real approver: in demo mode the IRM approves it, labelled "(mock)" (A-57). Evaluation results are imported from sample data, not from a real test run. Gate history is seeded only for the flagship (A-20).
+- Stack notes: React Router 7 is used instead of v6 and Python 3.14 instead of 3.11 (A-01, A-43).
