@@ -3443,6 +3443,11 @@ export interface components {
             items: components["schemas"]["AuditEventOut"][];
             /** Total */
             total: number;
+            /**
+             * Entities
+             * @default []
+             */
+            entities: string[];
         };
         /** AutonomousModeIn */
         AutonomousModeIn: {

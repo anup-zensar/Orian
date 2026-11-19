@@ -176,3 +176,23 @@ def test_every_storyline_write_has_an_actor_type(client, headers, db, fresh_seed
     assert types <= {"Human", "Workflow rule", "Orion agent", "System"}
     user_ids = {u for u in db.scalars(select(AuditEvent.actor_user_id)).all() if u}
     assert user_ids <= set(db.scalars(select(User.id)).all())
+
+
+def test_entities_list_the_whole_trail_for_the_entity_filter(client, headers, db, fresh_seed):
+    """The Entity filter offers every entity in the trail, not only those on the loaded page."""
+    _make_events(client, headers)
+    db.expire_all()
+    entities = _audit(client, headers, limit=1)["entities"]
+    assert entities == sorted(set(entities))
+    assert set(entities) == set(db.scalars(select(AuditEvent.entity).distinct()).all())
+    assert {"Action", "Risk", "TransitionItem"} <= set(entities)
+
+    # Neither the other filters nor the paging narrow the list (this page is empty).
+    narrowed = _audit(client, headers, entity="Risk", actor="U14", limit=1, offset=1)
+    assert narrowed["items"] == [] and narrowed["entities"] == entities
+
+    # With a transition, only that transition's entities.
+    scoped = _audit(client, headers, transition_id=T, limit=1)["entities"]
+    in_db = db.scalars(select(AuditEvent.entity).where(AuditEvent.transition_id == T)).all()
+    assert scoped == sorted(set(in_db))
+    assert {"Action", "Risk", "TransitionItem"} <= set(scoped)

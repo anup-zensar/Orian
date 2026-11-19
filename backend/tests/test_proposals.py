@@ -5,6 +5,8 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import func, select
 
+from app.db import SessionLocal
+from app.domain import audit, proposals
 from app.domain.proposals import create_proposal
 from app.models import (
     Action,
@@ -179,6 +181,41 @@ def test_accept_create_action(client, db, headers, fresh_seed):
         select(AuditEvent).where(AuditEvent.entity == "Action", AuditEvent.action == "created")
     ).all()
     assert any(f"Accepted Orion proposal {row.id}" in e.note for e in created)
+
+
+def test_accept_tags_only_the_events_of_the_accepted_operation(
+    client, db, headers, fresh_seed, monkeypatch
+):
+    """An event that another request commits while the proposal runs keeps its own note."""
+    original = proposals._execute
+
+    def execute_while_another_request_writes(session, user, row, t):
+        other = SessionLocal()
+        try:
+            audit.record(
+                other,
+                actor="U02",
+                actor_type="Human",
+                entity="Probe",
+                entity_id="P1",
+                action="created",
+                note="another request",
+            )
+            other.commit()
+        finally:
+            other.close()
+        return original(session, user, row, t)
+
+    monkeypatch.setattr(proposals, "_execute", execute_while_another_request_writes)
+    row = _make(db, "create_action", _action_payload())
+    assert _accept(client, headers, row.id).status_code == 200
+    db.expire_all()
+    probe = db.scalar(select(AuditEvent).where(AuditEvent.entity == "Probe"))
+    assert probe.note == "another request"
+    created = db.scalars(
+        select(AuditEvent).where(AuditEvent.entity == "Action", AuditEvent.action == "created")
+    ).all()
+    assert any(e.note.endswith(f"Accepted Orion proposal {row.id}") for e in created)
 
 
 def test_accept_twice_is_409_and_unknown_is_404(client, db, headers, fresh_seed):

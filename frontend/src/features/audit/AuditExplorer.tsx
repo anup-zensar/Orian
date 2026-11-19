@@ -147,9 +147,6 @@ export function AuditExplorer({ transitionId }: { transitionId?: string }) {
   const users = useUsers();
   const transitions = useTransitions({});
   const actorTypes = useOptions('actor_types');
-  // Entity names come from the events themselves (new record kinds such as config:<section> appear
-  // automatically); names seen once stay in the list while a filter narrows the page.
-  const [entities, setEntities] = useState<string[]>([]);
 
   const entityId = get('entityId');
   const offset = Number(get('offset')) || 0;
@@ -165,18 +162,14 @@ export function AuditExplorer({ transitionId }: { transitionId?: string }) {
     offset: entityId ? 0 : offset,
   };
   const audit = useAudit(query, transitionId);
+  // Every entity name in the trail (of this transition) comes with each page, so the Entity filter
+  // offers all of them; new record kinds such as config:<section> appear automatically.
+  const entities = audit.data?.entities ?? [];
 
   const rows = useMemo(() => {
     const all = audit.data?.items ?? [];
     return entityId ? all.filter((e) => e.entity_id === entityId) : all;
   }, [audit.data, entityId]);
-  // Adjust state while rendering when a new page arrives (cheaper than an effect).
-  const [seenPage, setSeenPage] = useState<typeof audit.data>(undefined);
-  if (audit.data !== seenPage) {
-    setSeenPage(audit.data);
-    const seen = (audit.data?.items ?? []).map((e) => e.entity);
-    setEntities([...new Set([...entities, ...seen])].sort());
-  }
   const total = entityId ? rows.length : (audit.data?.total ?? 0);
   const dateError = !!query.from && !!query.to && query.from > query.to;
 

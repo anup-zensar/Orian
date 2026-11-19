@@ -63,7 +63,9 @@ def readiness_narrative(ctx: Mapping[str, Any]) -> str:
     else:
         parts.append("There are no open conditions due by this gate.")
     if first_action:
-        parts.append(f"Recommended next step: {first_action}.")
+        # A label can end with an item title that is a question ("... the application?").
+        stop = "" if str(first_action).endswith((".", "?", "!")) else "."
+        parts.append(f"Recommended next step: {first_action}{stop}")
     log_mock("AIService", "readiness_narrative", name=name, verdict=verdict, blockers=n_block)
     return " ".join(parts)
 
@@ -127,11 +129,12 @@ def _one(gap: Mapping[str, Any]) -> dict[str, Any]:
             [item_id],
         )
     if gap.get("owner_user_id"):
-        who = f" from {owner}" if owner else ""
         if gap.get("exception_ref"):
             label = _ask_to_approve_exception(gap, item_id)
         else:
-            label = f"Draft a chaser for {item_id} {title}{who}"
+            # "Draft a chaser to Daniel Brooks for S02-033 ...": the owner is the one being chased.
+            to_owner = f" to {owner}" if owner else ""
+            label = f"Draft a chaser{to_owner} for {item_id} {title}"
         return _proposal("draft_chaser", item_id, label, [item_id])
     return _proposal("create_action", item_id, f"Create an action for {item_id} {title}", [item_id])
 

@@ -57,14 +57,14 @@ from datetime import date
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
 from app.access import ensure_open, is_assigned, transition_denial
 from app.domain import audit, cfg
 from app.errors import BadRequest, Conflict, Forbidden, NotFound
-from app.models import AuditEvent, OrionProposal, Transition, TransitionItem, User
+from app.models import OrionProposal, Transition, TransitionItem, User
 from app.permissions import DENIAL_REASONS, Perm, has_perm
 from app.rules.constants import ACTOR_HUMAN, DECISION_GATES, STATUSES_BY_LENS
 from app.schemas.common import PersonRef
@@ -522,13 +522,11 @@ def accept_proposal(db: Session, proposal_id: int, user: User) -> AcceptOut:
     if reason is not None:
         _raise_denied(db, row, reason)
     t = db.get(Transition, row.transition_id) if row.transition_id else None
-    db.flush()
-    last_event = db.scalar(select(func.max(AuditEvent.id))) or 0
-    result, navigate = _execute(db, user, row, t)
-    db.flush()
+    with audit.collect(db) as events:
+        result, navigate = _execute(db, user, row, t)
     # The business change(s) made by the normal operation carry the proposal note too (spec 7.10).
     tag = f"Accepted Orion proposal {row.id}"
-    for event in db.scalars(select(AuditEvent).where(AuditEvent.id > last_event)):
+    for event in events:
         event.note = f"{event.note} - {tag}" if event.note else tag
     row.status = "Accepted"
     row.accepted_by = user.id

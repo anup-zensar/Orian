@@ -42,6 +42,12 @@ def query_audit(db: Session, filters: AuditFilters) -> AuditPageOut:
         .offset(filters.offset)
     ).all()
 
+    # The Entity filter offers every entity in the trail, not only those on the loaded page.
+    entity_query = select(AuditEvent.entity).distinct().order_by(AuditEvent.entity)
+    if filters.transition_id:
+        entity_query = entity_query.where(AuditEvent.transition_id == filters.transition_id)
+    entities = list(db.scalars(entity_query))
+
     user_ids = {r.actor_user_id for r in rows if r.actor_user_id}
     transition_ids = {r.transition_id for r in rows if r.transition_id}
     users = (
@@ -78,4 +84,5 @@ def query_audit(db: Session, filters: AuditFilters) -> AuditPageOut:
             for r in rows
         ],
         total=total,
+        entities=entities,
     )

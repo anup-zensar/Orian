@@ -48,6 +48,8 @@ import {
 const useStyles = makeStyles({
   steps: { display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap' },
   stack: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
+  // A native select is as wide as its longest option; let it shrink to the card instead.
+  fit: { minWidth: 0 },
   question: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -314,37 +316,32 @@ function ProposalStep(props: {
             ) : (
               proposeBtn
             )}
-            <>
-              {confirmReason ? (
-                <Tooltip content={confirmReason} relationship="description">
-                  <span>
-                    <Button appearance="primary" disabled>
-                      Confirm tier
-                    </Button>
-                  </span>
-                </Tooltip>
-              ) : (
-                <Button
-                  appearance="primary"
-                  disabled={confirm.isPending || !storedTier}
-                  onClick={() => storedTier && doConfirm(storedTier)}
-                >
-                  {`Confirm tier ${storedTier}`}
-                </Button>
-              )}
-              {canConfirmNow ? (
-                <Button onClick={() => setChanging((v) => !v)}>Change tier</Button>
-              ) : (
-                <Tooltip
-                  content={confirmReason ?? 'No tier proposed yet'}
-                  relationship="description"
-                >
-                  <span>
-                    <Button disabled>Change tier</Button>
-                  </span>
-                </Tooltip>
-              )}
-            </>
+            {confirmReason ? (
+              <Tooltip content={confirmReason} relationship="description">
+                <span>
+                  <Button appearance="primary" disabled>
+                    Confirm tier
+                  </Button>
+                </span>
+              </Tooltip>
+            ) : (
+              <Button
+                appearance="primary"
+                disabled={confirm.isPending || !storedTier}
+                onClick={() => storedTier && doConfirm(storedTier)}
+              >
+                {`Confirm tier ${storedTier}`}
+              </Button>
+            )}
+            {canConfirmNow ? (
+              <Button onClick={() => setChanging((v) => !v)}>Change tier</Button>
+            ) : (
+              <Tooltip content={confirmReason ?? 'No tier proposed yet'} relationship="description">
+                <span>
+                  <Button disabled>Change tier</Button>
+                </span>
+              </Tooltip>
+            )}
           </div>
           {!can('confirm_tier') && (
             <Caption1>Confirm / change tier: {reasonFor('confirm_tier')}</Caption1>
@@ -352,7 +349,7 @@ function ProposalStep(props: {
           {changing && canConfirmNow && (
             <div className={s.stack}>
               <Field label="New tier" required>
-                <Select value={newTier} onChange={(_, d) => setNewTier(d.value)}>
+                <Select className={s.fit} value={newTier} onChange={(_, d) => setNewTier(d.value)}>
                   <option value="">Select…</option>
                   {props.reference.tiers.map((x) => (
                     <option key={x.tier} value={String(x.tier)}>

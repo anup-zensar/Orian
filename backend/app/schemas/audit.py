@@ -47,3 +47,6 @@ class AuditFilters(BaseModel):
 class AuditPageOut(BaseModel):
     items: list[AuditEventOut]
     total: int  # matching rows before limit/offset
+    # Every entity name in the trail (of the transition when ``transition_id`` is set), sorted, for the
+    # Entity filter; the other filters and the paging do not narrow it.
+    entities: list[str] = []

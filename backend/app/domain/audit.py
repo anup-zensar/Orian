@@ -8,7 +8,8 @@ linked items), ``Orion agent`` (AI drafted/proposed something – never a decisi
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from datetime import date, datetime, time
 from typing import Any
 
@@ -17,6 +18,8 @@ from sqlalchemy.orm import Session
 from app import clock
 from app.models import AuditEvent, User
 from app.rules.constants import ACTOR_TYPES
+
+_COLLECTORS = "audit_collectors"  # key in Session.info: the lists of open ``collect`` blocks
 
 
 def _jsonable(value: Any) -> Any:
@@ -65,7 +68,23 @@ def record(
         note=note,
     )
     db.add(event)
+    for events in db.info.get(_COLLECTORS, ()):
+        events.append(event)
     return event
+
+
+@contextmanager
+def collect(db: Session) -> Iterator[list[AuditEvent]]:
+    """Collect the AuditEvents that ``record`` adds to ``db`` inside the block, e.g. to tag the events of
+    one operation. Only this session's events: every request has its own session, so events written by
+    a concurrent request never end up in the list."""
+    events: list[AuditEvent] = []
+    active = db.info.setdefault(_COLLECTORS, [])
+    active.append(events)
+    try:
+        yield events
+    finally:
+        active.pop()  # blocks nest, so this block's list is the last one
 
 
 def snapshot(obj: Any, fields: list[str] | tuple[str, ...]) -> dict[str, Any]:

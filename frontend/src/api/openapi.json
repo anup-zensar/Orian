@@ -13830,6 +13830,14 @@
           "total": {
             "type": "integer",
             "title": "Total"
+          },
+          "entities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Entities",
+            "default": []
           }
         },
         "type": "object",

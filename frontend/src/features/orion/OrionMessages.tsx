@@ -58,6 +58,8 @@ const useStyles = makeStyles({
     fontSize: tokens.fontSizeBase200,
   },
   form: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS },
+  // A native select is as wide as its longest option; let it shrink to the panel instead.
+  fit: { minWidth: 0 },
   row: { display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap', alignItems: 'center' },
 });
 
@@ -104,6 +106,7 @@ function OrionForm(props: {
         <Field key={f.name} label={f.label} required={f.required}>
           {f.options ? (
             <Select
+              className={s.fit}
               disabled={locked}
               value={values[f.name] ?? ''}
               onChange={(_, d) => setValues((v) => ({ ...v, [f.name]: d.value }))}

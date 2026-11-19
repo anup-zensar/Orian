@@ -217,3 +217,15 @@ def test_ai_service_methods_implemented():
     assert ai.chat("what is OCET?", {})["intent"] == "glossary"
     assert ai.chat("zzz", {})["intent"] == "fallback"
     assert ai.leadership_update({"title": "T"}).startswith("# T")
+
+
+def test_readiness_narrative_ends_the_next_step_with_one_stop():
+    ai = MockAIService()
+    base = {"name": "Demo", "verdict": "Not ready", "gate_short": "AtD"}
+    question = (
+        "Draft a chaser to Daniel Brooks for S02-033 How many users will be using the application?"
+    )
+    text = ai.readiness_narrative({**base, "first_action": question})
+    assert text.endswith(f"Recommended next step: {question}") and "?." not in text
+    plain = ai.readiness_narrative({**base, "first_action": "Request approval"})
+    assert plain.endswith("Recommended next step: Request approval.")
