@@ -17,7 +17,7 @@ from app.domain import audit, cfg
 from app.domain.approvals import exception_status
 from app.domain.conditions import create_condition
 from app.domain.records import get_transition, person, users_by_id
-from app.errors import BadRequest, Conflict, NotFound
+from app.errors import BadRequest, Conflict, Forbidden, NotFound
 from app.models import (
     Condition,
     Evidence,
@@ -26,7 +26,7 @@ from app.models import (
     TransitionItem,
     User,
 )
-from app.permissions import Perm
+from app.permissions import Perm, has_perm
 from app.rules import status as status_rules
 from app.rules.checklist import EXCLUDED_BY_PROJECT_TYPE, EXCLUDED_BY_TIER
 from app.rules.constants import (
@@ -590,7 +590,10 @@ def patch_item(db: Session, item_id: int, body: ItemPatchIn, user: User) -> Item
 
 # --- bulk -----------------------------------------------------------------------------------------
 def bulk_items(db: Session, body: BulkItemsIn, user: User) -> BulkResultOut:
-    ensure(user, Perm.CONFIRM_SCOPE)
+    if not has_perm(user.role, Perm.CONFIRM_SCOPE):
+        if body.owner_user_id is not None and body.mark_na is None:
+            raise Forbidden("Only the OR focal can change items in bulk")  # owner-only request
+        ensure(user, Perm.CONFIRM_SCOPE)
     reasons: list[str] = []
     if body.owner_user_id is None and body.mark_na is None:
         reasons.append("Choose an owner and/or mark the items N/A")

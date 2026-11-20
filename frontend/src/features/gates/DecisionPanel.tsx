@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Caption1, Checkbox, Subtitle2, makeStyles, tokens } from '@fluentui/react-components';
+import { Toolbar } from '../../components/layout/Toolbar';
 import { ReasonButton } from './ReasonButton';
 import { DecisionDialog } from './DecisionDialog';
 import { usePerm } from './usePerm';
@@ -13,7 +14,6 @@ const useStyles = makeStyles({
     paddingTop: tokens.spacingVerticalM,
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
   },
-  row: { display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap' },
 });
 
 const TITLES: Record<string, string> = {
@@ -79,7 +79,7 @@ export function DecisionPanel(props: {
     <div className={s.root}>
       <Subtitle2 as="h3">{TITLES[gate.type] ?? 'Outcome'}</Subtitle2>
       {gate.type === 'closure' && <ClosureChecklist readiness={readiness} />}
-      <div className={s.row}>
+      <Toolbar>
         {readiness.decision_options.map((o) => (
           <ReasonButton
             key={o.outcome}
@@ -100,7 +100,7 @@ export function DecisionPanel(props: {
             {o.outcome}
           </ReasonButton>
         ))}
-      </div>
+      </Toolbar>
       {outcome && (
         <DecisionDialog
           transitionId={props.transitionId}

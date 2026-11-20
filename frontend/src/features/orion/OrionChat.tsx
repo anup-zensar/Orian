@@ -24,6 +24,7 @@ import {
   Send16Filled,
   Sparkle16Regular,
 } from '@fluentui/react-icons';
+import { ai } from '../../theme/orionTheme';
 import { AiBadge } from '../../components/AiBadge';
 import { ErrorState } from '../../components/ErrorState';
 import {
@@ -39,6 +40,7 @@ import { chatStore, useChatItems, type ChatItem } from './chatStore';
 import { OrionMessageView } from './OrionMessages';
 import { ApiError } from '../../api/client';
 import { useOrionPanel } from './panelContext';
+import { usePerm } from '../gates/usePerm';
 
 const CHAT_LIMIT = 2000;
 const EXTRACT_LIMIT = 20000;
@@ -70,7 +72,9 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalM,
     borderRadius: tokens.borderRadiusMedium,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
-    backgroundColor: tokens.colorNeutralBackground2,
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderTop: `3px solid ${ai.main}`,
+    minWidth: 0,
   },
   wrap: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalXS },
   user: {
@@ -114,6 +118,9 @@ export function OrionChat() {
   const chat = useOrionChat();
   const extract = useOrionExtract();
   const intents = useIntents();
+  const createPerm = usePerm('create_transition');
+  const remindPerm = usePerm('run_reminders');
+  const leadershipPerm = usePerm('generate_leadership_update');
   const fileRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -134,6 +141,7 @@ export function OrionChat() {
     page: typeof window !== 'undefined' ? window.location.pathname : null,
   };
   const busy = chat.isPending || extract.isPending;
+  const hasConversation = items.length > 0;
 
   useEffect(() => {
     endRef.current?.scrollIntoView?.({ block: 'end' });
@@ -202,8 +210,17 @@ export function OrionChat() {
     }
   };
 
+  /** Why a quick action cannot be used by this user (null when it can). */
+  // A quick action the user may not run is disabled with the API's reason (it would answer 403).
+  const quickReason = (id: QuickActionId): string | null => {
+    if (id === 'start_gate_review') return createPerm.reason;
+    if (id === 'draft_owner_reminders') return remindPerm.reason;
+    if (id === 'create_leadership_update') return leadershipPerm.reason;
+    return null;
+  };
+
   const quick = (id: QuickActionId, label: string) => {
-    if (busy) return;
+    if (busy || quickReason(id)) return;
     if (id === 'start_gate_review') {
       // one click: the intake form has the ServiceNow fetch, so go straight there
       navigate('/transitions/new');
@@ -266,7 +283,7 @@ export function OrionChat() {
     .filter((i) => i.result !== 'refusal')
     .map((i) => ({ i, example: i.examples.find((e) => !e.startsWith('(')) }))
     .filter((c): c is { i: (typeof c)['i']; example: string } => !!c.example)
-    .slice(0, 6);
+    .slice(0, 3);
 
   return (
     <div className={s.root}>
@@ -285,23 +302,39 @@ export function OrionChat() {
         ) : (
           <Caption1>No transition in context</Caption1>
         )}
-        <Menu>
-          <MenuTrigger disableButtonEnhancement>
-            <Button size="small" appearance="subtle" icon={<Sparkle16Regular />}>
-              Quick actions
-            </Button>
-          </MenuTrigger>
-          <MenuPopover>
-            <MenuList>
-              {QUICK_ACTIONS.map((a) => (
-                <MenuItem key={a.id} disabled={busy} onClick={() => quick(a.id, a.label)}>
-                  {a.label}
-                </MenuItem>
-              ))}
-            </MenuList>
-          </MenuPopover>
-        </Menu>
-        {items.length > 0 && (
+        {hasConversation && (
+          <Menu>
+            <MenuTrigger disableButtonEnhancement>
+              <Button size="small" appearance="subtle" icon={<Sparkle16Regular />}>
+                Quick actions
+              </Button>
+            </MenuTrigger>
+            <MenuPopover>
+              <MenuList>
+                {QUICK_ACTIONS.map((a) => {
+                  const reason = quickReason(a.id);
+                  const item = (
+                    <MenuItem
+                      key={a.id}
+                      disabled={busy || !!reason}
+                      onClick={() => quick(a.id, a.label)}
+                    >
+                      {a.label}
+                    </MenuItem>
+                  );
+                  return reason ? (
+                    <Tooltip key={a.id} content={reason} relationship="description">
+                      <span>{item}</span>
+                    </Tooltip>
+                  ) : (
+                    item
+                  );
+                })}
+              </MenuList>
+            </MenuPopover>
+          </Menu>
+        )}
+        {hasConversation && (
           <Button
             size="small"
             appearance="subtle"
@@ -315,26 +348,41 @@ export function OrionChat() {
 
       <div className={s.thread} role="log" aria-live="polite" aria-label="Orion conversation">
         <div className={s.welcome}>
-          <div className={s.footer}>
-            <AiBadge />
-            <Subtitle2>How can Orion help?</Subtitle2>
-          </div>
-          <Body1>
-            Pick a quick action, ask a question, or describe a new transition in your own words.
-          </Body1>
-          <div className={s.wrap}>
-            {QUICK_ACTIONS.map((a) => (
-              <Button
-                key={a.id}
-                size="small"
-                appearance="outline"
-                disabled={busy}
-                onClick={() => quick(a.id, a.label)}
-              >
-                {a.label}
-              </Button>
-            ))}
-          </div>
+          {!hasConversation && (
+            <>
+              <div className={s.footer}>
+                <AiBadge />
+                <Subtitle2>How can Orion help?</Subtitle2>
+              </div>
+              <Body1>
+                Pick a quick action, ask a question, or describe a new transition in your own words.
+              </Body1>
+              <div className={s.wrap}>
+                {QUICK_ACTIONS.map((a) => {
+                  const reason = quickReason(a.id);
+                  const btn = (
+                    <Button
+                      key={a.id}
+                      size="small"
+                      appearance="outline"
+                      disabled={busy && !reason}
+                      disabledFocusable={!!reason}
+                      onClick={() => quick(a.id, a.label)}
+                    >
+                      {a.label}
+                    </Button>
+                  );
+                  return reason ? (
+                    <Tooltip key={a.id} content={reason} relationship="description">
+                      {btn}
+                    </Tooltip>
+                  ) : (
+                    btn
+                  );
+                })}
+              </div>
+            </>
+          )}
           <Caption1>Try saying</Caption1>
           <div className={s.wrap}>
             {intents.isError && (

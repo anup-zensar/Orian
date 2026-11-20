@@ -48,7 +48,7 @@ import { SummaryCharts } from './SummaryCharts';
 import { useLeaveGuard } from './useLeaveGuard';
 
 const useStyles = makeStyles({
-  root: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
+  root: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL, minWidth: 0 },
   bar: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalS, alignItems: 'center' },
   orion: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS },
   orionHead: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS },
@@ -256,7 +256,7 @@ function OcetBody({ data, transitionId }: { data: OcetOut; transitionId: string 
       </SectionCard>
 
       {data.explanation && (
-        <SectionCard title="Orion explanation">
+        <SectionCard title="Orion explanation" tone="ai">
           <div className={s.orion}>
             <div className={s.orionHead}>
               <AiBadge />
@@ -441,22 +441,25 @@ export function OcetModule({ transitionId }: TabProps) {
         <EmptyState
           message="No OCET exists for this transition yet."
           action={
-            <Tooltip
-              content={edit.reason ?? ''}
-              relationship="description"
-              visible={edit.allowed ? false : undefined}
-              withArrow
-            >
+            edit.allowed ? (
               <span>
                 <Button
                   appearance="primary"
-                  disabled={!edit.allowed || create.isPending}
+                  disabled={create.isPending}
                   onClick={() => create.mutate(undefined, { onError: showError })}
                 >
                   Create OCET
                 </Button>
               </span>
-            </Tooltip>
+            ) : (
+              <Tooltip content={edit.reason ?? ''} relationship="description" withArrow>
+                <span>
+                  <Button appearance="primary" disabled>
+                    Create OCET
+                  </Button>
+                </span>
+              </Tooltip>
+            )
           }
         />
       </div>

@@ -1,5 +1,5 @@
 import { lazy, type ComponentType } from 'react';
-import { createBrowserRouter } from 'react-router';
+import { Navigate, createBrowserRouter } from 'react-router';
 import { RequireAuth } from './auth/RequireAuth';
 import { RequireRole } from './auth/RequireRole';
 import { AppShell } from './layout/AppShell';
@@ -25,10 +25,6 @@ const NewTransitionPage = named(
 const OrionPage = named(() => import('./features/orion/OrionPage'), 'OrionPage');
 const OutboxPage = named(() => import('./features/outbox/OutboxPage'), 'OutboxPage');
 const ScopePage = named(() => import('./features/intake/ScopePage'), 'ScopePage');
-const SupportModelsPage = named(
-  () => import('./features/supportModels/SupportModelsPage'),
-  'SupportModelsPage',
-);
 const TieringPage = named(() => import('./features/intake/TieringPage'), 'TieringPage');
 const DashboardPage = named(() => import('./features/dashboard/DashboardPage'), 'DashboardPage');
 const ControlTowerPage = named(
@@ -69,7 +65,7 @@ export const router = createBrowserRouter([
           { path: '/drafts', element: <DraftsPage /> },
           { path: '/outbox', element: <OutboxPage /> },
           { path: '/leadership-updates', element: <LeadershipUpdatesPage /> },
-          { path: '/support-models', element: <SupportModelsPage /> },
+          { path: '/support-models', element: <Navigate to="/transitions" replace /> },
           {
             // UI guard only; the backend enforces admin access (403).
             path: '/admin/*',

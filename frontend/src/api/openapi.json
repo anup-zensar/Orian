@@ -25,6 +25,22 @@
               "title": "Include Inactive"
             },
             "description": "Also return inactive project types, portfolios, list values, roles and fields (each carries `active`); the UI filters them itself"
+          },
+          {
+            "name": "X-Demo-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-User"
+            }
           }
         ],
         "responses": {

@@ -14,7 +14,7 @@ import {
 } from '@fluentui/react-components';
 import { AttachRegular, DeleteRegular } from '@fluentui/react-icons';
 import dayjs from 'dayjs';
-import { SectionCard } from '../../../components/SectionCard';
+import { Panel } from './Panel';
 import { useSuccessToast } from '../../admin/useSavedToast';
 import { useApiErrorToast } from '../../../hooks/useApiErrorToast';
 import { useOptions } from '../../reference/options';
@@ -128,7 +128,7 @@ export function InputsStep(props: { transitionId: string; model: SupportModel })
         </MessageBar>
       )}
 
-      <SectionCard title="Confluence / Atlassian link">
+      <Panel title="Confluence / Atlassian link">
         <Field label="Page URL">
           <Input
             value={url}
@@ -152,9 +152,9 @@ export function InputsStep(props: { transitionId: string; model: SupportModel })
             )}
           </div>
         )}
-      </SectionCard>
+      </Panel>
 
-      <SectionCard title="Uploads">
+      <Panel title="Uploads">
         {slots.map((slot) => (
           <div key={slot.key} className={s.row}>
             <Body1 className={s.grow}>
@@ -237,7 +237,7 @@ export function InputsStep(props: { transitionId: string; model: SupportModel })
             {save.isPending ? 'Saving' : 'Save inputs'}
           </Button>
         </div>
-      </SectionCard>
+      </Panel>
     </div>
   );
 }

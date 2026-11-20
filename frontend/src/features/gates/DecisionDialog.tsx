@@ -10,6 +10,7 @@ import {
   DialogTitle,
   Field,
   Textarea,
+  tokens,
 } from '@fluentui/react-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { invalidateTransitionData } from '../../api/queryKeys';
@@ -62,7 +63,9 @@ export function DecisionDialog(props: {
           <DialogTitle>
             {outcome} · {props.gateShort}
           </DialogTitle>
-          <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <DialogContent
+            style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}
+          >
             <Field
               label={noteRequired ? 'Note (required)' : 'Note'}
               required={noteRequired}

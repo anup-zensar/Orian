@@ -51,7 +51,7 @@ CR_KEYS = {
 
 @pytest.fixture(scope="module")
 def ref(client):
-    r = client.get("/api/v1/reference")
+    r = client.get("/api/v1/reference", headers={"X-Demo-User": "U01"})
     assert r.status_code == 200, r.text
     return r.json()
 
@@ -68,8 +68,8 @@ def test_gates_and_lenses_are_the_clients_framework(ref) -> None:
     assert [x["code"] for x in ref["lenses"]] == [x["code"] for x in REF["lenses"]]
 
 
-def test_reference_is_public(client) -> None:
-    assert client.get("/api/v1/reference").status_code == 200  # no X-Demo-User
+def test_reference_needs_sign_in_and_stays_compatible(client) -> None:
+    assert client.get("/api/v1/reference", headers={"X-Demo-User": "U01"}).status_code == 200
 
 
 def test_reference_never_contains_users_or_templates(ref) -> None:
@@ -246,6 +246,8 @@ def test_new_additive_keys(ref) -> None:
 
 
 def test_include_inactive_flag_is_accepted(client) -> None:
-    r = client.get("/api/v1/reference", params={"include_inactive": "true"})
+    r = client.get(
+        "/api/v1/reference", params={"include_inactive": "true"}, headers={"X-Demo-User": "U01"}
+    )
     assert r.status_code == 200
     assert r.json()["project_types"]

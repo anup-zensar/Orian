@@ -20,7 +20,7 @@ const useStyles = makeStyles({
     gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
     gap: tokens.spacingHorizontalL,
   },
-  wrap: { overflowX: 'auto' },
+  wrap: { overflowX: 'auto', minWidth: 0 },
   table: { borderCollapse: 'collapse', width: '100%' },
   cell: {
     padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
@@ -31,7 +31,7 @@ const useStyles = makeStyles({
   head: {
     padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
     textAlign: 'right',
-    backgroundColor: tokens.colorNeutralBackground3,
+    backgroundColor: tokens.colorNeutralBackground2,
     fontWeight: tokens.fontWeightSemibold,
   },
   first: { textAlign: 'left' },

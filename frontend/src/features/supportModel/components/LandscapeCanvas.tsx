@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   BaseEdge,
@@ -11,6 +11,7 @@ import {
   useInternalNode,
   type Connection,
   type Edge,
+  type ReactFlowInstance,
   type EdgeProps,
   type InternalNode,
   type Node,
@@ -24,7 +25,9 @@ import { APP_NODE_ID, directionOf, radialLayout, targetNameOf, type Pos } from '
 
 const useStyles = makeStyles({
   frame: {
-    height: '560px',
+    height: '520px',
+    width: '100%',
+    minWidth: 0,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: tokens.borderRadiusMedium,
     backgroundColor: tokens.colorNeutralBackground2,
@@ -42,7 +45,8 @@ const useStyles = makeStyles({
     overflow: 'hidden',
   },
   nodeSelected: {
-    border: `2px solid ${tokens.colorBrandStroke1}`,
+    border: `2px solid ${tokens.colorNeutralForeground1}`,
+    backgroundColor: tokens.colorBrandBackground2,
   },
   center: {
     backgroundColor: tokens.colorBrandBackground,
@@ -156,6 +160,23 @@ export function LandscapeCanvas(props: {
   const { landscape, selection } = props;
   const s = useStyles();
   const [dragged, setDragged] = useState<Record<string, Pos>>({});
+  const frameRef = useRef<HTMLDivElement>(null);
+  const flowRef = useRef<ReactFlowInstance<Node<NodeData>, Edge> | null>(null);
+  // Keep the whole landscape in view when the content width changes (Orion panel, nav, window).
+  useEffect(() => {
+    const el = frameRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => void flowRef.current?.fitView({ padding: 0.1 }));
+    });
+    ro.observe(el);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, []);
   const layout = useMemo(() => radialLayout(landscape), [landscape]);
 
   const nodes = useMemo<Node<NodeData>[]>(() => {
@@ -202,7 +223,7 @@ export function LandscapeCanvas(props: {
       if (!tId || tId === c.id) continue;
       const dir = directionOf(c);
       const isSel = selection?.kind === 'edge' && selection.id === c.id;
-      const color = isSel ? tokens.colorBrandStroke1 : tokens.colorNeutralForeground3;
+      const color = isSel ? tokens.colorNeutralForeground1 : tokens.colorNeutralForeground3;
       const marker = { type: MarkerType.ArrowClosed, color };
       const base: Edge = {
         id: c.id,
@@ -244,6 +265,7 @@ export function LandscapeCanvas(props: {
 
   return (
     <div
+      ref={frameRef}
       className={s.frame}
       data-testid="landscape-canvas"
       // Keyboard: Enter/Space on a focused node or edge selects it (React Flow only fires its
@@ -272,6 +294,9 @@ export function LandscapeCanvas(props: {
         nodesConnectable={props.editable}
         elementsSelectable
         fitView
+        onInit={(i) => {
+          flowRef.current = i;
+        }}
         fitViewOptions={{ padding: 0.1 }}
         minZoom={0.3}
         proOptions={{ hideAttribution: true }}

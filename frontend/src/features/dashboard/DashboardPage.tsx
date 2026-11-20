@@ -15,13 +15,13 @@ import { MyWorkCard, PortfolioTiles, RecentActivityCard } from './DashboardSecti
 const useStyles = makeStyles({
   tiles: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 170px), 1fr))',
     gap: tokens.spacingHorizontalM,
     marginBottom: tokens.spacingVerticalL,
   },
   pair: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))',
     gap: tokens.spacingHorizontalL,
     marginTop: tokens.spacingVerticalL,
     alignItems: 'start',
@@ -61,7 +61,8 @@ export function DashboardPage() {
         el?.focus?.();
       };
     }
-    return link ? () => navigate(link) : undefined;
+    // The full register is the Transitions page; the Control tower keeps the overview.
+    return link ? () => navigate(link.replace(/^\/control-tower/, '/transitions')) : undefined;
   };
 
   return (
@@ -90,7 +91,7 @@ export function DashboardPage() {
       <div className={s.pair}>
         <InsightsCard
           title="Orion insights"
-          data={insights.data}
+          data={insights.data && { ...insights.data, insights: insights.data.insights.slice(0, 3) }}
           isLoading={insights.isLoading}
           error={insights.error}
           onRetry={() => void insights.refetch()}

@@ -2,6 +2,7 @@
 import { useCallback } from 'react';
 import { useSearchParams } from 'react-router';
 import { makeStyles, tokens } from '@fluentui/react-components';
+import { ai } from '../../theme/orionTheme';
 import { useMe } from '../users/api';
 import { useTransitionAccess } from '../transition/api';
 
@@ -34,12 +35,13 @@ export const useRecordStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground1,
   },
   cardAi: {
-    borderLeft: `4px solid ${tokens.colorPaletteBerryBorderActive}`,
+    borderLeft: `4px solid ${ai.main}`,
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))',
     gap: tokens.spacingHorizontalM,
+    minWidth: 0,
   },
 });
 

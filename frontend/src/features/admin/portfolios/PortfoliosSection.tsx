@@ -14,6 +14,7 @@ import {
   mergeClasses,
   tokens,
 } from '@fluentui/react-components';
+import { DataTable } from '../../../components/DataTable';
 import { EmptyState } from '../../../components/EmptyState';
 import { ErrorState } from '../../../components/ErrorState';
 import { LoadingState } from '../../../components/LoadingState';
@@ -34,7 +35,6 @@ import { draftFromPortfolio, draftToBody, type PortfolioDraft } from './portfoli
 const useStyles = makeStyles({
   row: { cursor: 'pointer' },
   selected: { backgroundColor: tokens.colorBrandBackground2 },
-  scroll: { overflowX: 'auto' },
   clamp: {
     display: '-webkit-box',
     WebkitLineClamp: '2',
@@ -156,7 +156,7 @@ export function PortfoliosSection() {
         ) : !selected ? (
           <EmptyState message="No portfolios yet. Add the first one." />
         ) : (
-          <div className={s.scroll}>
+          <DataTable label="Portfolios table" stickyFirstColumn>
             <Table
               aria-label="Portfolios"
               size="small"
@@ -200,14 +200,18 @@ export function PortfoliosSection() {
                         {p.focus_areas.join(', ') || '-'}
                       </div>
                     </TableCell>
-                    <TableCell>{p.requires_sites ? p.sites_label || 'Yes' : 'No'}</TableCell>
+                    <TableCell>
+                      <span title={p.requires_sites ? p.sites_label || undefined : undefined}>
+                        {p.requires_sites ? 'Sites required' : 'No'}
+                      </span>
+                    </TableCell>
                     <TableCell>{p.golden_set_count} items</TableCell>
                     <TableCell>{p.used_by}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </DataTable>
         )}
       </SectionCard>
       {selected && (

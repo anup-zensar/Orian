@@ -9216,7 +9216,9 @@ export interface operations {
                 /** @description Also return inactive project types, portfolios, list values, roles and fields (each carries `active`); the UI filters them itself */
                 include_inactive?: boolean;
             };
-            header?: never;
+            header?: {
+                "X-Demo-User"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };

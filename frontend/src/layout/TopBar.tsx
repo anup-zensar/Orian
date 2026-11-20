@@ -21,7 +21,7 @@ import {
 import { Sparkle20Filled, Sparkle20Regular } from '@fluentui/react-icons';
 import { useAuth } from '../auth/useAuth';
 import { NotificationsBell } from '../features/notifications/NotificationsBell';
-import { useMe, useUsers } from '../features/users/api';
+import { splitUsers, useMe, useUsers } from '../features/users/api';
 import { ai, palette } from '../theme/orionTheme';
 import { chipStyle, roleBadgeColors } from '../theme/tokens';
 
@@ -55,7 +55,7 @@ const useStyles = makeStyles({
     height: '28px',
     borderRadius: '8px',
     backgroundColor: ai.main,
-    color: '#FFFFFF',
+    color: tokens.colorNeutralForegroundInverted,
   },
   wordmark: {
     fontSize: '20px',
@@ -170,7 +170,10 @@ export function TopBar(props: { orionOpen: boolean; onToggleOrion: () => void })
                   <MenuList>
                     {users.isLoading && <MenuItem disabled>Loading users...</MenuItem>}
                     {users.isError && <MenuItem disabled>Could not load users</MenuItem>}
-                    {(users.data ?? []).map((u) => (
+                    {[
+                      ...splitUsers(users.data ?? []).main,
+                      ...splitUsers(users.data ?? []).otherFocals,
+                    ].map((u) => (
                       <MenuItemRadio
                         key={u.id}
                         name="user"

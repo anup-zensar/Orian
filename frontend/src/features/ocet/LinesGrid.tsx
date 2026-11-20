@@ -15,27 +15,23 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { Delete16Regular, Info16Regular } from '@fluentui/react-icons';
+import { DataTable } from '../../components/DataTable';
 import { useRoleLabel, useRoles } from '../reference/options';
 import { fmtFull } from './format';
 import { project, type EditLine } from './lineModel';
 
 const useStyles = makeStyles({
-  wrap: {
-    overflowX: 'auto',
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: tokens.borderRadiusMedium,
-  },
-  table: { borderCollapse: 'collapse', width: '100%', minWidth: '1500px' },
+  table: { borderCollapse: 'collapse', width: '100%', minWidth: '1180px' },
   th: {
     textAlign: 'left',
     padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalS}`,
-    backgroundColor: tokens.colorNeutralBackground3,
+    backgroundColor: tokens.colorNeutralBackground2,
     fontWeight: tokens.fontWeightSemibold,
     fontSize: tokens.fontSizeBase200,
     whiteSpace: 'nowrap',
   },
   td: {
-    padding: tokens.spacingHorizontalXS,
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalXS}`,
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
     verticalAlign: 'middle',
   },
@@ -43,8 +39,12 @@ const useStyles = makeStyles({
     textAlign: 'right',
     fontVariantNumeric: 'tabular-nums',
     whiteSpace: 'nowrap',
-    padding: tokens.spacingHorizontalS,
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalXS}`,
   },
+  title: { minWidth: '170px' },
+  sel: { minWidth: '104px' },
+  amount: { minWidth: '96px' },
+  narrow: { minWidth: '72px' },
   calc: { backgroundColor: tokens.colorNeutralBackground2 },
   pop: {
     display: 'flex',
@@ -161,11 +161,11 @@ export function LinesGrid(props: {
   const roleLabel = useRoleLabel();
   const { lines, years, editable } = props;
   return (
-    <div className={s.wrap}>
+    <DataTable label="OCET lines" stickyFirstColumn>
       <table className={s.table}>
         <thead>
           <tr>
-            {['Category', 'Description', 'Vendor', 'Pricing basis'].map((h) => (
+            {['Description', 'Category', 'Vendor', 'Pricing basis'].map((h) => (
               <th key={h} className={s.th}>
                 {h}
               </th>
@@ -201,7 +201,19 @@ export function LinesGrid(props: {
             const label = l.description || l.category;
             return (
               <tr key={l.key}>
-                <td className={s.td}>
+                <td className={mergeClasses(s.td, s.title)}>
+                  {editable ? (
+                    <Input
+                      size="small"
+                      aria-label={`Description of line ${index + 1} (${l.category})`}
+                      value={l.description}
+                      onChange={(_, d) => patch({ description: d.value })}
+                    />
+                  ) : (
+                    l.description
+                  )}
+                </td>
+                <td className={mergeClasses(s.td, s.sel)}>
                   {editable ? (
                     <Select
                       size="small"
@@ -217,19 +229,7 @@ export function LinesGrid(props: {
                     l.category
                   )}
                 </td>
-                <td className={s.td}>
-                  {editable ? (
-                    <Input
-                      size="small"
-                      aria-label={`Description of line ${index + 1} (${l.category})`}
-                      value={l.description}
-                      onChange={(_, d) => patch({ description: d.value })}
-                    />
-                  ) : (
-                    l.description
-                  )}
-                </td>
-                <td className={s.td}>
+                <td className={mergeClasses(s.td, s.sel)}>
                   {editable ? (
                     <Input
                       size="small"
@@ -241,7 +241,7 @@ export function LinesGrid(props: {
                     l.vendor
                   )}
                 </td>
-                <td className={s.td}>
+                <td className={mergeClasses(s.td, s.sel)}>
                   {editable ? (
                     <Select
                       size="small"
@@ -281,7 +281,7 @@ export function LinesGrid(props: {
                     fmtFull(l.base_amount)
                   )}
                 </td>
-                <td className={s.td}>
+                <td className={mergeClasses(s.td, s.amount)}>
                   {editable ? (
                     <Input
                       size="small"
@@ -296,7 +296,7 @@ export function LinesGrid(props: {
                     `${l.growth_pct}%`
                   )}
                 </td>
-                <td className={s.td}>
+                <td className={mergeClasses(s.td, s.narrow)}>
                   <OverridePopover
                     line={l}
                     rowLabel={label}
@@ -305,7 +305,7 @@ export function LinesGrid(props: {
                     onChange={patch}
                   />
                 </td>
-                <td className={s.td}>
+                <td className={mergeClasses(s.td, s.sel)}>
                   {editable ? (
                     <Select
                       size="small"
@@ -352,6 +352,6 @@ export function LinesGrid(props: {
           })}
         </tbody>
       </table>
-    </div>
+    </DataTable>
   );
 }

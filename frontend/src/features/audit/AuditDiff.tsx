@@ -12,7 +12,7 @@ const useStyles = makeStyles({
     fontFamily: tokens.fontFamilyMonospace,
   },
   head: { fontFamily: tokens.fontFamilyBase, fontWeight: tokens.fontWeightSemibold },
-  changed: { backgroundColor: tokens.colorPaletteYellowBackground2 },
+  changed: { backgroundColor: tokens.colorBrandBackground2 },
 });
 
 function show(v: unknown): string {

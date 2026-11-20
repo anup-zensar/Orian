@@ -5,8 +5,8 @@ from __future__ import annotations
 API = "/api/v1"
 
 
-def test_reference_is_public_and_complete(client):
-    res = client.get(f"{API}/reference")  # no X-Demo-User header
+def test_reference_is_complete_for_a_signed_in_user(client):
+    res = client.get(f"{API}/reference", headers={"X-Demo-User": "U01"})
     assert res.status_code == 200
     body = res.json()
     assert len(body["gates"]) == 7

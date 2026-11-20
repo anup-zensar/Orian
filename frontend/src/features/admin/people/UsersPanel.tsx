@@ -18,6 +18,7 @@ import {
   TableRow,
   Tooltip,
   makeStyles,
+  mergeClasses,
   tokens,
 } from '@fluentui/react-components';
 import type { UserAdmin } from '../../../api/types';
@@ -26,6 +27,7 @@ import { EmptyState } from '../../../components/EmptyState';
 import { ErrorState } from '../../../components/ErrorState';
 import { LoadingState } from '../../../components/LoadingState';
 import { ReturnFocusDialog } from '../../../components/ReturnFocusDialog';
+import { DataTable } from '../../../components/DataTable';
 import { SectionCard } from '../../../components/SectionCard';
 import { useRoles } from '../../reference/options';
 import { useCreateUser, useDeactivateUser, useUpdateUser, useUsersList } from '../peopleRulesApi';
@@ -33,8 +35,8 @@ import { ReasonsBar } from '../peopleRulesUi';
 import { useSuccessToast } from '../useSavedToast';
 
 const useStyles = makeStyles({
-  scroll: { overflowX: 'auto' },
   form: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
+  nowrap: { whiteSpace: 'nowrap' },
   muted: { color: tokens.colorNeutralForeground3 },
   actions: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalXS },
 });
@@ -224,8 +226,8 @@ export function UsersPanel() {
       ) : !q.data?.length ? (
         <EmptyState message="No users." />
       ) : (
-        <div className={s.scroll}>
-          <Table aria-label="People" size="small" style={{ tableLayout: 'auto', minWidth: '100%' }}>
+        <DataTable label="People table" stickyFirstColumn>
+          <Table aria-label="People" size="small" style={{ tableLayout: 'auto' }}>
             <TableHeader>
               <TableRow>
                 <TableHeaderCell>Person</TableHeaderCell>
@@ -241,7 +243,7 @@ export function UsersPanel() {
                 return (
                   <TableRow key={u.id}>
                     <TableCell>
-                      <div className={inactive ? s.muted : undefined}>{u.name}</div>
+                      <div className={mergeClasses(s.nowrap, inactive && s.muted)}>{u.name}</div>
                       <div className={s.muted}>
                         {u.id}
                         {inactive && (
@@ -293,7 +295,7 @@ export function UsersPanel() {
               })}
             </TableBody>
           </Table>
-        </div>
+        </DataTable>
       )}
       {editing && (
         <UserDialog user={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />

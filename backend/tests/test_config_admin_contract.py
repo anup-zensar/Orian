@@ -248,5 +248,5 @@ def test_usage_endpoint(client, headers) -> None:
 
 
 def test_reference_stays_public_but_admin_routes_do_not(client) -> None:
-    assert client.get("/api/v1/reference").status_code == 200
+    assert client.get("/api/v1/reference", headers={"X-Demo-User": "U01"}).status_code == 200
     assert client.get("/api/v1/admin/option-lists").status_code == 401

@@ -10,14 +10,20 @@ import {
   Input,
   Select,
   makeStyles,
+  mergeClasses,
   tokens,
 } from '@fluentui/react-components';
 import {
   ChevronDown20Regular,
   ChevronRight20Regular,
+  ChevronDown16Regular,
+  ChevronUp16Regular,
   Dismiss16Regular,
 } from '@fluentui/react-icons';
 import { ActorBadge } from '../../components/ActorBadge';
+import { DataTable } from '../../components/DataTable';
+import { SectionCard } from '../../components/SectionCard';
+import { palette } from '../../theme/orionTheme';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
@@ -31,19 +37,21 @@ import { AuditDiff } from './AuditDiff';
 const PAGE_SIZE = 100;
 
 const useStyles = makeStyles({
+  root: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL, minWidth: 0 },
   bar: {
     display: 'flex',
     flexWrap: 'wrap',
     alignItems: 'flex-end',
     gap: tokens.spacingHorizontalM,
-    marginBottom: tokens.spacingVerticalM,
   },
   field: { minWidth: '150px' },
   table: { borderCollapse: 'collapse', width: '100%' },
   th: {
     textAlign: 'left',
     padding: tokens.spacingVerticalS,
-    borderBottom: `2px solid ${tokens.colorNeutralStroke1}`,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    backgroundColor: tokens.colorNeutralBackground2,
+    color: tokens.colorNeutralForeground2,
     fontWeight: tokens.fontWeightSemibold,
     whiteSpace: 'nowrap',
   },
@@ -52,19 +60,22 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalS,
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
   },
-  detail: { backgroundColor: tokens.colorNeutralBackground2 },
+  row: { ':hover': { backgroundColor: tokens.colorNeutralBackground1Hover } },
+  detail: {
+    backgroundColor: tokens.colorNeutralBackground2,
+    boxShadow: `inset 3px 0 0 ${palette.yellow}`,
+  },
+  time: { whiteSpace: 'nowrap' },
   actor: { display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-start' },
   pager: {
     display: 'flex',
     gap: tokens.spacingHorizontalM,
     alignItems: 'center',
-    marginTop: tokens.spacingVerticalM,
   },
   filterNote: {
     display: 'flex',
     gap: tokens.spacingHorizontalS,
     alignItems: 'center',
-    marginBottom: tokens.spacingVerticalS,
   },
 });
 
@@ -95,7 +106,7 @@ function AuditRow({ event, showTransition }: { event: AuditEventOut; showTransit
   const hasDiff = event.before !== null || event.after !== null;
   return (
     <Fragment>
-      <tr>
+      <tr className={s.row}>
         <td className={s.td}>
           <Button
             appearance="subtle"
@@ -107,7 +118,7 @@ function AuditRow({ event, showTransition }: { event: AuditEventOut; showTransit
             onClick={() => setOpen((o) => !o)}
           />
         </td>
-        <td className={s.td}>{dayjs(event.at).format('D MMM YYYY HH:mm')}</td>
+        <td className={mergeClasses(s.td, s.time)}>{dayjs(event.at).format('D MMM YYYY HH:mm')}</td>
         <td className={s.td}>
           <div className={s.actor}>
             <Body1>{event.actor_name ?? event.actor_type}</Body1>
@@ -161,6 +172,7 @@ export function AuditExplorer({ transitionId }: { transitionId?: string }) {
     limit: entityId ? 500 : PAGE_SIZE,
     offset: entityId ? 0 : offset,
   };
+  const [more, setMore] = useState(false);
   const audit = useAudit(query, transitionId);
   // Every entity name in the trail (of this transition) comes with each page, so the Entity filter
   // offers all of them; new record kinds such as config:<section> appear automatically.
@@ -173,34 +185,13 @@ export function AuditExplorer({ transitionId }: { transitionId?: string }) {
   const total = entityId ? rows.length : (audit.data?.total ?? 0);
   const dateError = !!query.from && !!query.to && query.from > query.to;
 
+  const moreOpen = more || !!get('entity') || !!get('from') || !!get('to');
+
   return (
-    <>
-      <div className={s.bar} role="search" aria-label="Audit filters">
-        <Field label="Actor type" className={s.field}>
-          <Select
-            value={get('actor_type')}
-            onChange={(_, d) => set({ actor_type: d.value || undefined })}
-          >
-            <option value="">All</option>
-            {actorTypes.map((a) => (
-              <option key={a.value} value={a.value}>
-                {a.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Entity" className={s.field}>
-          <Select value={get('entity')} onChange={(_, d) => set({ entity: d.value || undefined })}>
-            <option value="">All</option>
-            {Array.from(new Set([...entities, get('entity')].filter(Boolean))).map((e) => (
-              <option key={e} value={e}>
-                {e}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        {!transitionId && (
-          <>
+    <div className={s.root}>
+      <SectionCard title="Filters">
+        <div className={s.bar} role="search" aria-label="Audit filters">
+          {!transitionId && (
             <Field label="Transition" className={s.field}>
               <Select
                 value={get('transition')}
@@ -214,6 +205,21 @@ export function AuditExplorer({ transitionId }: { transitionId?: string }) {
                 ))}
               </Select>
             </Field>
+          )}
+          <Field label="Actor type" className={s.field}>
+            <Select
+              value={get('actor_type')}
+              onChange={(_, d) => set({ actor_type: d.value || undefined })}
+            >
+              <option value="">All</option>
+              {actorTypes.map((a) => (
+                <option key={a.value} value={a.value}>
+                  {a.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          {!transitionId && (
             <Field label="Actor" className={s.field}>
               <Select
                 value={get('actor')}
@@ -227,27 +233,57 @@ export function AuditExplorer({ transitionId }: { transitionId?: string }) {
                 ))}
               </Select>
             </Field>
-            <Field
-              label="From"
-              validationState={dateError ? 'error' : 'none'}
-              validationMessage={dateError ? 'From is after To' : undefined}
-            >
-              <Input
-                type="date"
-                value={get('from')}
-                onChange={(_, d) => set({ from: d.value || undefined })}
-              />
+          )}
+          <Button
+            appearance="subtle"
+            icon={moreOpen ? <ChevronUp16Regular /> : <ChevronDown16Regular />}
+            aria-expanded={moreOpen}
+            onClick={() => setMore(!moreOpen)}
+          >
+            More filters
+          </Button>
+        </div>
+        {moreOpen && (
+          <div className={s.bar}>
+            <Field label="Entity" className={s.field}>
+              <Select
+                value={get('entity')}
+                onChange={(_, d) => set({ entity: d.value || undefined })}
+              >
+                <option value="">All</option>
+                {Array.from(new Set([...entities, get('entity')].filter(Boolean))).map((e) => (
+                  <option key={e} value={e}>
+                    {e}
+                  </option>
+                ))}
+              </Select>
             </Field>
-            <Field label="To">
-              <Input
-                type="date"
-                value={get('to')}
-                onChange={(_, d) => set({ to: d.value || undefined })}
-              />
-            </Field>
-          </>
+            {!transitionId && (
+              <>
+                <Field
+                  label="From"
+                  className={s.field}
+                  validationState={dateError ? 'error' : 'none'}
+                  validationMessage={dateError ? 'From is after To' : undefined}
+                >
+                  <Input
+                    type="date"
+                    value={get('from')}
+                    onChange={(_, d) => set({ from: d.value || undefined })}
+                  />
+                </Field>
+                <Field label="To" className={s.field}>
+                  <Input
+                    type="date"
+                    value={get('to')}
+                    onChange={(_, d) => set({ to: d.value || undefined })}
+                  />
+                </Field>
+              </>
+            )}
+          </div>
         )}
-      </div>
+      </SectionCard>
       {entityId && (
         <div className={s.filterNote}>
           <Caption1>
@@ -272,23 +308,25 @@ export function AuditExplorer({ transitionId }: { transitionId?: string }) {
         <EmptyState message="No audit events match these filters." />
       ) : (
         <>
-          <table className={s.table}>
-            <thead>
-              <tr>
-                <th className={s.th} aria-label="Expand" />
-                <th className={s.th}>Time</th>
-                <th className={s.th}>Actor</th>
-                <th className={s.th}>Action</th>
-                <th className={s.th}>Entity</th>
-                <th className={s.th}>Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((e) => (
-                <AuditRow key={e.id} event={e} showTransition={!transitionId} />
-              ))}
-            </tbody>
-          </table>
+          <DataTable label="Audit events">
+            <table className={s.table}>
+              <thead>
+                <tr>
+                  <th className={s.th} aria-label="Expand" />
+                  <th className={s.th}>Time</th>
+                  <th className={s.th}>Actor</th>
+                  <th className={s.th}>Action</th>
+                  <th className={s.th}>Entity</th>
+                  <th className={s.th}>Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((e) => (
+                  <AuditRow key={e.id} event={e} showTransition={!transitionId} />
+                ))}
+              </tbody>
+            </table>
+          </DataTable>
           <div className={s.pager}>
             <Caption1>
               {entityId
@@ -318,6 +356,6 @@ export function AuditExplorer({ transitionId }: { transitionId?: string }) {
           </div>
         </>
       )}
-    </>
+    </div>
   );
 }

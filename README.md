@@ -105,7 +105,7 @@ After changing a backend response model run `make openapi` or `scripts\gen-api.p
 
 ## 2. Demo users
 
-All fictional. On the login page click a name. To change user at any time: top-right **user menu -> Switch user -> name**.
+All fictional. On the login page click a name (the eight extra OR focals U02-U09 are under a collapsed **Other OR focals** heading). To change user at any time: top-right **user menu -> Switch user -> name**.
 
 | Id | Name | Role | What they show in the demo |
 |---|---|---|---|
@@ -117,10 +117,10 @@ All fictional. On the login page click a name. To change user at any time: top-r
 | U13 | Tom Becker | Planner | First approver of OCET. |
 | U14 | Fatima Khan | IRM | Confirms the AI tier. Approves exception EX-01 and the second AtD step. The only IRM. |
 | U15 | Laura Evans | Leadership | Read-only portfolio view. |
-| U16 | Playbook Admin | Admin | Admin page and Demo controls (reset, fast-forward, set today, run reminder engine). |
+| U16 | Playbook Admin | Admin | Admin page and Demo controls (reset, fast-forward, set today; a link to the reminder engine on Orion drafts). |
 
 A role is not enough: a person must also be assigned to that role **on that transition** (`backend/app/access.py`, A-75).
-A disabled button always says why in its tooltip.
+A disabled button always says why in its tooltip. Navigation is permission-aware: Orion drafts, Outbox, Leadership updates and Admin are hidden for roles without the permission. New transitions start from the button on the **Transitions** page (`/transitions/new`); when an OR focal creates one, the OR focal field is fixed to that user.
 
 ---
 
@@ -163,7 +163,9 @@ flowchart LR
 | `frontend/src/components` | Shared UI |
 | `frontend/src/api` | The single typed client (`client.ts`) and generated API types |
 
-The UI only talks to `/api/v1`. Filters and tabs live in the URL, so every page has a stable deep link. The app runs in an
+The look follows the Shell palette (`reference/shell-color-preview.html`); the rules for pages are in `docs/DESIGN_KIT.md`.
+
+The UI only talks to `/api/v1`. Filters and tabs live in the URL (less-used filters sit behind a **More filters** toggle with the same URL keys; the Control tower heatmap and KPI tiles open **Transitions** with those filters), so every page has a stable deep link. The app runs in an
 iframe (no pop-ups; downloads use fetch plus a temporary link). When Orion suggests a change it stores a proposal;
 accepting it (`POST /orion/proposals/{id}/accept`) is a human request that runs the normal domain function as the signed-in user.
 
@@ -216,7 +218,7 @@ The **Admin** page (Playbook admin only) has 8 sections in a menu on the left. A
 | **People & permissions** | Add or deactivate people, rename roles, and decide what each role may do (permission grid). |
 | **Rules & thresholds** | The tiering questions and tier definitions, approval chains, reminder rules, thresholds and AI evaluation targets. |
 | **Messages** | The wording of Orion drafts, e-mails and Teams cards. |
-| **Demo controls** | Reset demo data, fast-forward the flagship, set today's date, run the reminder engine (only when `DEMO_MODE=true`). |
+| **Demo controls** | Reset demo data, fast-forward the flagship, set today's date, link to the reminder engine, which runs from **Orion drafts** (only when `DEMO_MODE=true`). |
 
 The gate names, the three lenses (Business, Technical, Compliance) and the Orion guardrails stay fixed.
 
@@ -249,7 +251,7 @@ who approves the CISO/BISO step in production (A-57).
 - Every integration and the AI are **mocks**: the same input gives the same output. The Outbox shows the e-mail and Teams card that would be sent.
 - **SQLite** and a local `storage/` folder. A database whose schema version differs from the code is dropped and re-seeded at startup (`SCHEMA_AUTO_RESET`).
 - **Demo clock:** Admin can set "today" and fast-forward the flagship. Both exist only when `DEMO_MODE=true`; switch them off in any shared environment.
-- **No real sign-in:** anyone can pick any user.
+- **No real sign-in:** anyone can pick any user. The **Sign in with Microsoft** button on the sign-in page is a placeholder for Entra ID single sign-on and only shows a note.
 - Not built: Teams preview page (approvals are done in the Approvals inbox, A-13), risk acceptance (conditional AtO), OCET Excel export, Support Model Retriever, live LLM mode.
 - Seed data is synthetic and golden sets are approximate. Readiness for very small scopes cannot always hit the spec's plus or minus 3 points (A-37).
 - The CISO/BISO step of the exception chain has no real approver: in demo mode the IRM approves it, labelled "(mock)" (A-57). Evaluation results are imported from sample data, not from a real test run. Gate history is seeded only for the flagship (A-20).

@@ -2,15 +2,10 @@ import { useEffect, useState } from 'react';
 import {
   Badge,
   Button,
+  Field,
   Input,
   Select,
   Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
@@ -35,9 +30,35 @@ interface Row {
 
 const useStyles = makeStyles({
   bar: { display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'end', flexWrap: 'wrap' },
-  scroll: { overflowX: 'auto' },
-  titleInput: { minWidth: '130px', width: '100%' },
-  roleInput: { minWidth: '100px', width: '100%' },
+  list: {
+    listStyleType: 'none',
+    margin: 0,
+    padding: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalM,
+  },
+  rowCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+    minWidth: 0,
+    padding: tokens.spacingHorizontalM,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadiusLarge,
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  rowHead: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS },
+  id: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200 },
+  titleInput: { width: '100%' },
+  fields: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 130px), 1fr))',
+    columnGap: tokens.spacingHorizontalM,
+    rowGap: tokens.spacingVerticalS,
+    alignItems: 'end',
+  },
+  action: { display: 'flex', alignItems: 'end', paddingBottom: tokens.spacingVerticalXS },
   removed: { opacity: 0.5, textDecorationLine: 'line-through' },
 });
 
@@ -122,109 +143,88 @@ function Editor(props: { data: GoldenSet; portfolio: string; onDirty: (dirty: bo
         <p>This portfolio has no golden-set items yet. Add the first one below.</p>
       )}
       {rows.length > 0 && (
-        <div className={s.scroll}>
-          <Table
-            aria-label="Golden set"
-            size="small"
-            style={{ tableLayout: 'auto', minWidth: '100%' }}
-          >
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell style={{ width: 96 }}>Id</TableHeaderCell>
-                <TableHeaderCell>Title</TableHeaderCell>
-                <TableHeaderCell style={{ width: 120 }}>Gate</TableHeaderCell>
-                <TableHeaderCell style={{ width: 170 }}>Owner role</TableHeaderCell>
-                <TableHeaderCell style={{ width: 125 }}>Area</TableHeaderCell>
-                <TableHeaderCell style={{ minWidth: 0, width: 90 }}>Mandatory</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => {
-                const locked = !r.active || r.removed;
-                return (
-                  <TableRow key={r.key}>
-                    <TableCell>
-                      <span className={locked ? s.removed : undefined}>{r.id ?? 'new'}</span>
-                      {!r.active && (
-                        <Badge appearance="tint" color="subtle" style={{ marginLeft: 6 }}>
-                          deactivated
-                        </Badge>
+        <ul className={s.list} aria-label="Golden set">
+          {rows.map((r) => {
+            const locked = !r.active || r.removed;
+            return (
+              <li key={r.key} className={s.rowCard}>
+                <div className={s.rowHead}>
+                  <span className={locked ? s.removed : s.id}>{r.id ?? 'new'}</span>
+                  {!r.active && (
+                    <Badge appearance="tint" color="subtle">
+                      deactivated
+                    </Badge>
+                  )}
+                </div>
+                <Input
+                  aria-label="Title"
+                  className={s.titleInput}
+                  value={r.title}
+                  disabled={locked}
+                  onChange={(_, d) => patch(r.key, { title: d.value })}
+                />
+                <div className={s.fields}>
+                  <Field label="Gate">
+                    <Select
+                      aria-label="Gate"
+                      value={r.gate}
+                      disabled={locked}
+                      onChange={(_, d) => patch(r.key, { gate: d.value })}
+                    >
+                      {gates.map((g) => (
+                        <option key={g.code} value={g.code}>
+                          {g.short}
+                        </option>
+                      ))}
+                      {!gates.some((g) => g.code === r.gate) && (
+                        <option value={r.gate}>{r.gate}</option>
                       )}
-                      <div>
-                        {r.active ? (
-                          <Button size="small" onClick={() => remove(r)}>
-                            {r.removed ? 'Undo' : 'Remove'}
-                          </Button>
-                        ) : (
-                          <Button size="small" onClick={() => patch(r.key, { active: true })}>
-                            Restore
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        aria-label="Title"
-                        className={s.titleInput}
-                        value={r.title}
-                        disabled={locked}
-                        onChange={(_, d) => patch(r.key, { title: d.value })}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        aria-label="Gate"
-                        style={{ minWidth: 100 }}
-                        value={r.gate}
-                        disabled={locked}
-                        onChange={(_, d) => patch(r.key, { gate: d.value })}
-                      >
-                        {gates.map((g) => (
-                          <option key={g.code} value={g.code}>
-                            {g.short}
-                          </option>
-                        ))}
-                        {!gates.some((g) => g.code === r.gate) && (
-                          <option value={r.gate}>{r.gate}</option>
-                        )}
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        aria-label="Owner role"
-                        className={s.roleInput}
-                        value={r.owner_role_hint}
-                        disabled={locked}
-                        onChange={(_, d) => patch(r.key, { owner_role_hint: d.value })}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        aria-label="Area"
-                        style={{ minWidth: 100 }}
-                        value={r.lens}
-                        disabled={locked}
-                        onChange={(_, d) => patch(r.key, { lens: d.value as Row['lens'] })}
-                      >
-                        {LENSES.map((l) => (
-                          <option key={l}>{l}</option>
-                        ))}
-                      </Select>
-                    </TableCell>
-                    <TableCell style={{ minWidth: 0 }}>
-                      <Switch
-                        aria-label="Mandatory"
-                        checked={r.mandatory}
-                        disabled={locked}
-                        onChange={(_, d) => patch(r.key, { mandatory: d.checked })}
-                      />
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+                    </Select>
+                  </Field>
+                  <Field label="Area">
+                    <Select
+                      aria-label="Area"
+                      value={r.lens}
+                      disabled={locked}
+                      onChange={(_, d) => patch(r.key, { lens: d.value as Row['lens'] })}
+                    >
+                      {LENSES.map((l) => (
+                        <option key={l}>{l}</option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="Owner role">
+                    <Input
+                      aria-label="Owner role"
+                      value={r.owner_role_hint}
+                      disabled={locked}
+                      onChange={(_, d) => patch(r.key, { owner_role_hint: d.value })}
+                    />
+                  </Field>
+                  <Field label="Mandatory">
+                    <Switch
+                      aria-label="Mandatory"
+                      checked={r.mandatory}
+                      disabled={locked}
+                      onChange={(_, d) => patch(r.key, { mandatory: d.checked })}
+                    />
+                  </Field>
+                  <div className={s.action}>
+                    {r.active ? (
+                      <Button size="small" onClick={() => remove(r)}>
+                        {r.removed ? 'Undo' : 'Remove'}
+                      </Button>
+                    ) : (
+                      <Button size="small" onClick={() => patch(r.key, { active: true })}>
+                        Restore
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
       {save.isError && <ErrorState error={save.error} />}
       <div className={s.bar}>

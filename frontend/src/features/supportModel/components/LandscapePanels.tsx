@@ -19,7 +19,7 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { AddRegular, DeleteRegular, MailRegular } from '@fluentui/react-icons';
-import { SectionCard } from '../../../components/SectionCard';
+import { Panel } from './Panel';
 import type { Contact, Landscape, Source } from '../api';
 
 const useStyles = makeStyles({
@@ -112,7 +112,7 @@ export function LandscapePanels(props: {
   return (
     <div className={s.stack}>
       <div className={s.grid}>
-        <SectionCard title="Hosting and vendor">
+        <Panel title="Hosting and vendor">
           <Field label="Hosting">
             <Input
               value={l.hosting}
@@ -134,9 +134,9 @@ export function LandscapePanels(props: {
               onChange={(_, d) => onPatch({ supplier: d.value })}
             />
           </Field>
-        </SectionCard>
+        </Panel>
 
-        <SectionCard title="Vendor and supplier responsibilities">
+        <Panel title="Vendor and supplier responsibilities">
           <StringList
             items={l.vendor_responsibilities}
             editable={editable}
@@ -144,9 +144,9 @@ export function LandscapePanels(props: {
             addLabel="Add responsibility"
             onChange={(vendor_responsibilities) => onPatch({ vendor_responsibilities })}
           />
-        </SectionCard>
+        </Panel>
 
-        <SectionCard title="Support tiers">
+        <Panel title="Support tiers">
           {(['L1', 'L2', 'L3'] as const).map((t) => (
             <Field key={t} label={t}>
               <Textarea
@@ -159,10 +159,10 @@ export function LandscapePanels(props: {
               />
             </Field>
           ))}
-        </SectionCard>
+        </Panel>
       </div>
 
-      <SectionCard
+      <Panel
         title="Contacts and SLA"
         actions={
           editable ? (
@@ -224,10 +224,10 @@ export function LandscapePanels(props: {
             </Table>
           </div>
         )}
-      </SectionCard>
+      </Panel>
 
       <div className={s.grid}>
-        <SectionCard title="Open questions">
+        <Panel title="Open questions">
           <div className={s.stack}>
             {l.open_questions.length === 0 && <Caption1>None yet.</Caption1>}
             {l.open_questions.map((q, i) => (
@@ -291,9 +291,9 @@ export function LandscapePanels(props: {
             )}
           </div>
           {props.draftDisabledReason && <Caption1>{props.draftDisabledReason}</Caption1>}
-        </SectionCard>
+        </Panel>
 
-        <SectionCard
+        <Panel
           title="Sources"
           actions={
             editable ? (
@@ -340,7 +340,7 @@ export function LandscapePanels(props: {
               )}
             </div>
           ))}
-        </SectionCard>
+        </Panel>
       </div>
     </div>
   );

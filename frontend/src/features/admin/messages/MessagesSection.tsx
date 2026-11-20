@@ -48,7 +48,7 @@ const useStyles = makeStyles({
     height: '260px',
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: tokens.borderRadiusMedium,
-    backgroundColor: '#ffffff',
+    backgroundColor: tokens.colorNeutralBackground1,
   },
   row: { display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap' },
 });

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import {
-  Body1,
   Caption1,
   MessageBar,
   MessageBarBody,
+  Tooltip,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
@@ -16,50 +16,35 @@ import { usePerm } from '../gates/usePerm';
 import { useReminderStatus, useRunReminders, type ReminderRunOut } from './api';
 
 const useStyles = makeStyles({
-  stack: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS },
-  counts: { display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap' },
-  chip: {
+  line: {
     display: 'flex',
-    flexDirection: 'column',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    minWidth: '56px',
-    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: tokens.borderRadiusMedium,
+    columnGap: tokens.spacingHorizontalM,
+    rowGap: tokens.spacingVerticalXS,
+    minWidth: 0,
   },
-  num: { fontWeight: tokens.fontWeightSemibold, fontSize: tokens.fontSizeBase400 },
+  text: { minWidth: 0, overflowWrap: 'anywhere' },
 });
 
 const DEFAULT_RULES = ['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7'];
 
-/** Counts per rule R1-R7, skipped duplicates and autonomous sends of one engine run. */
+/** One line: when the engine ran and what it drafted, with the per-rule counts as a tooltip. */
 export function RunSummary({ run, label }: { run: ReminderRunOut; label: string }) {
   const s = useStyles();
   const ids = Array.from(new Set([...DEFAULT_RULES, ...Object.keys(run.created)])).sort();
   const total = Object.values(run.created).reduce((a, b) => a + b, 0);
+  const perRule = ids.map((id) => `${id}: ${run.created[id] ?? 0}`).join(', ');
   return (
-    <div className={s.stack}>
-      <Caption1>
+    <Tooltip
+      content={`Messages created per rule - ${perRule}. Skipped as duplicates: ${run.skipped_duplicates}. Sent autonomously: ${run.sent_autonomously}.`}
+      relationship="description"
+    >
+      <Caption1 className={s.text} tabIndex={0} aria-label="Messages created per rule">
         {label} {dayjs(run.at).format('D MMM YYYY HH:mm')}: {total} drafted, {run.sent_autonomously}{' '}
         sent autonomously, {run.skipped_duplicates} skipped as duplicates.
       </Caption1>
-      <div className={s.counts} aria-label="Messages created per rule">
-        {ids.map((id) => (
-          <div key={id} className={s.chip}>
-            <span className={s.num}>{run.created[id] ?? 0}</span>
-            <Caption1>{id}</Caption1>
-          </div>
-        ))}
-        <div className={s.chip}>
-          <span className={s.num}>{run.skipped_duplicates}</span>
-          <Caption1>Skipped</Caption1>
-        </div>
-        <div className={s.chip}>
-          <span className={s.num}>{run.sent_autonomously}</span>
-          <Caption1>Sent auto</Caption1>
-        </div>
-      </div>
-    </div>
+    </Tooltip>
   );
 }
 
@@ -75,30 +60,30 @@ export function RunRemindersControl({ buttonLabel = 'Run reminder engine now' })
   const last = status.data?.last_run ?? null;
 
   return (
-    <div className={s.stack}>
-      <div>
-        <ReasonButton
-          appearance="primary"
-          reasons={[perm.reason]}
-          onClick={() =>
-            run.mutate(undefined, {
-              onSuccess: (r) => {
-                setResult(r);
-                showSuccess(
-                  `Reminder engine ran: ${r.drafts.length} drafted, ${r.sent_autonomously} sent`,
-                  r.drafts.length > 0 ? <AppLink to="/drafts">Open drafts</AppLink> : undefined,
-                );
-              },
-              onError: showError,
-            })
-          }
-        >
-          {run.isPending ? 'Running...' : buttonLabel}
-        </ReasonButton>
-      </div>
+    <div className={s.line}>
+      <ReasonButton
+        appearance="primary"
+        reasons={[perm.reason]}
+        onClick={() =>
+          run.mutate(undefined, {
+            onSuccess: (r) => {
+              setResult(r);
+              showSuccess(
+                `Reminder engine ran: ${r.drafts.length} drafted, ${r.sent_autonomously} sent`,
+                r.drafts.length > 0 ? <AppLink to="/drafts">Open drafts</AppLink> : undefined,
+              );
+            },
+            onError: showError,
+          })
+        }
+      >
+        {run.isPending ? 'Running...' : buttonLabel}
+      </ReasonButton>
       {result && <RunSummary run={result} label="This run" />}
       {!result && last && <RunSummary run={last} label="Last run" />}
-      {!result && !last && !status.isLoading && <Body1>The reminder engine has not run yet.</Body1>}
+      {!result && !last && !status.isLoading && (
+        <Caption1>The reminder engine has not run yet.</Caption1>
+      )}
       {status.isError && (
         <MessageBar intent="warning" layout="multiline">
           <MessageBarBody>Reminder status is not available right now.</MessageBarBody>

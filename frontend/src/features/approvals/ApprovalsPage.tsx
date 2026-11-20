@@ -11,22 +11,29 @@ import {
   DialogSurface,
   DialogTitle,
   Field,
-  Subtitle2,
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
   Tab,
   TabList,
   Textarea,
   MessageBar,
   MessageBarBody,
   makeStyles,
-  mergeClasses,
   tokens,
 } from '@fluentui/react-components';
 import { useSearchParams } from 'react-router';
 import { AppLink } from '../../components/AppLink';
+import { DataTable } from '../../components/DataTable';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { PageHeader } from '../../components/PageHeader';
+import { Toolbar } from '../../components/layout/Toolbar';
+import { palette } from '../../theme/orionTheme';
 import { useApiErrorToast } from '../../hooks/useApiErrorToast';
 import { ReasonButton } from '../gates/ReasonButton';
 import { useSuccessToast } from '../gates/useSuccessToast';
@@ -43,21 +50,14 @@ import {
 
 const useStyles = makeStyles({
   page: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
-  list: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
-  card: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalS,
-    padding: tokens.spacingVerticalL,
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: tokens.borderRadiusMedium,
-    backgroundColor: tokens.colorNeutralBackground1,
-  },
   highlight: {
-    border: `2px solid ${tokens.colorBrandStroke1}`,
-    boxShadow: tokens.shadow8,
+    backgroundColor: tokens.colorBrandBackground2,
+    boxShadow: `inset 4px 0 0 ${palette.yellow}`,
   },
   head: { display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'center', flexWrap: 'wrap' },
+  cell: { display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, padding: '8px 0' },
+  subject: { fontWeight: tokens.fontWeightSemibold },
+  muted: { color: tokens.colorNeutralForeground3 },
   chain: {
     display: 'flex',
     gap: tokens.spacingHorizontalS,
@@ -71,13 +71,9 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalS,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: tokens.borderRadiusMedium,
-    minWidth: '170px',
-  },
-  actions: {
-    display: 'flex',
-    gap: tokens.spacingHorizontalS,
-    flexWrap: 'wrap',
-    marginTop: tokens.spacingVerticalS,
+    minWidth: '150px',
+    flex: '1 1 150px',
+    backgroundColor: tokens.colorNeutralBackground1,
   },
 });
 
@@ -182,10 +178,19 @@ function ActDialog(props: {
   );
 }
 
-function ApprovalCard(props: { request: ApprovalRequest; highlighted: boolean }) {
+const statusColor = (status: string) =>
+  status === 'Approved'
+    ? 'success'
+    : status === 'Rejected'
+      ? 'danger'
+      : status === 'Pending'
+        ? 'warning'
+        : 'subtle';
+
+function ApprovalRow(props: { request: ApprovalRequest; highlighted: boolean }) {
   const s = useStyles();
   const r = props.request;
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLTableRowElement>(null);
   const [acting, setActing] = useState<'approve' | 'reject' | null>(null);
   const pending = r.status === 'Pending';
 
@@ -196,62 +201,93 @@ function ApprovalCard(props: { request: ApprovalRequest; highlighted: boolean })
   const blocked = r.can_act ? null : (r.act_denied_reason ?? 'You cannot act on this step');
 
   return (
-    <div
+    <TableRow
       ref={ref}
-      className={mergeClasses(s.card, props.highlighted && s.highlight)}
+      className={props.highlighted ? s.highlight : undefined}
       aria-label={`${r.type_label} approval ${r.id}`}
     >
-      <div className={s.head}>
-        <Badge appearance="filled" color="brand">
-          {r.type_label}
-        </Badge>
-        <Badge
-          appearance="outline"
-          color={
-            r.status === 'Approved'
-              ? 'success'
-              : r.status === 'Rejected'
-                ? 'danger'
-                : r.status === 'Pending'
-                  ? 'warning'
-                  : 'subtle'
-          }
-        >
-          {r.status}
-        </Badge>
-        <AppLink to={`/transitions/${r.transition_id}/overview`}>{r.transition_name}</AppLink>
-        {r.gate_short && <Caption1>Gate {r.gate_short}</Caption1>}
-        <Caption1>
-          {r.id} · requested {r.age_days === 0 ? 'today' : `${r.age_days} d ago`}
-          {r.created_by ? ` by ${r.created_by.name}` : ''} ({r.created_source})
-        </Caption1>
-      </div>
-      <div className={s.head}>
-        <Subtitle2>{r.subject_label}</Subtitle2>
-        {r.link && r.link.startsWith('/') && <AppLink to={r.link}>Open subject</AppLink>}
-      </div>
-      <StepChain steps={r.steps} />
-      {pending && (
-        <div className={s.actions}>
-          <ReasonButton
-            appearance="primary"
-            reasons={[blocked]}
-            onClick={() => setActing('approve')}
-          >
-            {r.is_mock_step ? 'Approve as CISO/BISO (mock)' : 'Approve'}
-          </ReasonButton>
-          <ReasonButton reasons={[blocked]} onClick={() => setActing('reject')}>
-            Reject
-          </ReasonButton>
-          {r.is_mock_step && (
-            <Badge appearance="outline" color="informative">
-              Mock step: no real CISO/BISO integration
+      <TableCell style={{ minWidth: 220, alignItems: 'flex-start' }}>
+        <div className={s.cell}>
+          <span className={s.head}>
+            <Badge appearance="filled" color="brand">
+              {r.type_label}
             </Badge>
+            <Badge appearance="outline" color={statusColor(r.status)}>
+              {r.status}
+            </Badge>
+          </span>
+          <span className={s.subject}>{r.subject_label}</span>
+          {r.link && r.link.startsWith('/') && <AppLink to={r.link}>Open subject</AppLink>}
+        </div>
+      </TableCell>
+      <TableCell style={{ minWidth: 200, alignItems: 'flex-start' }}>
+        <div className={s.cell}>
+          <AppLink to={`/transitions/${r.transition_id}/overview`}>{r.transition_name}</AppLink>
+          {r.gate_short && <Caption1 className={s.muted}>Gate {r.gate_short}</Caption1>}
+          <Caption1 className={s.muted}>
+            {r.id} · requested {r.age_days === 0 ? 'today' : `${r.age_days} d ago`}
+            {r.created_by ? ` by ${r.created_by.name}` : ''} ({r.created_source})
+          </Caption1>
+        </div>
+      </TableCell>
+      <TableCell style={{ minWidth: 340, alignItems: 'flex-start' }}>
+        <div className={s.cell}>
+          <StepChain steps={r.steps} />
+          {pending && r.is_mock_step && (
+            <span>
+              <Badge appearance="outline" color="informative">
+                Mock step: no real CISO/BISO integration
+              </Badge>
+            </span>
           )}
         </div>
-      )}
-      {acting && <ActDialog request={r} action={acting} onClose={() => setActing(null)} />}
-    </div>
+      </TableCell>
+      <TableCell style={{ minWidth: 150, alignItems: 'flex-start' }}>
+        {pending && (
+          <div className={s.cell}>
+            <Toolbar>
+              <ReasonButton
+                appearance="primary"
+                reasons={[blocked]}
+                onClick={() => setActing('approve')}
+              >
+                {r.is_mock_step ? 'Approve as CISO/BISO (mock)' : 'Approve'}
+              </ReasonButton>
+              <ReasonButton reasons={[blocked]} onClick={() => setActing('reject')}>
+                Reject
+              </ReasonButton>
+            </Toolbar>
+          </div>
+        )}
+        {acting && <ActDialog request={r} action={acting} onClose={() => setActing(null)} />}
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function ApprovalTable(props: {
+  rows: ApprovalRequest[];
+  requestId: string | null;
+  label: string;
+}) {
+  return (
+    <DataTable label={props.label}>
+      <Table aria-label={props.label} size="medium">
+        <TableHeader>
+          <TableRow>
+            <TableHeaderCell>Request</TableHeaderCell>
+            <TableHeaderCell>Transition</TableHeaderCell>
+            <TableHeaderCell>Approval chain</TableHeaderCell>
+            <TableHeaderCell>Decision</TableHeaderCell>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {props.rows.map((r) => (
+            <ApprovalRow key={r.id} request={r} highlighted={r.id === props.requestId} />
+          ))}
+        </TableBody>
+      </Table>
+    </DataTable>
   );
 }
 
@@ -264,9 +300,29 @@ export function ApprovalsPage() {
   const canSeeAll = !!me.data?.permissions.includes('view_all_approvals');
   const requestId = params.get('request');
   const raw = params.get('scope');
-  const scope: ApprovalScope = raw === 'requested' || (raw === 'all' && canSeeAll) ? raw : 'mine';
+  const explicit: ApprovalScope | null =
+    raw === 'mine' || raw === 'requested' || (raw === 'all' && canSeeAll) ? raw : null;
   const scopeDenied = raw === 'all' && !canSeeAll && !!me.data;
-  const q = useApprovals(scope, !!me.data);
+
+  // No tab in the link: open the first tab that has items for this person.
+  const mine = useApprovals('mine', !!me.data);
+  const requested = useApprovals('requested', !!me.data && explicit === null);
+  const all = useApprovals(
+    'all',
+    !!me.data &&
+      canSeeAll &&
+      explicit === null &&
+      mine.data?.length === 0 &&
+      requested.data?.length === 0,
+  );
+  let scope: ApprovalScope = 'mine';
+  if (explicit) scope = explicit;
+  else if (mine.data && mine.data.length > 0) scope = 'mine';
+  else if (requested.data && requested.data.length > 0) scope = 'requested';
+  else if (canSeeAll && all.data && all.data.length > 0) scope = 'all';
+  const q = scope === 'mine' ? mine : scope === 'requested' ? requested : all;
+  const settling = explicit === null && (!me.data || mine.isLoading || requested.isLoading);
+
   // Deep link: fetch the single request so it is found in any tab, then show it above the list.
   const linked = useApproval(requestId);
   const listed = q.data?.some((r) => r.id === requestId) ?? false;
@@ -306,37 +362,33 @@ export function ApprovalsPage() {
           </MessageBarBody>
         </MessageBar>
       )}
-      {requestId && linked.data && (
+      {requestId && linked.data && !listed && !q.isLoading && !settling && (
         <>
           <MessageBar intent="info">
             <MessageBarBody>
-              Opened from a link: request {linked.data.id} ({linked.data.status})
-              {listed ? ' is highlighted below.' : ' is shown here and is not part of this tab.'}
+              Opened from a link: request {linked.data.id} ({linked.data.status}) is shown here and
+              is not part of this tab.
             </MessageBarBody>
           </MessageBar>
-          {!listed && <ApprovalCard request={linked.data} highlighted />}
+          <ApprovalTable rows={[linked.data]} requestId={requestId} label="Linked approval" />
         </>
       )}
 
-      {q.isLoading && <LoadingState rows={4} />}
+      {(q.isLoading || settling) && <LoadingState rows={4} />}
       {q.isError && <ErrorState error={q.error} />}
-      {q.data && q.data.length === 0 && (
+      {!settling && q.data && q.data.length === 0 && (
         <EmptyState
           message={
             scope === 'mine'
-              ? 'Nothing is waiting for your approval.'
+              ? 'Nothing is waiting for your approval. Approvals you raised are under Requested by me.'
               : scope === 'requested'
                 ? 'You have not requested any approvals.'
                 : 'There are no approval requests.'
           }
         />
       )}
-      {q.data && q.data.length > 0 && (
-        <div className={s.list}>
-          {q.data.map((r) => (
-            <ApprovalCard key={r.id} request={r} highlighted={r.id === requestId} />
-          ))}
-        </div>
+      {!settling && q.data && q.data.length > 0 && (
+        <ApprovalTable rows={q.data} requestId={requestId} label="Approval requests" />
       )}
     </div>
   );

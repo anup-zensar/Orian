@@ -11,6 +11,7 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import type { RoleAdmin } from '../../../api/types';
+import { DataTable } from '../../../components/DataTable';
 import { SectionCard } from '../../../components/SectionCard';
 import { useApiErrorToast } from '../../../hooks/useApiErrorToast';
 import { useUpdateRole } from '../peopleRulesApi';
@@ -25,7 +26,6 @@ interface Texts {
 }
 
 const useStyles = makeStyles({
-  scroll: { overflowX: 'auto' },
   note: { color: tokens.colorNeutralForeground3, margin: 0 },
   wide: { minWidth: '200px' },
 });
@@ -82,8 +82,8 @@ function Editor({ roles }: { roles: RoleAdmin[] }) {
         Everyone has one of these roles. Change how a role is named and described; the role itself
         stays fixed.
       </p>
-      <div className={s.scroll}>
-        <Table aria-label="Roles" size="small" style={{ tableLayout: 'auto', minWidth: '100%' }}>
+      <DataTable label="Roles table" stickyFirstColumn>
+        <Table aria-label="Roles" size="small" style={{ tableLayout: 'auto' }}>
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Name</TableHeaderCell>
@@ -124,7 +124,7 @@ function Editor({ roles }: { roles: RoleAdmin[] }) {
             ))}
           </TableBody>
         </Table>
-      </div>
+      </DataTable>
       <ReasonsBar error={error} />
       <SaveBar
         dirty={dirty}

@@ -31,7 +31,7 @@ import { useBulkItems, useItems, usePatchItem, type ItemOut, type ItemPatchIn } 
 import { AssessmentFilters } from '../assessment/AssessmentFilters';
 import { GateSummaryBar } from '../assessment/GateSummaryBar';
 import { ItemRow, type RowPermissions } from '../assessment/ItemRow';
-import { ROW_GRID, ROW_MIN_WIDTH, STICKY } from '../assessment/rowLayout';
+import { ROW_GRID, ROW_MIN_WIDTH } from '../assessment/rowLayout';
 import { ConditionDialog, GapDialog, NaDialog } from '../assessment/StatusDialogs';
 import { useAssessmentFilters } from '../assessment/useAssessmentFilters';
 import type { TabProps } from '../types';
@@ -354,18 +354,13 @@ export function AssessmentTab({ transitionId }: TabProps) {
         <div className={s.scroller}>
           <div className={s.inner} role="table" aria-label="Checklist items">
             <div className={s.head} role="row">
-              <span style={STICKY.c1} />
-              <span style={STICKY.c2} />
-              <span style={STICKY.c3}>ID</span>
-              <span style={STICKY.c4}>Item</span>
-              <span>Source</span>
+              <span />
+              <span />
+              <span>ID</span>
+              <span>Item</span>
               <span>Lens</span>
               <span>Owner</span>
-              <span style={STICKY.status}>Status</span>
-              <span>Severity</span>
-              <span>DE</span>
-              <span>Evid.</span>
-              <span>Updated by</span>
+              <span>Status</span>
               <span />
             </div>
             {groups.map((g) => {

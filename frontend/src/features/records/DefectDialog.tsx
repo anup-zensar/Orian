@@ -11,6 +11,7 @@ import {
   Input,
   Select,
 } from '@fluentui/react-components';
+import { FormFull, FormGrid } from '../../components/layout/FormGrid';
 import { useApiErrorToast } from '../../hooks/useApiErrorToast';
 import { useOptions } from '../reference/options';
 import {
@@ -21,7 +22,6 @@ import {
   type DefectPatch,
 } from './api';
 import { OwnerSelect } from './common';
-import { useRecordStyles } from './hooks';
 
 /** Create (defect undefined) or edit a hypercare defect. Mount only while open. */
 export function DefectDialog(props: {
@@ -29,7 +29,6 @@ export function DefectDialog(props: {
   defect?: Defect;
   onClose: () => void;
 }) {
-  const s = useRecordStyles();
   const create = useCreateDefect(props.transitionId);
   const patch = usePatchDefect(props.transitionId);
   const showError = useApiErrorToast();
@@ -73,34 +72,38 @@ export function DefectDialog(props: {
 
   return (
     <ReturnFocusDialog open onOpenChange={(_, o) => !o.open && props.onClose()}>
-      <DialogSurface>
+      <DialogSurface style={{ maxWidth: 640, width: '95vw' }}>
         <DialogBody>
           <DialogTitle>{d ? `Edit defect ${d.id}` : 'Log defect'}</DialogTitle>
-          <DialogContent className={s.form}>
-            <Field label="Title" required>
-              <Input value={title} onChange={(_, v) => setTitle(v.value)} />
-            </Field>
-            <Field label="Priority">
-              <Select value={priority} onChange={(_, v) => setPriority(v.value)}>
-                {priorities.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <OwnerSelect label="Owner" value={owner} onChange={setOwner} allowEmpty />
-            {d && (
-              <Field label="Status">
-                <Select value={status} onChange={(_, v) => setStatus(v.value)}>
-                  {statuses.map((x) => (
-                    <option key={x.value} value={x.value}>
-                      {x.label}
+          <DialogContent>
+            <FormGrid minColWidth={220}>
+              <FormFull>
+                <Field label="Title" required>
+                  <Input value={title} onChange={(_, v) => setTitle(v.value)} />
+                </Field>
+              </FormFull>
+              <Field label="Priority">
+                <Select value={priority} onChange={(_, v) => setPriority(v.value)}>
+                  {priorities.map((p) => (
+                    <option key={p.value} value={p.value}>
+                      {p.label}
                     </option>
                   ))}
                 </Select>
               </Field>
-            )}
+              <OwnerSelect label="Owner" value={owner} onChange={setOwner} allowEmpty />
+              {d && (
+                <Field label="Status">
+                  <Select value={status} onChange={(_, v) => setStatus(v.value)}>
+                    {statuses.map((x) => (
+                      <option key={x.value} value={x.value}>
+                        {x.label}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              )}
+            </FormGrid>
           </DialogContent>
           <DialogActions>
             <Button appearance="secondary" onClick={props.onClose}>

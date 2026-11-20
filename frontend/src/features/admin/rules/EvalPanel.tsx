@@ -14,6 +14,7 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
+import { DataTable } from '../../../components/DataTable';
 import { ErrorState } from '../../../components/ErrorState';
 import { LoadingState } from '../../../components/LoadingState';
 import { useApiErrorToast } from '../../../hooks/useApiErrorToast';
@@ -153,70 +154,72 @@ function Editor({ data }: { data: EvalTargets }) {
         Turn this on once the business has agreed these targets. Until then they are shown as draft
         targets.
       </div>
-      <Table aria-label="Eval targets" size="small">
-        <TableHeader>
-          <TableRow>
-            <TableHeaderCell className={s.metricCol}>Metric</TableHeaderCell>
-            <TableHeaderCell>Target for Tier {shown}</TableHeaderCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.metrics.map((m) => {
-            const c = grid[m.metric_id]?.[shown];
-            return (
-              <TableRow key={m.metric_id}>
-                <TableCell>
-                  {m.metric}
-                  <div className={s.meta}>
-                    {m.evaluation === 'auto' ? 'Imported automatically' : 'Entered by hand'}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {!c ? (
-                    '-'
-                  ) : c.operator ? (
-                    <div className={s.cell}>
-                      <div className={s.parsed}>
-                        <Select
-                          aria-label={`${m.metric} operator`}
-                          className={s.small}
-                          value={c.operator}
-                          onChange={(_, d) => patch(m.metric_id, shown, { operator: d.value })}
-                        >
-                          {OPERATORS.map((o) => (
-                            <option key={o} value={o}>
-                              {SYMBOL[o] ?? o}
-                            </option>
-                          ))}
-                        </Select>
-                        <Input
-                          aria-label={`${m.metric} number`}
-                          className={s.tiny}
-                          value={c.value}
-                          onChange={(_, d) => patch(m.metric_id, shown, { value: d.value })}
-                        />
-                        <Input
-                          aria-label={`${m.metric} unit`}
-                          className={s.tiny}
-                          value={c.unit}
-                          onChange={(_, d) => patch(m.metric_id, shown, { unit: d.value })}
-                        />
-                      </div>
-                      <span className={s.meta}>Reads as: {c.target_text}</span>
+      <DataTable label="Eval targets table" stickyFirstColumn>
+        <Table aria-label="Eval targets" size="small">
+          <TableHeader>
+            <TableRow>
+              <TableHeaderCell className={s.metricCol}>Metric</TableHeaderCell>
+              <TableHeaderCell>Target for Tier {shown}</TableHeaderCell>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.metrics.map((m) => {
+              const c = grid[m.metric_id]?.[shown];
+              return (
+                <TableRow key={m.metric_id}>
+                  <TableCell>
+                    {m.metric}
+                    <div className={s.meta}>
+                      {m.evaluation === 'auto' ? 'Imported automatically' : 'Entered by hand'}
                     </div>
-                  ) : (
-                    <Input
-                      aria-label={`${m.metric} target`}
-                      value={c.target_text}
-                      onChange={(_, d) => patch(m.metric_id, shown, { target_text: d.value })}
-                    />
-                  )}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+                  </TableCell>
+                  <TableCell>
+                    {!c ? (
+                      '-'
+                    ) : c.operator ? (
+                      <div className={s.cell}>
+                        <div className={s.parsed}>
+                          <Select
+                            aria-label={`${m.metric} operator`}
+                            className={s.small}
+                            value={c.operator}
+                            onChange={(_, d) => patch(m.metric_id, shown, { operator: d.value })}
+                          >
+                            {OPERATORS.map((o) => (
+                              <option key={o} value={o}>
+                                {SYMBOL[o] ?? o}
+                              </option>
+                            ))}
+                          </Select>
+                          <Input
+                            aria-label={`${m.metric} number`}
+                            className={s.tiny}
+                            value={c.value}
+                            onChange={(_, d) => patch(m.metric_id, shown, { value: d.value })}
+                          />
+                          <Input
+                            aria-label={`${m.metric} unit`}
+                            className={s.tiny}
+                            value={c.unit}
+                            onChange={(_, d) => patch(m.metric_id, shown, { unit: d.value })}
+                          />
+                        </div>
+                        <span className={s.meta}>Reads as: {c.target_text}</span>
+                      </div>
+                    ) : (
+                      <Input
+                        aria-label={`${m.metric} target`}
+                        value={c.target_text}
+                        onChange={(_, d) => patch(m.metric_id, shown, { target_text: d.value })}
+                      />
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </DataTable>
       <SaveBar
         dirty={dirty}
         saving={save.isPending}

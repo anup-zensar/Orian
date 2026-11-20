@@ -7,9 +7,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.deps import IdPath, get_current_user, get_db, require
+from app.deps import IdPath, get_current_user, get_db
 from app.models import User
-from app.permissions import Perm
 from app.schemas.items import (
     BulkItemsIn,
     BulkResultOut,
@@ -104,7 +103,7 @@ def patch_item(
 @router.post("/items/bulk", response_model=BulkResultOut)
 def bulk_items(
     body: BulkItemsIn,
-    user: User = Depends(require(Perm.CONFIRM_SCOPE)),
+    user: User = Depends(get_current_user),  # permission (and its reason) checked in the domain
     db: Session = Depends(get_db),
 ) -> BulkResultOut:
     """Bulk actions for the OR focal (spec 8.7 b): set owner and/or mark N/A with a reason.

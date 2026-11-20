@@ -13,7 +13,7 @@ from app.main import app
 from app.middleware import install_middleware
 
 API = "/api/v1"
-PUBLIC = {("GET", f"{API}/reference"), ("GET", f"{API}/users")}
+PUBLIC = {("GET", f"{API}/users")}
 ORIGIN = get_settings().cors_origins[0]
 
 
@@ -136,10 +136,23 @@ def test_streamed_oversized_body_without_content_length_gets_413(monkeypatch):
 
 
 def test_real_app_responses_carry_security_headers(client):
-    res = client.get(f"{API}/reference")
+    res = client.get(f"{API}/reference", headers={"X-Demo-User": "U01"})
     assert res.status_code == 200
     assert res.headers["x-content-type-options"] == "nosniff"
     assert res.headers["referrer-policy"] == "strict-origin-when-cross-origin"
     assert res.headers["permissions-policy"] == "camera=(), microphone=(), geolocation=()"
     assert "frame-ancestors" in res.headers["content-security-policy"]
     assert res.headers["cache-control"] == "no-store"
+
+
+def test_reference_needs_a_signed_in_user(client):
+    assert client.get(f"{API}/reference").status_code == 401
+    assert client.get(f"{API}/reference", headers={"X-Demo-User": "U01"}).status_code == 200
+
+
+def test_leadership_update_denial_names_or_focal_and_admin():
+    from app.permissions import DENIAL_REASONS, Perm
+
+    assert DENIAL_REASONS[Perm.GENERATE_LEADERSHIP_UPDATE] == (
+        "Only the OR focal or Admin can generate and send leadership updates"
+    )

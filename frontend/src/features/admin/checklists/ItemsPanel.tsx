@@ -14,6 +14,7 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
+import { DataTable } from '../../../components/DataTable';
 import { EmptyState } from '../../../components/EmptyState';
 import { ErrorState } from '../../../components/ErrorState';
 import { LensChip } from '../../../components/LensChip';
@@ -30,7 +31,6 @@ const PAGE = 100; // rows shown before "Show more"; the library has hundreds of 
 const useStyles = makeStyles({
   filters: { display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap', alignItems: 'end' },
   grow: { flexGrow: 1, minWidth: '200px' },
-  scroll: { overflowX: 'auto' },
 });
 
 /** Browse, search and edit the library items; New item adds one to any checklist. */
@@ -109,7 +109,7 @@ export function ItemsPanel() {
       ) : !items.data?.length ? (
         <EmptyState message="No items match these filters." />
       ) : (
-        <div className={s.scroll}>
+        <DataTable label="Playbook items table" stickyFirstColumn>
           <Table
             aria-label="Playbook items"
             size="small"
@@ -117,6 +117,7 @@ export function ItemsPanel() {
           >
             <TableHeader>
               <TableRow>
+                <TableHeaderCell style={{ width: 72 }} />
                 <TableHeaderCell>Id</TableHeaderCell>
                 <TableHeaderCell style={{ minWidth: 220 }}>Title</TableHeaderCell>
                 <TableHeaderCell>Checklist</TableHeaderCell>
@@ -125,12 +126,16 @@ export function ItemsPanel() {
                 <TableHeaderCell>Tiers</TableHeaderCell>
                 <TableHeaderCell>Mandatory</TableHeaderCell>
                 <TableHeaderCell>Active</TableHeaderCell>
-                <TableHeaderCell />
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.data.slice(0, limit).map((it) => (
                 <TableRow key={it.id}>
+                  <TableCell>
+                    <Button size="small" onClick={() => setDialog(it)}>
+                      Edit
+                    </Button>
+                  </TableCell>
                   <TableCell>{it.id}</TableCell>
                   <TableCell style={{ minWidth: 220 }}>{it.title}</TableCell>
                   <TableCell title={it.source}>{it.source_label || it.source}</TableCell>
@@ -150,24 +155,21 @@ export function ItemsPanel() {
                   </TableCell>
                   <TableCell>{it.mandatory ? 'Yes' : 'No'}</TableCell>
                   <TableCell>{it.active ? 'Yes' : 'No'}</TableCell>
-                  <TableCell>
-                    <Button size="small" onClick={() => setDialog(it)}>
-                      Edit
-                    </Button>
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-          <p>
-            Showing {Math.min(limit, items.data.length)} of {items.data.length} items.{' '}
-            {limit < items.data.length && (
-              <Button size="small" onClick={() => setLimit((n) => n + PAGE)}>
-                Show more
-              </Button>
-            )}
-          </p>
-        </div>
+        </DataTable>
+      )}
+      {items.data && items.data.length > 0 && (
+        <p>
+          Showing {Math.min(limit, items.data.length)} of {items.data.length} items.{' '}
+          {limit < items.data.length && (
+            <Button size="small" onClick={() => setLimit((n) => n + PAGE)}>
+              Show more
+            </Button>
+          )}
+        </p>
       )}
       {dialog && (
         <ItemDialog

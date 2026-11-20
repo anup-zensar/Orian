@@ -25,6 +25,9 @@ import {
 } from '@fluentui/react-components';
 import { LockClosed16Regular } from '@fluentui/react-icons';
 import { PageHeader } from '../../components/PageHeader';
+import { DataTable } from '../../components/DataTable';
+import { KpiTile } from '../../components/KpiTile';
+import { Toolbar } from '../../components/layout/Toolbar';
 import { SectionCard } from '../../components/SectionCard';
 import { LoadingState } from '../../components/LoadingState';
 import { ErrorState } from '../../components/ErrorState';
@@ -48,21 +51,12 @@ const useStyles = makeStyles({
   stack: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
   counts: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
     gap: tokens.spacingHorizontalM,
   },
-  tile: {
-    display: 'flex',
-    flexDirection: 'column',
-    padding: tokens.spacingVerticalM,
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: tokens.borderRadiusMedium,
-    backgroundColor: tokens.colorNeutralBackground1,
-  },
-  tileNum: { fontSize: tokens.fontSizeHero700, fontWeight: tokens.fontWeightSemibold },
   list: { margin: 0, paddingLeft: '20px' },
   head: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS },
-  tableWrap: { overflowX: 'auto' },
+  applies: { minWidth: '112px' },
   lock: { display: 'inline-flex', alignItems: 'center', gap: tokens.spacingHorizontalXS },
   lensCell: {
     display: 'flex',
@@ -73,17 +67,6 @@ const useStyles = makeStyles({
 });
 
 const LENSES: string[] = ['Business', 'Technical', 'Compliance'];
-
-function Tile(props: { label: string; value: number | string; hint?: string }) {
-  const s = useStyles();
-  return (
-    <div className={s.tile}>
-      <Caption1>{props.label}</Caption1>
-      <span className={s.tileNum}>{props.value}</span>
-      {props.hint && <Caption1>{props.hint}</Caption1>}
-    </div>
-  );
-}
 
 function ScopeTable(props: {
   title: string;
@@ -99,7 +82,7 @@ function ScopeTable(props: {
       {props.rows.length === 0 ? (
         <EmptyState message="No requirements in this list." />
       ) : (
-        <div className={s.tableWrap}>
+        <DataTable label={props.title}>
           <Table aria-label={props.title} size="small">
             <TableHeader>
               <TableRow>
@@ -116,6 +99,7 @@ function ScopeTable(props: {
               {props.rows.map((r) => {
                 const select = (
                   <Select
+                    className={s.applies}
                     size="small"
                     aria-label={`Applies for ${r.id}`}
                     value={r.applies}
@@ -174,7 +158,7 @@ function ScopeTable(props: {
               })}
             </TableBody>
           </Table>
-        </div>
+        </DataTable>
       )}
     </SectionCard>
   );
@@ -262,14 +246,17 @@ function ScopeContent(props: {
   return (
     <div className={s.stack}>
       {scope.tier_banner && (
-        <MessageBar intent={scope.tier_banner.status === 'Confirmed' ? 'success' : 'warning'}>
+        <MessageBar
+          layout="multiline"
+          intent={scope.tier_banner.status === 'Confirmed' ? 'success' : 'warning'}
+        >
           <MessageBarBody>
             {scope.tier_banner.text} <Link to={`/transitions/${id}/tiering`}>Open tiering</Link>
           </MessageBarBody>
         </MessageBar>
       )}
       {scope.launched && (
-        <MessageBar intent="info">
+        <MessageBar intent="info" layout="multiline">
           <MessageBarBody>
             Assessment launched – applicability changes below apply to the checklist items.{' '}
             <Link to={`/transitions/${id}/assessment`}>Open assessment</Link>
@@ -289,22 +276,22 @@ function ScopeContent(props: {
       </SectionCard>
 
       <div className={s.counts} aria-label="Scope summary">
-        <Tile label="Framework" value={c.framework} />
+        <KpiTile label="Framework" value={c.framework} />
         {c.ai_applicable + c.ai_excluded > 0 && (
-          <Tile
+          <KpiTile
             label="AI Playbook"
             value={c.ai_applicable}
-            hint={`${c.ai_excluded} excluded by tier`}
+            caption={`${c.ai_excluded} excluded by tier`}
           />
         )}
-        <Tile
+        <KpiTile
           label="Golden set"
           value={c.golden_set_applies}
-          hint={`${c.golden_set_to_confirm} to confirm`}
+          caption={`${c.golden_set_to_confirm} to confirm`}
         />
-        <Tile label="Common" value={c.common} />
-        {otherItems > 0 && <Tile label="Other checklists" value={otherItems} />}
-        <Tile label="Total applicable" value={c.total} />
+        <KpiTile label="Common" value={c.common} />
+        {otherItems > 0 && <KpiTile label="Other checklists" value={otherItems} />}
+        <KpiTile label="Total applicable" value={c.total} />
       </div>
 
       <SectionCard
@@ -368,7 +355,7 @@ function ScopeContent(props: {
         onChange={change}
       />
 
-      <div>
+      <Toolbar align="end">
         {launchReason ? (
           <Tooltip content={launchReason} relationship="description">
             <span>{launchBtn}</span>
@@ -376,7 +363,7 @@ function ScopeContent(props: {
         ) : (
           launchBtn
         )}
-      </div>
+      </Toolbar>
     </div>
   );
 }

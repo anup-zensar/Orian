@@ -125,7 +125,6 @@ export function Heatmap({ data, selectedPortfolio, selectedGate, onSelect }: Pro
                       aria-label={`${p} at ${g.short}: ${plural(count, 'transition')}, worst RAG ${
                         rag === 'Grey' ? 'Not started' : rag
                       }`}
-                      aria-pressed={selected}
                       onClick={() => onSelect(p, g.code)}
                     >
                       <span className={s.count}>{count}</span>

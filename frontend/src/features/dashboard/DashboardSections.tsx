@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableHeaderCell,
   TableRow,
+  Tooltip,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
@@ -22,6 +23,7 @@ import {
 import type { AuditEvent, PortfolioTile, WorkItem } from '../../api/types';
 import { ActorBadge } from '../../components/ActorBadge';
 import { AppLink } from '../../components/AppLink';
+import { DataTable } from '../../components/DataTable';
 import { EmptyState } from '../../components/EmptyState';
 import { RagChip } from '../../components/RagChip';
 import { SectionCard } from '../../components/SectionCard';
@@ -31,12 +33,22 @@ import type { ActorType } from '../../theme/tokens';
 dayjs.extend(relativeTime);
 
 const useStyles = makeStyles({
-  titleCell: { minWidth: '220px', overflowWrap: 'anywhere', whiteSpace: 'normal' },
-  transitionCell: { minWidth: '140px', overflowWrap: 'anywhere' },
-  kind: { display: 'inline-flex', alignItems: 'center', gap: tokens.spacingHorizontalXS },
+  // Title: at most ~280 px wide, two lines, full text in the tooltip.
+  titleCell: { minWidth: '200px', maxWidth: '280px', whiteSpace: 'normal' },
+  clamp: {
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
+    overflowWrap: 'anywhere',
+  },
+  transitionCell: { minWidth: '140px', maxWidth: '220px', overflowWrap: 'anywhere' },
+  nowrap: { whiteSpace: 'nowrap' },
+  typeCol: { width: '56px' },
+  kind: { display: 'inline-flex', alignItems: 'center' },
   tiles: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))',
     gap: tokens.spacingHorizontalM,
   },
   tile: {
@@ -45,9 +57,10 @@ const useStyles = makeStyles({
     gap: tokens.spacingVerticalS,
     padding: tokens.spacingVerticalM,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: tokens.borderRadiusMedium,
+    borderRadius: tokens.borderRadiusLarge,
+    backgroundColor: tokens.colorNeutralBackground2,
   },
-  chips: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalXS },
+  chips: { display: 'flex', flexWrap: 'wrap', minWidth: 0, gap: tokens.spacingHorizontalXS },
   stats: { display: 'flex', flexDirection: 'column', gap: '2px' },
   list: {
     listStyle: 'none',
@@ -84,11 +97,11 @@ export function MyWorkCard({ rows, total }: { rows: WorkItem[]; total: number })
         <EmptyState message="Nothing is assigned to you right now. Browse transitions to find where help is needed." />
       ) : (
         <>
-          <div style={{ overflowX: 'auto' }}>
+          <DataTable label="My work table">
             <Table aria-label="My work" size="small" style={{ minWidth: 760 }}>
               <TableHeader>
                 <TableRow>
-                  <TableHeaderCell>Type</TableHeaderCell>
+                  <TableHeaderCell className={s.typeCol}>Type</TableHeaderCell>
                   <TableHeaderCell>Title</TableHeaderCell>
                   <TableHeaderCell>Transition</TableHeaderCell>
                   <TableHeaderCell>Status</TableHeaderCell>
@@ -103,22 +116,27 @@ export function MyWorkCard({ rows, total }: { rows: WorkItem[]; total: number })
                   const k = KIND[r.kind as keyof typeof KIND] ?? KIND.item;
                   return (
                     <TableRow key={`${r.kind}-${r.transition_id}-${r.id}`}>
-                      <TableCell>
-                        <span className={s.kind}>
-                          <k.Icon aria-hidden />
-                          {k.label}
-                        </span>
+                      <TableCell className={s.typeCol}>
+                        <Tooltip content={k.label} relationship="label">
+                          <span className={s.kind}>
+                            <k.Icon />
+                          </span>
+                        </Tooltip>
                       </TableCell>
                       <TableCell className={s.titleCell}>
-                        <strong>{r.id}</strong> {r.title}
+                        <Tooltip content={`${r.id} ${r.title}`} relationship="description">
+                          <span className={s.clamp}>
+                            <strong>{r.id}</strong> {r.title}
+                          </span>
+                        </Tooltip>
                       </TableCell>
                       <TableCell className={s.transitionCell}>
                         <AppLink to={`/transitions/${r.transition_id}/overview`}>
                           {r.transition_name}
                         </AppLink>
                       </TableCell>
-                      <TableCell>{r.status}</TableCell>
-                      <TableCell>{r.due_label}</TableCell>
+                      <TableCell className={s.nowrap}>{r.status}</TableCell>
+                      <TableCell className={s.nowrap}>{r.due_label}</TableCell>
                       <TableCell>
                         <AppLink to={r.link} ariaLabel={`Open ${r.id} ${r.title}`}>
                           Open
@@ -129,7 +147,7 @@ export function MyWorkCard({ rows, total }: { rows: WorkItem[]; total: number })
                 })}
               </TableBody>
             </Table>
-          </div>
+          </DataTable>
           <Caption1 role="status">
             {plural(total, 'work item')}
             {counts.length > 0 ? `: ${counts.join(', ')}` : ''}
@@ -157,7 +175,7 @@ export function PortfolioTiles({ tiles }: { tiles: PortfolioTile[] }) {
         <div className={s.tiles}>
           {tiles.map((t) => (
             <div key={t.portfolio} className={s.tile}>
-              <AppLink to={`/control-tower?portfolio=${encodeURIComponent(t.portfolio)}`}>
+              <AppLink to={`/transitions?portfolio=${encodeURIComponent(t.portfolio)}`}>
                 <strong>{t.portfolio}</strong>
               </AppLink>
               <span>{plural(t.transitions, 'transition')}</span>

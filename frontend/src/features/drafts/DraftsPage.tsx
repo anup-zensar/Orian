@@ -19,9 +19,12 @@ import {
 } from '@fluentui/react-components';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ChevronDown16Regular, ChevronUp16Regular } from '@fluentui/react-icons';
 import { useSearchParams } from 'react-router';
 import { AppLink } from '../../components/AppLink';
+import { DataTable } from '../../components/DataTable';
+import { Toolbar } from '../../components/layout/Toolbar';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
@@ -38,34 +41,15 @@ dayjs.extend(relativeTime);
 
 const useStyles = makeStyles({
   page: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
-  filters: {
-    display: 'flex',
-    gap: tokens.spacingHorizontalM,
-    flexWrap: 'wrap',
-    alignItems: 'center',
-  },
   row: { cursor: 'pointer' },
   rowSelected: { backgroundColor: tokens.colorBrandBackground2 },
   subject: { fontWeight: tokens.fontWeightSemibold },
-  scroll: { overflowX: 'auto' },
   table: { minWidth: '640px' },
-  cKind: { width: '76px' },
-  cTransition: { width: '140px' },
-  cTo: { width: '160px', overflowWrap: 'anywhere' },
+  cKind: { width: '90px' },
+  cTransition: { width: '150px' },
+  cTo: { width: '170px', overflowWrap: 'anywhere' },
   cSubject: { minWidth: '200px', overflowWrap: 'anywhere' },
-  // Status stays visible at the right edge while the wide table scrolls (1024 px, A-80 follow-up).
-  cStatus: {
-    width: '120px',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    position: 'sticky',
-    right: 0,
-    zIndex: 1,
-    backgroundColor: tokens.colorNeutralBackground1,
-    borderLeft: `1px solid ${tokens.colorNeutralStroke2}`,
-  },
-  cStatusSelected: { backgroundColor: tokens.colorBrandBackground2 },
+  cStatus: { width: '120px', flexDirection: 'column', alignItems: 'flex-start' },
 });
 
 function DraftDetail({ draftId, onClose }: { draftId: number; onClose: () => void }) {
@@ -102,6 +86,8 @@ export function DraftsPage() {
   const transition = params.get('transition') ?? '';
   const source = params.get('source') ?? '';
   const draftParam = params.get('draft');
+  const [more, setMore] = useState(false);
+  const moreOpen = more || !!kind || !!source;
   const draftId = draftParam && /^\d+$/.test(draftParam) ? Number(draftParam) : null;
   const all = useDrafts({});
   const transitions = useTransitions({});
@@ -138,9 +124,7 @@ export function DraftsPage() {
         subtitle="Messages Orion or a workflow rule drafted for a person to edit and send."
       />
 
-      <SectionCard title="Reminder engine">
-        <RunRemindersControl />
-      </SectionCard>
+      <RunRemindersControl />
 
       {focusTransition && autonomous.includes(focusTransition) ? (
         <MessageBar intent="warning" layout="multiline">
@@ -170,24 +154,16 @@ export function DraftsPage() {
         <DraftDetail draftId={draftId} onClose={() => setParam('draft', null)} />
       )}
 
-      <div className={s.filters}>
+      <Toolbar>
         <Select
           aria-label="Status"
           value={status}
           onChange={(_, d) => setParam('status', d.value || 'all')}
         >
-          <option value="Draft">Draft</option>
+          <option value="Draft">Needs review (Draft)</option>
           <option value="Sent">Sent</option>
           <option value="Discarded">Discarded</option>
           <option value="all">All statuses</option>
-        </Select>
-        <Select aria-label="Kind" value={kind} onChange={(_, d) => setParam('kind', d.value)}>
-          <option value="">All kinds</option>
-          {kindOptions.map((k) => (
-            <option key={k.value} value={k.value}>
-              {k.label}
-            </option>
-          ))}
         </Select>
         <Select
           aria-label="Transition"
@@ -201,12 +177,36 @@ export function DraftsPage() {
             </option>
           ))}
         </Select>
-        <Select aria-label="Source" value={source} onChange={(_, d) => setParam('source', d.value)}>
-          <option value="">All sources</option>
-          <option value="orion">Orion agent</option>
-          <option value="rule">Workflow rule</option>
-        </Select>
-      </div>
+        <Button
+          appearance="subtle"
+          icon={moreOpen ? <ChevronUp16Regular /> : <ChevronDown16Regular />}
+          aria-expanded={moreOpen}
+          onClick={() => setMore(!moreOpen)}
+        >
+          More filters
+        </Button>
+        {moreOpen && (
+          <>
+            <Select aria-label="Kind" value={kind} onChange={(_, d) => setParam('kind', d.value)}>
+              <option value="">All kinds</option>
+              {kindOptions.map((k) => (
+                <option key={k.value} value={k.value}>
+                  {k.label}
+                </option>
+              ))}
+            </Select>
+            <Select
+              aria-label="Source"
+              value={source}
+              onChange={(_, d) => setParam('source', d.value)}
+            >
+              <option value="">All sources</option>
+              <option value="orion">Orion agent</option>
+              <option value="rule">Workflow rule</option>
+            </Select>
+          </>
+        )}
+      </Toolbar>
 
       {all.isLoading && <LoadingState rows={6} />}
       {all.isError && <ErrorState error={all.error} />}
@@ -214,7 +214,7 @@ export function DraftsPage() {
         <EmptyState message="No drafts match. Drafts appear when Orion or a workflow rule prepares a message." />
       )}
       {all.data && rows.length > 0 && (
-        <div className={s.scroll}>
+        <DataTable label="Drafts list">
           <Table aria-label="Drafts" size="small" className={s.table}>
             <TableHeader>
               <TableRow>
@@ -260,9 +260,7 @@ export function DraftsPage() {
                     </div>
                     <SourceLabel label={d.source_label} />
                   </TableCell>
-                  <TableCell
-                    className={mergeClasses(s.cStatus, d.id === draftId && s.cStatusSelected)}
-                  >
+                  <TableCell className={s.cStatus}>
                     <div>
                       <Badge
                         appearance="outline"
@@ -288,7 +286,7 @@ export function DraftsPage() {
               ))}
             </TableBody>
           </Table>
-        </div>
+        </DataTable>
       )}
     </div>
   );

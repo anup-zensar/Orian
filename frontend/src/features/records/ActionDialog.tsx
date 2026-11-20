@@ -12,6 +12,7 @@ import {
   Input,
   Select,
 } from '@fluentui/react-components';
+import { FormFull, FormGrid } from '../../components/layout/FormGrid';
 import { useApiErrorToast } from '../../hooks/useApiErrorToast';
 import { useAuth } from '../../auth/useAuth';
 import { useOptions } from '../reference/options';
@@ -24,7 +25,6 @@ import {
   type Item,
 } from './api';
 import { ItemSelect, OwnerSelect } from './common';
-import { useRecordStyles } from './hooks';
 
 export interface ActionPrefill {
   title?: string;
@@ -41,7 +41,6 @@ export function ActionDialog(props: {
   prefill?: ActionPrefill;
   onClose: () => void;
 }) {
-  const s = useRecordStyles();
   const { userId } = useAuth();
   const create = useCreateAction(props.transitionId);
   const patch = usePatchAction(props.transitionId);
@@ -97,47 +96,53 @@ export function ActionDialog(props: {
 
   return (
     <ReturnFocusDialog open onOpenChange={(_, d) => !d.open && props.onClose()}>
-      <DialogSurface>
+      <DialogSurface style={{ maxWidth: 640, width: '95vw' }}>
         <DialogBody>
           <DialogTitle>{a ? `Edit action ${a.id}` : 'Create action'}</DialogTitle>
-          <DialogContent className={s.form}>
-            <Field label="Title" required>
-              <Input value={title} onChange={(_, d) => setTitle(d.value)} />
-            </Field>
-            {a ? (
-              <Field label="Linked items">{a.item_ids.join(', ') || 'None'}</Field>
-            ) : (
-              <ItemSelect
-                label="Linked item"
-                items={props.items}
-                value={itemId}
-                onChange={setItemId}
-              />
-            )}
-            <OwnerSelect label="Owner" value={owner} onChange={setOwner} required />
-            <Field label="Due date" required>
-              <Input type="date" value={due} onChange={(_, d) => setDue(d.value)} />
-            </Field>
-            <Field label="Priority">
-              <Select value={priority} onChange={(_, d) => setPriority(d.value)}>
-                {priorities.map((x) => (
-                  <option key={x.value} value={x.value}>
-                    {x.label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            {a && (
-              <Field label="Status">
-                <Select value={status} onChange={(_, d) => setStatus(d.value)}>
-                  {statuses.map((x) => (
+          <DialogContent>
+            <FormGrid minColWidth={220}>
+              <FormFull>
+                <Field label="Title" required>
+                  <Input value={title} onChange={(_, d) => setTitle(d.value)} />
+                </Field>
+              </FormFull>
+              <FormFull>
+                {a ? (
+                  <Field label="Linked items">{a.item_ids.join(', ') || 'None'}</Field>
+                ) : (
+                  <ItemSelect
+                    label="Linked item"
+                    items={props.items}
+                    value={itemId}
+                    onChange={setItemId}
+                  />
+                )}
+              </FormFull>
+              <OwnerSelect label="Owner" value={owner} onChange={setOwner} required />
+              <Field label="Due date" required>
+                <Input type="date" value={due} onChange={(_, d) => setDue(d.value)} />
+              </Field>
+              <Field label="Priority">
+                <Select value={priority} onChange={(_, d) => setPriority(d.value)}>
+                  {priorities.map((x) => (
                     <option key={x.value} value={x.value}>
                       {x.label}
                     </option>
                   ))}
                 </Select>
               </Field>
-            )}
+              {a && (
+                <Field label="Status">
+                  <Select value={status} onChange={(_, d) => setStatus(d.value)}>
+                    {statuses.map((x) => (
+                      <option key={x.value} value={x.value}>
+                        {x.label}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              )}
+            </FormGrid>
           </DialogContent>
           <DialogActions>
             <Button appearance="secondary" onClick={props.onClose}>

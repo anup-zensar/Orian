@@ -14,7 +14,12 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import { Dismiss12Regular, Search20Regular } from '@fluentui/react-icons';
+import {
+  ChevronDown16Regular,
+  ChevronUp16Regular,
+  Dismiss12Regular,
+  Search20Regular,
+} from '@fluentui/react-icons';
 import type { IntakeFieldRef } from '../../api/types';
 import { useReference } from '../reference/api';
 import {
@@ -25,18 +30,27 @@ import {
   useProjectTypes,
 } from '../reference/options';
 import { plural } from '../../lib/format';
+import { cardRadius, cardShadow } from '../../theme/orionTheme';
 import type { CustomFilterKey, FilterKey, UrlFilters } from './useUrlFilters';
 
 const useStyles = makeStyles({
+  // Auto-fill grid: controls share one baseline and wrap with the width of the content.
   bar: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'flex-end',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 150px), 1fr))',
+    alignItems: 'end',
     gap: tokens.spacingHorizontalM,
+    rowGap: tokens.spacingVerticalS,
     marginBottom: tokens.spacingVerticalL,
+    minWidth: 0,
+    padding: tokens.spacingVerticalM,
+    paddingInline: tokens.spacingHorizontalL,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: cardRadius,
+    backgroundColor: tokens.colorNeutralBackground1,
+    boxShadow: cardShadow,
   },
-  search: { minWidth: '220px', flexGrow: 1, maxWidth: '320px' },
-  select: { minWidth: '150px' },
+  cellEnd: { display: 'flex', alignItems: 'center', minHeight: '32px', minWidth: 0 },
   tags: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalS, alignItems: 'center' },
 });
 
@@ -116,13 +130,19 @@ export function FilterBar({ filters, update, clear, showMine, notice }: Props) {
   const [dismissed, setDismissed] = useState<string | null>(null);
   const tags = tileFilterTags(filters);
   const hasAny = Object.keys(filters).length > 0;
+  // Less-used filters sit behind "More filters"; it opens by itself when the URL sets one of them.
+  const moreSet = Object.keys(filters).filter(
+    (k) => k === 'region' || k === 'status' || k === 'type' || k.startsWith('cf_'),
+  ).length;
+  const [more, setMore] = useState<boolean | null>(null);
+  const moreOpen = more ?? moreSet > 0;
 
   const dropdown = (
     key: FilterKey | CustomFilterKey,
     label: string,
     options: readonly (readonly [string, string])[],
   ) => (
-    <Field label={label} className={s.select}>
+    <Field label={label}>
       <Select
         value={filters[key] ?? ''}
         onChange={(_, d) => update({ [key]: d.value || undefined })}
@@ -140,11 +160,11 @@ export function FilterBar({ filters, update, clear, showMine, notice }: Props) {
   return (
     <>
       <div className={s.bar} role="search" aria-label="Filters">
-        <Field label="Search" className={s.search}>
+        <Field label="Search">
           <Input
             type="search"
             contentBefore={<Search20Regular />}
-            placeholder="Name, id, market or OR focal"
+            placeholder="Search transitions"
             value={filters.q ?? ''}
             onChange={(_, d) => update({ q: d.value || undefined }, { replace: true })}
           />
@@ -155,35 +175,54 @@ export function FilterBar({ filters, update, clear, showMine, notice }: Props) {
           portfolios.map((p) => [p.name, p.label] as const),
         )}
         {dropdown(
-          'region',
-          'Region',
-          regions.map((r) => [r.value, r.label] as const),
-        )}
-        {dropdown(
           'gate',
           'Current gate',
           (ref.data?.gates ?? []).map((g) => [g.code, g.short] as const),
         )}
         {dropdown('rag', 'RAG', ragOptions)}
-        {dropdown('status', 'Status', STATUS_OPTIONS)}
-        {dropdown(
-          'type',
-          'Project type',
-          projectTypes.map((t) => [t.code, t.label] as const),
-        )}
-        {customFilters.map((f) => (
-          <CustomFilter key={f.key} field={f} filters={filters} dropdown={dropdown} />
-        ))}
         {showMine && (
-          <Switch
-            label="Only mine"
-            checked={filters.mine === 'true'}
-            onChange={(_, d) => update({ mine: d.checked ? 'true' : undefined })}
-          />
+          <div className={s.cellEnd}>
+            <Switch
+              label="Only mine"
+              checked={filters.mine === 'true'}
+              onChange={(_, d) => update({ mine: d.checked ? 'true' : undefined })}
+            />
+          </div>
         )}
-        <Button appearance="subtle" disabled={!hasAny} onClick={clear}>
-          Clear filters
-        </Button>
+        <div className={s.cellEnd}>
+          <Button
+            appearance="subtle"
+            aria-expanded={moreOpen}
+            icon={moreOpen ? <ChevronUp16Regular /> : <ChevronDown16Regular />}
+            iconPosition="after"
+            onClick={() => setMore(!moreOpen)}
+          >
+            More filters{moreSet > 0 ? ` (${moreSet})` : ''}
+          </Button>
+        </div>
+        {moreOpen && (
+          <>
+            {dropdown(
+              'region',
+              'Region',
+              regions.map((r) => [r.value, r.label] as const),
+            )}
+            {dropdown('status', 'Status', STATUS_OPTIONS)}
+            {dropdown(
+              'type',
+              'Project type',
+              projectTypes.map((t) => [t.code, t.label] as const),
+            )}
+            {customFilters.map((f) => (
+              <CustomFilter key={f.key} field={f} filters={filters} dropdown={dropdown} />
+            ))}
+          </>
+        )}
+        <div className={s.cellEnd}>
+          <Button appearance="subtle" disabled={!hasAny} onClick={clear}>
+            Clear filters
+          </Button>
+        </div>
       </div>
       {notice && dismissed !== notice && (
         <MessageBar intent="info" role="status" style={{ marginBottom: 8 }}>

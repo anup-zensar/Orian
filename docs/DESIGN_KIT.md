@@ -82,7 +82,7 @@ import { DataTable } from '../../components/DataTable';
 
 Site-wide, `theme/GlobalStyles.tsx` (mounted once in `main.tsx`) gives every control inside a Fluent `Field` `min-width:0` and `max-width:100%`, makes the Field grid `minmax(0,1fr)`, sets `box-sizing: border-box`, and draws the selected-Tab indicator in yellow. You do not need to repeat that.
 
-Shell (`layout/`): white top bar with a 4 px yellow top accent; left nav 232 px, collapses to an icon rail (tooltips, same links) when the Orion panel is open below 1600 px or the viewport is under 900 px; the panel overlays below 1200 px. The workspace tabs (`features/transitions/TransitionWorkspace.tsx`) use strong text + yellow 3 px underline.
+Shell (`layout/`): white top bar with a 4 px yellow top accent; left nav 232 px (entries are permission-aware: `NavItem.anyPermission` lists permission codes from GET /me, no role names; there is no "New transition" or "Support models" entry), collapses to an icon rail (tooltips, same links) when the Orion panel is open below 1600 px or the viewport is under 900 px; the panel (width `clamp(340px, 28vw, 420px)`, no "open full page" icon; `/orion` stays as a route) overlays below 1200 px. At 1280 px with the panel open the page keeps about 810 px. The workspace tabs (`features/transitions/TransitionWorkspace.tsx`) use strong text + yellow 3 px underline.
 
 ## 5. Rules
 

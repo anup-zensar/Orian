@@ -19,6 +19,7 @@ import {
 import { Edit16Regular } from '@fluentui/react-icons';
 import { LockClosedRegular } from '@fluentui/react-icons';
 import type { PermissionMatrix, PermissionRow } from '../../../api/types';
+import { DataTable } from '../../../components/DataTable';
 import { ReturnFocusDialog } from '../../../components/ReturnFocusDialog';
 import { SectionCard } from '../../../components/SectionCard';
 import { usePutPermissions } from '../peopleRulesApi';
@@ -33,8 +34,7 @@ interface Draft {
 
 const useStyles = makeStyles({
   note: { color: tokens.colorNeutralForeground3, margin: 0 },
-  scroll: { overflowX: 'auto' },
-  grid: { borderCollapse: 'collapse', width: '100%', minWidth: '700px' },
+  grid: { borderCollapse: 'collapse', width: '100%' },
   th: {
     textAlign: 'center',
     padding: tokens.spacingVerticalXS,
@@ -46,10 +46,6 @@ const useStyles = makeStyles({
   thLeft: {
     textAlign: 'left',
     minWidth: '200px',
-    position: 'sticky',
-    left: 0,
-    zIndex: 1,
-    backgroundColor: tokens.colorNeutralBackground1,
   },
   area: {
     padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalS}`,
@@ -62,10 +58,7 @@ const useStyles = makeStyles({
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   name: {
-    position: 'sticky',
-    left: 0,
-    zIndex: 1,
-    backgroundColor: tokens.colorNeutralBackground1,
+    minWidth: '200px',
     padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
   },
@@ -183,7 +176,7 @@ function Editor({ matrix }: { matrix: PermissionMatrix }) {
           <MessageBarBody>{n.replace(/\s*\(BR-\d+\)/g, '')}</MessageBarBody>
         </MessageBar>
       ))}
-      <div className={s.scroll}>
+      <DataTable label="Permissions table" stickyFirstColumn>
         <table className={s.grid} aria-label="Permissions by role">
           <thead>
             <tr>
@@ -280,7 +273,7 @@ function Editor({ matrix }: { matrix: PermissionMatrix }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </DataTable>
       <ReasonsBar error={save.error} />
       <SaveBar
         dirty={dirty}

@@ -16,17 +16,14 @@ import { useSuccessToast } from '../gates/useSuccessToast';
 import { AppLink } from '../../components/AppLink';
 import { usePerm } from '../gates/usePerm';
 import { useDiscardDraft, usePatchDraft, useSendDraft, type Draft } from './api';
+import { FormFull, FormGrid } from '../../components/layout/FormGrid';
+import { Toolbar } from '../../components/layout/Toolbar';
 import { SourceLabel } from './SourceLabel';
 import { htmlToMarkdown, markdownToHtml, splitAddresses, validateRecipients } from './richText';
 
 const useStyles = makeStyles({
   root: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
   meta: { display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'center', flexWrap: 'wrap' },
-  split: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-    gap: tokens.spacingHorizontalL,
-  },
   body: { fontFamily: tokens.fontFamilyMonospace, minHeight: '200px' },
   text: { minHeight: '200px' },
   preview: {
@@ -34,9 +31,8 @@ const useStyles = makeStyles({
     height: '280px',
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: tokens.borderRadiusMedium,
-    backgroundColor: '#ffffff',
+    backgroundColor: tokens.colorNeutralBackground1,
   },
-  actions: { display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap' },
 });
 
 /** Sandboxed preview of an email body: never injected into the page DOM (spec 5.5). */
@@ -144,25 +140,29 @@ function DraftEditorInner(props: {
           <MessageBarBody>You can view but not edit this draft: {editReason}</MessageBarBody>
         </MessageBar>
       )}
-      <Field
-        label="To (comma separated)"
-        required
-        validationState={toError && to !== draft.to.join(', ') ? 'error' : 'none'}
-        validationMessage={to !== draft.to.join(', ') ? toError : null}
-      >
-        <Input value={to} disabled={!editable} onChange={(_, d) => setTo(d.value)} />
-      </Field>
-      <Field
-        label="Cc (comma separated)"
-        validationState={ccError ? 'error' : 'none'}
-        validationMessage={ccError}
-      >
-        <Input value={cc} disabled={!editable} onChange={(_, d) => setCc(d.value)} />
-      </Field>
-      <Field label="Subject" required>
-        <Input value={subject} disabled={!editable} onChange={(_, d) => setSubject(d.value)} />
-      </Field>
-      <div className={s.split}>
+      <FormGrid minColWidth={260}>
+        <Field
+          label="To (comma separated)"
+          required
+          validationState={toError && to !== draft.to.join(', ') ? 'error' : 'none'}
+          validationMessage={to !== draft.to.join(', ') ? toError : null}
+        >
+          <Input value={to} disabled={!editable} onChange={(_, d) => setTo(d.value)} />
+        </Field>
+        <Field
+          label="Cc (comma separated)"
+          validationState={ccError ? 'error' : 'none'}
+          validationMessage={ccError}
+        >
+          <Input value={cc} disabled={!editable} onChange={(_, d) => setCc(d.value)} />
+        </Field>
+        <FormFull>
+          <Field label="Subject" required>
+            <Input value={subject} disabled={!editable} onChange={(_, d) => setSubject(d.value)} />
+          </Field>
+        </FormFull>
+      </FormGrid>
+      <FormGrid minColWidth={300}>
         {mode === 'text' && (
           <Field
             label="Body (text)"
@@ -191,12 +191,20 @@ function DraftEditorInner(props: {
             />
           </Field>
         )}
-        <Field label="Preview (sandboxed)">
-          <EmailPreview html={body} title="Draft preview" />
-        </Field>
-      </div>
+        {mode === 'preview' ? (
+          <FormFull>
+            <Field label="Preview (sandboxed)">
+              <EmailPreview html={body} title="Draft preview" />
+            </Field>
+          </FormFull>
+        ) : (
+          <Field label="Preview (sandboxed)">
+            <EmailPreview html={body} title="Draft preview" />
+          </Field>
+        )}
+      </FormGrid>
       {draft.status === 'Draft' && (
-        <div className={s.actions}>
+        <Toolbar>
           <Button
             disabled={!editable}
             appearance={mode === 'text' ? 'primary' : 'secondary'}
@@ -244,7 +252,7 @@ function DraftEditorInner(props: {
           >
             Discard
           </ReasonButton>
-        </div>
+        </Toolbar>
       )}
     </div>
   );

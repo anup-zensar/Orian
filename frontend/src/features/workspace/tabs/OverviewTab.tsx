@@ -22,6 +22,7 @@ import { ErrorState } from '../../../components/ErrorState';
 import { LensChip } from '../../../components/LensChip';
 import { LoadingState } from '../../../components/LoadingState';
 import { SectionCard } from '../../../components/SectionCard';
+import { plural } from '../../../lib/format';
 import { lensColors, type ActorType, type Lens } from '../../../theme/tokens';
 import { TOASTER_ID, useApiErrorToast } from '../../../hooks/useApiErrorToast';
 import { DynamicField } from '../../intake/DynamicField';
@@ -49,13 +50,13 @@ import type { TabProps } from '../types';
 const useStyles = makeStyles({
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))',
     gap: tokens.spacingHorizontalL,
     marginBottom: tokens.spacingVerticalL,
   },
   two: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
     gap: tokens.spacingHorizontalL,
     marginBottom: tokens.spacingVerticalL,
   },
@@ -88,6 +89,20 @@ const useStyles = makeStyles({
     gap: '2px',
     paddingBottom: tokens.spacingVerticalS,
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  attnRow: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalM,
+    alignItems: 'flex-start',
+    paddingBottom: tokens.spacingVerticalS,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  attnText: { display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 },
+  ellipsis: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    color: tokens.colorNeutralForeground3,
   },
   line: { display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'center', flexWrap: 'wrap' },
   fieldGrid: {
@@ -138,111 +153,69 @@ function LensCards({ detail }: { detail: TransitionDetail }) {
   );
 }
 
-function ConditionsCard({ id }: { id: string }) {
-  const s = useStyles();
-  const q = useOverviewConditions(id);
-  const open = (q.data ?? []).filter((c) => c.status === 'Open');
-  return (
-    <SectionCard
-      title="Open conditions"
-      actions={
-        <AppLink to={`/transitions/${encodeURIComponent(id)}/conditions`}>All conditions</AppLink>
-      }
-    >
-      {q.isPending ? (
-        <LoadingState rows={2} />
-      ) : q.error ? (
-        <ErrorState error={q.error} />
-      ) : open.length === 0 ? (
-        <EmptyState message="No open conditions." />
-      ) : (
-        <ul className={s.list}>
-          {open.map((c) => (
-            <li key={c.id} className={s.li}>
-              <div className={s.line}>
-                <strong>{c.id}</strong>
-                {c.item_id && <Caption1>{c.item_id}</Caption1>}
-                <Badge appearance="tint">Due {c.due_gate_short}</Badge>
-              </div>
-              <Body1>{c.text}</Body1>
-              <Caption1>Owner {c.owner?.name ?? 'unassigned'}</Caption1>
-            </li>
-          ))}
-        </ul>
-      )}
-    </SectionCard>
-  );
-}
-
-function ExceptionsCard({ id }: { id: string }) {
+/** One card instead of three lists: counts of what still needs a decision, with a link to manage them. */
+function NeedsAttention({ id }: { id: string }) {
   const s = useStyles();
   const optionLabel = useOptionLabel();
-  const q = useOverviewExceptions(id);
-  const pending = (q.data ?? []).filter(
+  const conditions = useOverviewConditions(id);
+  const exceptions = useOverviewExceptions(id);
+  const risks = useOverviewRisks(id);
+  const open = (conditions.data ?? []).filter((c) => c.status === 'Open');
+  const pending = (exceptions.data ?? []).filter(
     (e) => e.status.startsWith('Pending') || e.status === 'Draft',
   );
-  return (
-    <SectionCard title="Pending exceptions">
-      {q.isPending ? (
-        <LoadingState rows={2} />
-      ) : q.error ? (
-        <ErrorState error={q.error} />
-      ) : pending.length === 0 ? (
-        <EmptyState message="No pending exceptions." />
-      ) : (
-        <ul className={s.list}>
-          {pending.map((e) => (
-            <li key={e.ref} className={s.li}>
-              <div className={s.line}>
-                <strong>{e.ref}</strong>
-                {e.item_id && <Caption1>{e.item_id}</Caption1>}
-                <Badge appearance="tint" color="warning">
-                  {optionLabel('exception_statuses', e.status)}
-                </Badge>
-              </div>
-              <Body1>{e.text}</Body1>
-              {e.approval_request_id && (
-                <AppLink to="/approvals">Approval {e.approval_request_id}</AppLink>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-    </SectionCard>
+  const riskList = risks.data ?? [];
+  const failed = conditions.error ?? exceptions.error ?? risks.error;
+  const loading = conditions.isPending || exceptions.isPending || risks.isPending;
+  const row = (label: string, count: number, preview?: string) => (
+    <li key={label} className={s.attnRow}>
+      <Badge
+        appearance={count > 0 ? 'filled' : 'outline'}
+        color={count > 0 ? 'warning' : 'informative'}
+        shape="rounded"
+      >
+        {count}
+      </Badge>
+      <div className={s.attnText}>
+        <Body1>{label}</Body1>
+        {preview && <Caption1 className={s.ellipsis}>{preview}</Caption1>}
+      </div>
+    </li>
   );
-}
-
-function RisksCard({ id }: { id: string }) {
-  const s = useStyles();
-  const optionLabel = useOptionLabel();
-  const q = useOverviewRisks(id);
+  const topRisk = riskList.find((r) => r.rating === 'High') ?? riskList[0];
   return (
-    <SectionCard title="Risks">
-      {q.isPending ? (
+    <SectionCard
+      title="Needs attention"
+      actions={
+        <AppLink to={`/transitions/${encodeURIComponent(id)}/conditions`}>
+          Manage in Conditions
+        </AppLink>
+      }
+    >
+      {loading ? (
         <LoadingState rows={2} />
-      ) : q.error ? (
-        <ErrorState error={q.error} />
-      ) : (q.data ?? []).length === 0 ? (
-        <EmptyState message="No risks recorded." />
+      ) : failed ? (
+        <ErrorState error={failed} />
       ) : (
         <ul className={s.list}>
-          {(q.data ?? []).map((r) => (
-            <li key={r.id} className={s.li}>
-              <div className={s.line}>
-                <strong>{r.id}</strong>
-                <Badge
-                  appearance="tint"
-                  color={
-                    r.rating === 'High' ? 'danger' : r.rating === 'Medium' ? 'warning' : 'subtle'
-                  }
-                >
-                  {optionLabel('risk_ratings', r.rating)}
-                </Badge>
-              </div>
-              <Body1>{r.title}</Body1>
-              {r.decision && <Caption1>{r.decision}</Caption1>}
-            </li>
-          ))}
+          {row(
+            'Open conditions',
+            open.length,
+            open[0] &&
+              `${open[0].id}${open[0].item_id ? ` (${open[0].item_id})` : ''}: ${open[0].text}`,
+          )}
+          {row(
+            'Pending exceptions',
+            pending.length,
+            pending[0] &&
+              `${pending[0].ref} (${optionLabel('exception_statuses', pending[0].status)}): ${pending[0].text}`,
+          )}
+          {row(
+            'Risks',
+            riskList.length,
+            topRisk &&
+              `${topRisk.id} (${optionLabel('risk_ratings', topRisk.rating)}): ${topRisk.title}`,
+          )}
         </ul>
       )}
     </SectionCard>
@@ -287,50 +260,29 @@ function RecentActivity({ id }: { id: string }) {
   );
 }
 
-function GateHistory({ id }: { id: string }) {
-  const s = useStyles();
+/** One-line gate summary; the full history lives in the Gates tab. */
+function GateSummary({ id }: { id: string }) {
   const q = useGatesOverview(id);
-  const gates = (q.data?.gates ?? []).filter((g) => g.reviews.length > 0);
+  const reviews = (q.data?.gates ?? []).flatMap((g) => g.reviews.map((r) => ({ g, r })));
+  const latest = [...reviews].sort((x, y) => dayjs(y.r.decided_at).diff(dayjs(x.r.decided_at)))[0];
   return (
     <SectionCard
       title="Gate history"
       actions={<AppLink to={`/transitions/${encodeURIComponent(id)}/gates`}>Gates tab</AppLink>}
     >
       {q.isPending ? (
-        <LoadingState rows={3} />
+        <LoadingState rows={1} />
       ) : q.error ? (
         <ErrorState error={q.error} />
-      ) : gates.length === 0 ? (
-        <EmptyState message="No gate reviews or decisions recorded yet." />
+      ) : !latest ? (
+        <Body1>No gate reviews or decisions recorded yet.</Body1>
       ) : (
-        <ol className={s.list}>
-          {gates.map((g) =>
-            g.reviews.map((r) => (
-              <li key={`${g.code}-${r.id}`} className={s.li}>
-                <div className={s.line}>
-                  <strong>{g.short}</strong>
-                  <Badge
-                    appearance="tint"
-                    color={
-                      r.outcome === 'Hold'
-                        ? 'danger'
-                        : r.outcome.includes('conditions')
-                          ? 'warning'
-                          : 'success'
-                    }
-                  >
-                    {r.outcome}
-                  </Badge>
-                </div>
-                <Caption1>
-                  {r.decided_by?.name ?? 'Unknown'} ·{' '}
-                  {dayjs(r.decided_at).format('D MMM YYYY HH:mm')}
-                </Caption1>
-                {r.note && <Body1>{r.note}</Body1>}
-              </li>
-            )),
-          )}
-        </ol>
+        <Body1>
+          {plural(reviews.length, 'gate decision')} recorded. Latest:{' '}
+          <strong>{latest.g.short}</strong> {latest.r.outcome} by{' '}
+          {latest.r.decided_by?.name ?? 'Unknown'},{' '}
+          {dayjs(latest.r.decided_at).format('D MMM YYYY')}.
+        </Body1>
       )}
     </SectionCard>
   );
@@ -497,16 +449,10 @@ export function OverviewTab({ transitionId }: TabProps) {
         <EmptyState message="Lens readiness appears once the assessment is launched." />
       )}
       <div className={s.two}>
-        <ConditionsCard id={detail.id} />
-        <ExceptionsCard id={detail.id} />
-        <RisksCard id={detail.id} />
-      </div>
-      <div className={s.two}>
+        <NeedsAttention id={detail.id} />
         <CustomFieldsCard detail={detail} />
-      </div>
-      <div className={s.two}>
         <RecentActivity id={detail.id} />
-        <GateHistory id={detail.id} />
+        <GateSummary id={detail.id} />
       </div>
     </>
   );

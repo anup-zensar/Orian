@@ -12,6 +12,7 @@ import {
   Select,
   Textarea,
 } from '@fluentui/react-components';
+import { FormFull, FormGrid } from '../../components/layout/FormGrid';
 import { useApiErrorToast } from '../../hooks/useApiErrorToast';
 import { useAuth } from '../../auth/useAuth';
 import { useReference } from '../reference/api';
@@ -26,7 +27,6 @@ import {
   type RiskCreate,
 } from './api';
 import { GateSelect, ItemSelect, OwnerSelect } from './common';
-import { useRecordStyles } from './hooks';
 
 function Shell(props: {
   title: string;
@@ -37,13 +37,14 @@ function Shell(props: {
   onSubmit: () => void;
   children: React.ReactNode;
 }) {
-  const s = useRecordStyles();
   return (
     <ReturnFocusDialog open onOpenChange={(_, d) => !d.open && props.onClose()}>
-      <DialogSurface>
+      <DialogSurface style={{ maxWidth: 640, width: '95vw' }}>
         <DialogBody>
           <DialogTitle>{props.title}</DialogTitle>
-          <DialogContent className={s.form}>{props.children}</DialogContent>
+          <DialogContent>
+            <FormGrid minColWidth={220}>{props.children}</FormGrid>
+          </DialogContent>
           <DialogActions>
             <Button appearance="secondary" onClick={props.onClose}>
               Cancel
@@ -97,12 +98,21 @@ export function CreateConditionDialog(props: {
         )
       }
     >
-      <ItemSelect label="Checklist item" items={props.items} value={itemId} onChange={setItemId} />
+      <FormFull>
+        <ItemSelect
+          label="Checklist item"
+          items={props.items}
+          value={itemId}
+          onChange={setItemId}
+        />
+      </FormFull>
       <OwnerSelect label="Owner" value={owner} onChange={setOwner} required />
       <GateSelect label="Due gate" value={dueGate} onChange={setDueGate} />
-      <Field label="Condition" required>
-        <Textarea value={text} onChange={(_, d) => setText(d.value)} rows={3} />
-      </Field>
+      <FormFull>
+        <Field label="Condition" required>
+          <Textarea value={text} onChange={(_, d) => setText(d.value)} rows={3} />
+        </Field>
+      </FormFull>
     </Shell>
   );
 }
@@ -130,10 +140,14 @@ export function CloseConditionDialog(props: {
         )
       }
     >
-      <span>{props.condition.text}</span>
-      <Field label="Closing note" required>
-        <Textarea value={note} onChange={(_, d) => setNote(d.value)} rows={3} />
-      </Field>
+      <FormFull>
+        <span>{props.condition.text}</span>
+      </FormFull>
+      <FormFull>
+        <Field label="Closing note" required>
+          <Textarea value={note} onChange={(_, d) => setNote(d.value)} rows={3} />
+        </Field>
+      </FormFull>
     </Shell>
   );
 }
@@ -163,17 +177,21 @@ export function RequestExceptionDialog(props: {
         )
       }
     >
-      <ItemSelect
-        label="Control item"
-        items={props.items}
-        value={itemId}
-        onChange={setItemId}
-        required
-        emptyLabel="Select a control item"
-      />
-      <Field label="Rationale" required>
-        <Textarea value={text} onChange={(_, d) => setText(d.value)} rows={4} />
-      </Field>
+      <FormFull>
+        <ItemSelect
+          label="Control item"
+          items={props.items}
+          value={itemId}
+          onChange={setItemId}
+          required
+          emptyLabel="Select a control item"
+        />
+      </FormFull>
+      <FormFull>
+        <Field label="Rationale" required>
+          <Textarea value={text} onChange={(_, d) => setText(d.value)} rows={4} />
+        </Field>
+      </FormFull>
     </Shell>
   );
 }
@@ -213,9 +231,11 @@ export function CreateRiskDialog(props: {
         )
       }
     >
-      <Field label="Title" required>
-        <Input value={title} onChange={(_, d) => setTitle(d.value)} />
-      </Field>
+      <FormFull>
+        <Field label="Title" required>
+          <Input value={title} onChange={(_, d) => setTitle(d.value)} />
+        </Field>
+      </FormFull>
       <Field label="Rating">
         <Select value={rating} onChange={(_, d) => setRating(d.value)}>
           {ratings.map((r) => (
@@ -228,7 +248,9 @@ export function CreateRiskDialog(props: {
       <Field label="Decision">
         <Input value={decision} onChange={(_, d) => setDecision(d.value)} />
       </Field>
-      <ItemSelect label="Linked item" items={props.items} value={itemId} onChange={setItemId} />
+      <FormFull>
+        <ItemSelect label="Linked item" items={props.items} value={itemId} onChange={setItemId} />
+      </FormFull>
     </Shell>
   );
 }

@@ -1,7 +1,7 @@
 """GET /api/v1/reference (spec §9 "Reference & users").
 
-Public (no X-Demo-User) because the login page and forms need it before sign-in (PLAN.md A-27):
-it never contains users or message templates.
+Needs a signed-in user (X-Demo-User): the login page only uses the public GET /users, nothing
+before sign-in needs this payload. It never contains users or message templates.
 
 Structural vocabulary (statuses, gate codes / order / outcomes, item status buckets) comes from
 reference.json (stored at seed time). Everything an Admin can edit (CR-01) comes from the
@@ -18,11 +18,11 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.deps import get_db
+from app.deps import get_current_user, get_db
 from app.domain import cfg
 from app.domain.approvals import pending_exception_statuses
 from app.errors import NotFound
-from app.models import ApprovalChainConfig, PlaybookItem, ReferenceData
+from app.models import ApprovalChainConfig, PlaybookItem, ReferenceData, User
 from app.rules.constants import ACTOR_TYPES, SEVERITIES
 from app.schemas.reference import (
     AppInfoOut,
@@ -139,6 +139,7 @@ def get_reference(
         "(each carries `active`); the UI filters them itself",
     ),
     db: Session = Depends(get_db),
+    _user: User = Depends(get_current_user),
 ) -> ReferenceOut:
     row = db.get(ReferenceData, "reference")
     if row is None:

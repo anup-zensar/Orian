@@ -20,6 +20,7 @@ import {
 import { Sparkle20Regular } from '@fluentui/react-icons';
 import { AppLink } from '../../../components/AppLink';
 import { RagChip } from '../../../components/RagChip';
+import { cardRadius, cardShadow } from '../../../theme/orionTheme';
 import { useApiErrorToast } from '../../../hooks/useApiErrorToast';
 import { useRoleLabel } from '../../reference/options';
 import { daysLabel, formatDate, toRag } from '../../../lib/format';
@@ -35,6 +36,12 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     gap: tokens.spacingVerticalM,
     marginBottom: tokens.spacingVerticalM,
+    minWidth: 0,
+    padding: tokens.spacingVerticalL,
+    backgroundColor: tokens.colorNeutralBackground1,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: cardRadius,
+    boxShadow: cardShadow,
   },
   top: {
     display: 'flex',
@@ -145,7 +152,7 @@ export function WorkspaceHeader({ detail }: { detail: TransitionDetail }) {
   return (
     <header className={s.root}>
       <div className={s.top}>
-        <div>
+        <div style={{ minWidth: 0 }}>
           <Subtitle1 as="h1">{detail.name}</Subtitle1>
           <div className={s.chips}>
             <Badge appearance="tint" color="informative">

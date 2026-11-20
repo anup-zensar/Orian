@@ -8,10 +8,9 @@ const useStyles = makeStyles({
     margin: 0,
     padding: 0,
     display: 'grid',
-    gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(7, minmax(80px, 1fr))',
     gap: tokens.spacingHorizontalXS,
     overflowX: 'auto',
-    '@media (max-width: 900px)': { gridTemplateColumns: 'repeat(7, minmax(88px, 1fr))' },
   },
   step: {
     display: 'flex',

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Navigate, useNavigate, useParams } from 'react-router';
 import {
   Badge,
   Body1,
@@ -23,10 +23,12 @@ import {
   useToastController,
 } from '@fluentui/react-components';
 import { PageHeader } from '../../components/PageHeader';
+import { FormGrid, FormFull } from '../../components/layout/FormGrid';
 import { SectionCard } from '../../components/SectionCard';
 import { LoadingState } from '../../components/LoadingState';
 import { ErrorState } from '../../components/ErrorState';
-import { EmptyState } from '../../components/EmptyState';
+import { SplitLayout } from '../../components/layout/SplitLayout';
+import { Toolbar } from '../../components/layout/Toolbar';
 import type { Me, Reference } from '../../api/types';
 import { TOASTER_ID, useApiErrorToast } from '../../hooks/useApiErrorToast';
 import { useReference } from '../reference/api';
@@ -46,7 +48,6 @@ import {
 } from './api';
 
 const useStyles = makeStyles({
-  steps: { display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap' },
   stack: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
   // A native select is as wide as its longest option; let it shrink to the card instead.
   fit: { minWidth: 0 },
@@ -65,20 +66,7 @@ const useStyles = makeStyles({
     gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
     gap: tokens.spacingHorizontalM,
   },
-  two: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: tokens.spacingHorizontalL,
-    alignItems: 'start',
-    '@media (max-width: 900px)': { gridTemplateColumns: '1fr' },
-  },
-  profile: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: tokens.spacingHorizontalM,
-    '@media (max-width: 700px)': { gridTemplateColumns: '1fr' },
-  },
-  actions: { display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' },
+  details: { '& summary': { cursor: 'pointer', fontWeight: tokens.fontWeightSemibold } },
   list: { margin: 0, paddingLeft: '20px' },
   tierNum: { fontSize: tokens.fontSizeHero800, fontWeight: tokens.fontWeightSemibold },
 });
@@ -94,7 +82,7 @@ function ReadOnlyValue(props: { label: string; value: string | null | undefined 
   );
 }
 
-function QuestionsStep(props: {
+function QuestionsCards(props: {
   t: TransitionDetail;
   reference: Reference;
   answers: Answers;
@@ -117,13 +105,6 @@ function QuestionsStep(props: {
   });
   return (
     <div className={s.stack}>
-      <SectionCard title="Intake answers (read-only)">
-        <div className={s.intake}>
-          {intake.map((x) => (
-            <ReadOnlyValue key={x.key} label={x.label} value={x.text} />
-          ))}
-        </div>
-      </SectionCard>
       <SectionCard title="Tiering questions">
         {props.reference.tier_questions.map((q) => (
           <div key={q.id} className={s.question}>
@@ -145,6 +126,16 @@ function QuestionsStep(props: {
           </div>
         ))}
         <Caption1>Unanswered questions count as No.</Caption1>
+      </SectionCard>
+      <SectionCard title="Intake answers (read-only)">
+        <details className={s.details}>
+          <summary>Show the intake answers this tier depends on</summary>
+          <div className={s.intake} style={{ marginTop: tokens.spacingVerticalM }}>
+            {intake.map((x) => (
+              <ReadOnlyValue key={x.key} label={x.label} value={x.text} />
+            ))}
+          </div>
+        </details>
       </SectionCard>
     </div>
   );
@@ -177,12 +168,7 @@ function StatusCard(props: { t: TransitionDetail }) {
   );
 }
 
-function ProposalStep(props: {
-  t: TransitionDetail;
-  reference: Reference;
-  me: Me;
-  answers: Answers;
-}) {
+function TierAside(props: { t: TransitionDetail; reference: Reference; me: Me; answers: Answers }) {
   const s = useStyles();
   const { t, me, answers } = props;
   const showError = useApiErrorToast();
@@ -274,7 +260,7 @@ function ProposalStep(props: {
   const changeValid = newTier !== '' && reason.trim().length > 0;
 
   return (
-    <div className={s.two}>
+    <div className={s.stack}>
       <SectionCard title="Proposed tier (live)">
         {proposal.error ? (
           <ErrorState error={proposal.error} />
@@ -308,7 +294,7 @@ function ProposalStep(props: {
             The OR focal proposes the tier; IRM confirms it. Orion explains the proposal but never
             confirms it.
           </Body1>
-          <div className={s.actions}>
+          <Toolbar align="start">
             {proposeReason ? (
               <Tooltip content={proposeReason} relationship="description">
                 <span>{proposeBtn}</span>
@@ -342,7 +328,7 @@ function ProposalStep(props: {
                 </span>
               </Tooltip>
             )}
-          </div>
+          </Toolbar>
           {!can('confirm_tier') && (
             <Caption1>Confirm / change tier: {reasonFor('confirm_tier')}</Caption1>
           )}
@@ -394,7 +380,6 @@ function ProfileForm(props: {
   initial: AIProfile;
   access: TransitionDetail['access'];
 }) {
-  const s = useStyles();
   const [v, setV] = useState<AIProfileIn>({ ...props.initial });
   const save = useSaveAiProfile(props.transitionId);
   const showError = useApiErrorToast();
@@ -423,25 +408,30 @@ function ProfileForm(props: {
   );
   return (
     <SectionCard title="AI profile questionnaire">
-      <div className={s.profile}>
-        {PROFILE_FIELDS.map((f) => (
-          <Field key={f.key} label={f.label} style={f.area ? { gridColumn: '1 / -1' } : undefined}>
-            {f.area ? (
-              <Textarea
-                rows={2}
-                disabled={!allowed}
-                value={String(v[f.key] ?? '')}
-                onChange={(_, d) => setV({ ...v, [f.key]: d.value })}
-              />
-            ) : (
-              <Input
-                disabled={!allowed}
-                value={String(v[f.key] ?? '')}
-                onChange={(_, d) => setV({ ...v, [f.key]: d.value })}
-              />
-            )}
-          </Field>
-        ))}
+      <FormGrid>
+        {PROFILE_FIELDS.map((f) => {
+          const Wrap = f.area ? FormFull : 'div';
+          return (
+            <Wrap key={f.key}>
+              <Field label={f.label}>
+                {f.area ? (
+                  <Textarea
+                    rows={2}
+                    disabled={!allowed}
+                    value={String(v[f.key] ?? '')}
+                    onChange={(_, d) => setV({ ...v, [f.key]: d.value })}
+                  />
+                ) : (
+                  <Input
+                    disabled={!allowed}
+                    value={String(v[f.key] ?? '')}
+                    onChange={(_, d) => setV({ ...v, [f.key]: d.value })}
+                  />
+                )}
+              </Field>
+            </Wrap>
+          );
+        })}
         <Field label="Multi-agent orchestration">
           <RadioGroup
             layout="horizontal"
@@ -453,7 +443,7 @@ function ProfileForm(props: {
             <Radio value="no" label="No" />
           </RadioGroup>
         </Field>
-      </div>
+      </FormGrid>
       <div>
         {allowed ? (
           btn
@@ -474,13 +464,7 @@ function ProfileStep(props: { t: TransitionDetail }) {
   return <ProfileForm transitionId={props.t.id} initial={q.data} access={props.t.access} />;
 }
 
-/** The steps of the wizard; the AI profile step exists only for project types that have one. */
-function stepTitles(hasAiProfile: boolean): string[] {
-  const steps = ['Questions', 'Proposed tier', ...(hasAiProfile ? ['AI profile'] : [])];
-  return steps.map((title, i) => `${i + 1}. ${title}`);
-}
-
-/** AI tiering wizard – FR-021 (spec 8.5, BR-011). */
+/** Tiering – FR-021 (spec 8.5, BR-011): questions and the live proposed tier on one page. */
 export function TieringPage() {
   const { id } = useParams();
   const s = useStyles();
@@ -489,8 +473,6 @@ export function TieringPage() {
   const ref = useReference();
   const me = useMe();
   const flags = useTypeFlags(tq.data);
-  const titles = stepTitles(flags.hasAiProfile);
-  const [step, setStep] = useState(0);
   const [edited, setAnswers] = useState<Answers | null>(null);
 
   const err = tq.error ?? ref.error ?? me.error;
@@ -498,6 +480,8 @@ export function TieringPage() {
   const noTierYet =
     !!t && flags.requiresTiering && !t.tier?.proposed_tier && !t.tier?.confirmed_tier;
   const answers: Answers = edited ?? (t?.tier?.answers as Answers | undefined) ?? {};
+  // Tiering does not apply to this project type: go straight to scope.
+  if (t && !flags.requiresTiering) return <Navigate to={`/transitions/${t.id}/scope`} replace />;
   return (
     <>
       <PageHeader
@@ -518,28 +502,10 @@ export function TieringPage() {
         <ErrorState error={err} />
       ) : !t || !ref.data || !me.data ? (
         <LoadingState rows={6} />
-      ) : !flags.requiresTiering ? (
-        <EmptyState
-          message="Tiering does not apply to this project type."
-          action={<Link to={`/transitions/${t.id}/scope`}>Go to scope</Link>}
-        />
       ) : (
         <div className={s.stack}>
-          <div className={s.steps} role="tablist" aria-label="Tiering steps">
-            {titles.map((title, i) => (
-              <Button
-                key={title}
-                role="tab"
-                aria-selected={step === i}
-                appearance={step === i ? 'primary' : 'secondary'}
-                onClick={() => setStep(i)}
-              >
-                {title}
-              </Button>
-            ))}
-          </div>
           {noTierYet && (
-            <MessageBar intent="warning">
+            <MessageBar intent="warning" layout="multiline">
               <MessageBarBody>
                 No tier has been proposed yet. You can continue to scope, but the checklist will not
                 be adjusted for a tier until the OR focal proposes one and the IRM confirms it.
@@ -547,31 +513,22 @@ export function TieringPage() {
             </MessageBar>
           )}
           {t.tier?.status === 'Proposed' && (
-            <MessageBar intent="info">
+            <MessageBar intent="info" layout="multiline">
               <MessageBarBody>
                 Tier {t.tier.proposed_tier} proposed – waiting for IRM confirmation.
               </MessageBarBody>
             </MessageBar>
           )}
-          {step === 0 && (
-            <QuestionsStep t={t} reference={ref.data} answers={answers} set={setAnswers} />
-          )}
-          {step === 1 && <ProposalStep t={t} reference={ref.data} me={me.data} answers={answers} />}
-          {step === 2 && flags.hasAiProfile && <ProfileStep t={t} />}
-          <div className={s.actions}>
-            <Button disabled={step === 0} onClick={() => setStep(step - 1)}>
-              Back
-            </Button>
-            {step < titles.length - 1 ? (
-              <Button appearance="primary" onClick={() => setStep(step + 1)}>
-                Next
-              </Button>
-            ) : (
-              <Button appearance="primary" onClick={() => navigate(`/transitions/${t.id}/scope`)}>
-                Continue to scope
-              </Button>
-            )}
-          </div>
+          <SplitLayout
+            stickyAside={false}
+            main={
+              <div className={s.stack}>
+                <QuestionsCards t={t} reference={ref.data} answers={answers} set={setAnswers} />
+                {flags.hasAiProfile && <ProfileStep t={t} />}
+              </div>
+            }
+            aside={<TierAside t={t} reference={ref.data} me={me.data} answers={answers} />}
+          />
         </div>
       )}
     </>

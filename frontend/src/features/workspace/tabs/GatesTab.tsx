@@ -22,7 +22,7 @@ const useStyles = makeStyles({
   page: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
   head: { display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'center', flexWrap: 'wrap' },
   history: { margin: 0, paddingLeft: tokens.spacingHorizontalXL },
-  upcoming: { opacity: 0.85 },
+  body: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM, minWidth: 0 },
 });
 
 const stateColor = (st: string) =>
@@ -33,12 +33,12 @@ const stateLabel = (st: string) =>
 function GatePanel(props: {
   transitionId: string;
   gate: GateOverview;
-  selected: boolean;
-  onSelect: () => void;
+  open: boolean;
+  onToggle: () => void;
 }) {
   const s = useStyles();
   const { gate } = props;
-  const readiness = useReadiness(props.transitionId, props.selected ? gate.code : undefined);
+  const readiness = useReadiness(props.transitionId, props.open ? gate.code : undefined);
   const isCurrent = gate.state === 'current';
 
   return (
@@ -54,56 +54,61 @@ function GatePanel(props: {
           {gate.carried_items > 0 && (
             <Badge appearance="outline">{gate.carried_items} carried items</Badge>
           )}
-          {!props.selected && (
-            <Button size="small" onClick={props.onSelect}>
-              {isCurrent ? 'Show readiness' : 'Show readiness check'}
-            </Button>
-          )}
+          <Button
+            size="small"
+            aria-expanded={props.open}
+            aria-controls={`gate-body-${gate.code}`}
+            onClick={props.onToggle}
+          >
+            {props.open ? 'Hide' : 'Show'}
+          </Button>
         </div>
       }
     >
-      {gate.reviews.length === 0 ? (
-        <Caption1>No decisions recorded for this gate yet.</Caption1>
-      ) : (
-        <ul className={s.history} aria-label={`${gate.short} history`}>
-          {gate.reviews.map((r) => (
-            <li key={r.id}>
-              <Body1>
-                <strong>{r.outcome}</strong> by {r.decided_by?.name ?? 'unknown'} ·{' '}
-                {dayjs(r.decided_at).format('D MMM YYYY HH:mm')}
-              </Body1>
-              {r.note && <Caption1> · "{r.note}"</Caption1>}
-              {r.conditions_created.length > 0 && (
-                <Caption1> · conditions created: {r.conditions_created.join(', ')}</Caption1>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+      {props.open && (
+        <div id={`gate-body-${gate.code}`} className={s.body}>
+          {gate.reviews.length === 0 ? (
+            <Caption1>No decisions recorded for this gate yet.</Caption1>
+          ) : (
+            <ul className={s.history} aria-label={`${gate.short} history`}>
+              {gate.reviews.map((r) => (
+                <li key={r.id}>
+                  <Body1>
+                    <strong>{r.outcome}</strong> by {r.decided_by?.name ?? 'unknown'} ·{' '}
+                    {dayjs(r.decided_at).format('D MMM YYYY HH:mm')}
+                  </Body1>
+                  {r.note && <Caption1> · "{r.note}"</Caption1>}
+                  {r.conditions_created.length > 0 && (
+                    <Caption1> · conditions created: {r.conditions_created.join(', ')}</Caption1>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
 
-      {props.selected && (
-        <>
-          <Subtitle2 as="h3">Readiness check</Subtitle2>
-          {readiness.isLoading && <LoadingState rows={5} />}
-          {readiness.isError && <ErrorState error={readiness.error} />}
-          {readiness.data && (
-            <>
-              <ReadinessCard
-                transitionId={props.transitionId}
-                readiness={readiness.data}
-                isCurrent={isCurrent}
-              />
-              {gate.state !== 'done' && (
-                <DecisionPanel
+          <>
+            <Subtitle2 as="h3">Readiness check</Subtitle2>
+            {readiness.isLoading && <LoadingState rows={5} />}
+            {readiness.isError && <ErrorState error={readiness.error} />}
+            {readiness.data && (
+              <>
+                <ReadinessCard
                   transitionId={props.transitionId}
-                  gate={gate}
                   readiness={readiness.data}
                   isCurrent={isCurrent}
                 />
-              )}
-            </>
-          )}
-        </>
+                {gate.state !== 'done' && (
+                  <DecisionPanel
+                    transitionId={props.transitionId}
+                    gate={gate}
+                    readiness={readiness.data}
+                    isCurrent={isCurrent}
+                  />
+                )}
+              </>
+            )}
+          </>
+        </div>
       )}
     </SectionCard>
   );
@@ -113,14 +118,14 @@ function GatePanel(props: {
 export function GatesTab({ transitionId }: TabProps) {
   const s = useStyles();
   const gates = useGates(transitionId);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [toggled, setToggled] = useState<Record<string, boolean>>({});
 
   if (gates.isLoading) return <LoadingState rows={6} />;
   if (gates.isError) return <ErrorState error={gates.error} />;
   if (!gates.data || gates.data.gates.length === 0)
     return <EmptyState message="No gates for this transition." />;
 
-  const active = selected ?? gates.data.current_gate;
+  const current = gates.data.current_gate;
   return (
     <div className={s.page}>
       {gates.data.gates.map((g) => (
@@ -128,8 +133,10 @@ export function GatesTab({ transitionId }: TabProps) {
           key={g.code}
           transitionId={transitionId}
           gate={g}
-          selected={g.code === active}
-          onSelect={() => setSelected(g.code)}
+          open={toggled[g.code] ?? g.code === current}
+          onToggle={() =>
+            setToggled((prev) => ({ ...prev, [g.code]: !(prev[g.code] ?? g.code === current) }))
+          }
         />
       ))}
     </div>

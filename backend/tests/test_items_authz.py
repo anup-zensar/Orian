@@ -239,3 +239,17 @@ def test_readiness_follows_the_current_eval_targets(db, fresh_seed):
     db.commit()
     after = load_gate_inputs(db, t, "SG4_ATD").ctx.failed_evals
     assert metric_id not in [f.metric_id for f in after]
+
+
+def test_bulk_owner_only_denial_reason_names_bulk_changes(client, headers, fresh_seed):
+    body = {"item_ids": [FW_068], "owner_user_id": "U12"}
+    for user in ("U10", "U11", "U12"):
+        res = client.post(f"{API}/items/bulk", json=body, headers=headers(user))
+        assert res.status_code == 403, user
+        assert res.json()["detail"] == "Only the OR focal can change items in bulk"
+    # a request that also marks N/A keeps the scope reason
+    na = {"item_ids": [FW_068], "mark_na": {"reason": "x"}}
+    res = client.post(f"{API}/items/bulk", json=na, headers=headers("U10"))
+    assert res.status_code == 403
+    assert res.json()["detail"] == "Only the OR focal can confirm scope and applicability"
+    assert client.post(f"{API}/items/bulk", json=body, headers=headers("U01")).status_code == 200

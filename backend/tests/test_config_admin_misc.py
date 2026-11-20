@@ -100,7 +100,7 @@ def test_new_project_type_with_its_own_checklist(client, headers, fresh_seed, db
         t["sort_order"] for t in r.json() if t["code"] != "Security Review"
     )
     # visible to the forms: reference, preview counts, cfg flags
-    ref = client.get(f"{API}/reference").json()
+    ref = client.get(f"{API}/reference", headers={"X-Demo-User": "U01"}).json()
     assert "Security Review" in [t["code"] for t in ref["project_types"]]
     assert (
         "SECURITY_PLAYBOOK" in [c["code"] for c in ref["checklists"]]
@@ -180,13 +180,16 @@ def test_update_deactivate_and_delete_project_types(client, headers, fresh_seed,
     off = client.patch(f"{API}/admin/project-types/Normal", json={"active": False}, headers=h)
     assert off.status_code == 200
     assert "Normal" not in [
-        t["code"] for t in client.get(f"{API}/reference").json()["project_types"]
+        t["code"]
+        for t in client.get(f"{API}/reference", headers={"X-Demo-User": "U01"}).json()[
+            "project_types"
+        ]
     ]
     assert "Normal" in [
         t["code"]
-        for t in client.get(f"{API}/reference", params={"include_inactive": "true"}).json()[
-            "project_types"
-        ]
+        for t in client.get(
+            f"{API}/reference", params={"include_inactive": "true"}, headers={"X-Demo-User": "U01"}
+        ).json()["project_types"]
     ]
     assert cfg.project_type(db, "Normal") is not None  # old transitions still resolve it
     # unused: deletable
@@ -378,7 +381,7 @@ def test_new_portfolio_with_a_golden_set(client, headers, fresh_seed, db) -> Non
         headers=h,
     )
     assert golden.status_code == 200 and golden.json()["items"][0]["id"] == "FEU-01"
-    ref = client.get(f"{API}/reference").json()
+    ref = client.get(f"{API}/reference", headers={"X-Demo-User": "U01"}).json()
     assert "Fuels EU" in ref["portfolios"]
     detail = next(p for p in ref["portfolio_details"] if p["name"] == "Fuels EU")
     assert (
@@ -472,7 +475,9 @@ def test_custom_field_lifecycle(client, headers, fresh_seed, db) -> None:
     assert field["required_mode"] == "by_project_type" and field["sort_order"] == len(r.json()) - 1
     assert "cf_cost_centre" in _type(client, headers, "Normal")["required_intake_fields"]
     assert [f.key for f in cfg.intake_fields(db)][-1] == "cf_cost_centre"
-    ref_fields = client.get(f"{API}/reference").json()["intake_fields"]
+    ref_fields = client.get(f"{API}/reference", headers={"X-Demo-User": "U01"}).json()[
+        "intake_fields"
+    ]
     assert any(f["key"] == "cf_cost_centre" and f["label"] == "Cost centre" for f in ref_fields)
     # same label -> a new unique key
     again = client.post(f"{API}/admin/intake-fields", json={"label": "Cost centre"}, headers=h)
@@ -512,7 +517,10 @@ def test_custom_field_lifecycle(client, headers, fresh_seed, db) -> None:
     )
     assert off.status_code == 200
     assert "cf_cost_centre" not in [
-        f["key"] for f in client.get(f"{API}/reference").json()["intake_fields"]
+        f["key"]
+        for f in client.get(f"{API}/reference", headers={"X-Demo-User": "U01"}).json()[
+            "intake_fields"
+        ]
     ]
     assert (
         client.delete(f"{API}/admin/intake-fields/cf_cost_centre_2", headers=h).status_code == 200
@@ -645,7 +653,7 @@ def test_thresholds_are_live_and_the_rag_rule_text_follows(client, headers, fres
         cfg.rag_thresholds(db).red_critical_gaps == 3
         and cfg.thresholds(db)["calendar_horizon_days"] == 60
     )
-    ref = client.get(f"{API}/reference").json()
+    ref = client.get(f"{API}/reference", headers={"X-Demo-User": "U01"}).json()
     assert (
         ref["rag_rule"]["red"] == r.json()["rag_rule"]["red"]
         and ref["thresholds"]["rag"]["red_lens_below"] == 40
@@ -701,7 +709,7 @@ def test_tiering_wording(client, headers, fresh_seed, db) -> None:
     body["questions"][0]["hint"] = "Pushes the tier up"
     r = client.put(f"{API}/admin/tiering", json=body, headers=h)
     assert r.status_code == 200, r.text
-    ref = client.get(f"{API}/reference").json()
+    ref = client.get(f"{API}/reference", headers={"X-Demo-User": "U01"}).json()
     assert ref["tiers"][0]["name"] == "Light touch"
     assert ref["tier_questions"][0] == {
         "id": "TQ1",
@@ -868,7 +876,9 @@ def test_approval_chain_labels_and_mock_flag(client, headers, fresh_seed) -> Non
     assert saved["label"] == "Exception sign-off" and saved["steps"][0]["label"] == "Risk owner"
     assert saved["steps"][0]["is_mock"] is True and saved["steps"][1]["is_mock"] is True
     assert (
-        client.get(f"{API}/reference").json()["approval_chain_labels"]["EXCEPTION"]
+        client.get(f"{API}/reference", headers={"X-Demo-User": "U01"}).json()[
+            "approval_chain_labels"
+        ]["EXCEPTION"]
         == "Exception sign-off"
     )
     exc["steps"][0]["role"] = "WIZARD"

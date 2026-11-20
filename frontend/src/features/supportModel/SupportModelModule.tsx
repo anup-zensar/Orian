@@ -1,12 +1,13 @@
-import { useState } from 'react';
-import { Badge, Tab, TabList, makeStyles, tokens } from '@fluentui/react-components';
-import { EmptyState } from '../../components/EmptyState';
+import { useState, type ReactNode } from 'react';
+import { Badge, Button, Caption1, makeStyles, tokens } from '@fluentui/react-components';
+import { ChevronDownRegular, ChevronUpRegular } from '@fluentui/react-icons';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { PageHeader } from '../../components/PageHeader';
+import { SectionCard } from '../../components/SectionCard';
 import { useTransition } from '../transition/api';
 import type { TabProps } from '../workspace/types';
-import { useSupportModel } from './api';
+import { useSupportModel, type SupportModel } from './api';
 import { ExportStep } from './components/ExportStep';
 import { GenerateStep } from './components/GenerateStep';
 import { InputsStep } from './components/InputsStep';
@@ -14,25 +15,71 @@ import { ReviewStep } from './components/ReviewStep';
 import { statusColor } from './status';
 
 const useStyles = makeStyles({
-  page: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
+  page: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL, minWidth: 0 },
+  hidden: { display: 'none' },
 });
 
-type Step = 'inputs' | 'generate' | 'review' | 'export';
+/** One of the four sections. Once a landscape exists, Inputs and Generate collapse to a one-line
+ * summary that can be expanded; the body stays mounted so unsaved input is not lost. */
+function Section(props: {
+  title: string;
+  /** undefined = not collapsible. */
+  open?: boolean;
+  onToggle?: () => void;
+  summary?: ReactNode;
+  children: ReactNode;
+}) {
+  const s = useStyles();
+  const collapsible = props.open !== undefined;
+  const open = props.open ?? true;
+  return (
+    <SectionCard
+      title={props.title}
+      actions={
+        collapsible ? (
+          <Button
+            appearance="subtle"
+            size="small"
+            icon={open ? <ChevronUpRegular /> : <ChevronDownRegular />}
+            aria-expanded={open}
+            aria-label={`${open ? 'Collapse' : 'Expand'} ${props.title}`}
+            onClick={props.onToggle}
+          >
+            {open ? 'Collapse' : 'Expand'}
+          </Button>
+        ) : undefined
+      }
+    >
+      {!open && props.summary}
+      <div className={open ? undefined : s.hidden}>{props.children}</div>
+    </SectionCard>
+  );
+}
 
-/** Support model generator (FR-040 · M7) as a workspace tab: Inputs, Generate, Review and edit,
- * Export (spec 8.8). */
+function inputsSummary(model: SupportModel) {
+  const page = model.inputs.confluence?.title ?? model.inputs.confluence_url;
+  const files = model.inputs.files.length;
+  return `${page ? `Confluence: ${page}` : 'No Confluence link'}, ${files} file${files === 1 ? '' : 's'} uploaded`;
+}
+
+/** Support model generator (FR-040 · M7) as one page with four sections: Inputs, Generate,
+ * Review and edit, Export (spec 8.8). */
 export function SupportModelModule({ transitionId }: TabProps) {
   const s = useStyles();
   const q = useSupportModel(transitionId);
   const transition = useTransition(transitionId);
-  const [step, setStep] = useState<Step | null>(null);
+  // null = default (open while there is no landscape, collapsed once there is one).
+  const [inputsOpen, setInputsOpen] = useState<boolean | null>(null);
+  const [generateOpen, setGenerateOpen] = useState<boolean | null>(null);
 
   if (q.isPending) return <LoadingState rows={5} />;
   if (q.isError) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
 
   const model = q.data;
   const landscape = model.landscape;
-  const current: Step = step ?? (landscape ? 'review' : 'inputs');
+  const hasLandscape = !!landscape;
+  const showInputs = inputsOpen ?? !hasLandscape;
+  const showGenerate = generateOpen ?? !hasLandscape;
 
   return (
     <div className={s.page}>
@@ -45,27 +92,36 @@ export function SupportModelModule({ transitionId }: TabProps) {
           </Badge>
         }
       />
-      <TabList
-        selectedValue={current}
-        onTabSelect={(_, d) => setStep(d.value as Step)}
-        aria-label="Support model steps"
-      >
-        <Tab value="inputs">1. Inputs</Tab>
-        <Tab value="generate">2. Generate</Tab>
-        <Tab value="review" disabled={!landscape}>
-          3. Review and edit
-        </Tab>
-        <Tab value="export" disabled={!landscape}>
-          4. Export
-        </Tab>
-      </TabList>
 
-      {current === 'inputs' && <InputsStep transitionId={transitionId} model={model} />}
-      {current === 'generate' && (
-        <GenerateStep transitionId={transitionId} model={model} onDone={() => setStep('review')} />
-      )}
-      {current === 'review' &&
-        (landscape && model.id !== null ? (
+      <Section
+        title="1. Inputs"
+        open={hasLandscape ? showInputs : undefined}
+        onToggle={() => setInputsOpen(!showInputs)}
+        summary={<Caption1>{inputsSummary(model)}</Caption1>}
+      >
+        <InputsStep transitionId={transitionId} model={model} />
+      </Section>
+
+      <Section
+        title="2. Generate"
+        open={hasLandscape ? showGenerate : undefined}
+        onToggle={() => setGenerateOpen(!showGenerate)}
+        summary={
+          <Caption1>
+            Generated by Orion agent, version {model.version}, status {model.status}
+          </Caption1>
+        }
+      >
+        <GenerateStep
+          transitionId={transitionId}
+          model={model}
+          onStart={() => setGenerateOpen(true)}
+          onDone={() => setGenerateOpen(false)}
+        />
+      </Section>
+
+      <Section title="3. Review and edit">
+        {landscape && model.id !== null ? (
           <ReviewStep
             key={`${model.id}-${model.version}`}
             transitionId={transitionId}
@@ -73,9 +129,17 @@ export function SupportModelModule({ transitionId }: TabProps) {
             landscape={landscape}
           />
         ) : (
-          <EmptyState message="Nothing generated yet. Add inputs and generate the support model." />
-        ))}
-      {current === 'export' && <ExportStep transitionId={transitionId} model={model} />}
+          <Caption1>Nothing generated yet. Add inputs and generate the support model.</Caption1>
+        )}
+      </Section>
+
+      <Section title="4. Export">
+        {hasLandscape ? (
+          <ExportStep transitionId={transitionId} model={model} />
+        ) : (
+          <Caption1>Export is available once the support model is generated.</Caption1>
+        )}
+      </Section>
     </div>
   );
 }

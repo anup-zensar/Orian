@@ -183,6 +183,7 @@ function SelectField(props: {
   required?: boolean;
   marker?: ReactNode;
   hint?: ReactNode;
+  disabled?: boolean;
 }) {
   return (
     <Controller
@@ -205,8 +206,9 @@ function SelectField(props: {
             value={field.value}
             onChange={(_, d) => field.onChange(d.value)}
             onBlur={field.onBlur}
+            disabled={props.disabled}
           >
-            <option value="">Select…</option>
+            {!props.disabled && <option value="">Select…</option>}
             {props.options.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label ?? o.value}
@@ -743,19 +745,31 @@ function IntakeForm(props: {
   );
 
   /** A dropdown of a built-in field, drawn only when the field is on the form. */
-  const select = (name: SimpleKey) =>
-    shown(name) && (
+  const select = (name: SimpleKey) => {
+    if (!shown(name)) return false;
+    // An OR focal can only create transitions for themselves (the API refuses another focal).
+    const fixedFocal = name === 'or_focal_user_id' && me.user.role === 'OR_FOCAL';
+    const info = decor(name);
+    return (
       <SelectField
         control={control}
         name={name}
         label={label(name, name)}
-        {...decor(name)}
-        options={choices(name)}
+        {...info}
+        hint={fixedFocal ? 'Fixed to you: OR focals create their own transitions' : info.hint}
+        disabled={fixedFocal}
+        options={fixedFocal ? [{ value: me.user.id, label: me.user.name }] : choices(name)}
       />
     );
+  };
 
   return (
     <form onSubmit={onSubmit} noValidate>
+      {!canCreate && (
+        <MessageBar intent="warning" layout="multiline" role="status">
+          <MessageBarBody>{denied}</MessageBarBody>
+        </MessageBar>
+      )}
       {duplicate && (
         <DuplicateDialog
           reasons={duplicate.reasons}

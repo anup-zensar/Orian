@@ -13,9 +13,9 @@ import {
 } from '@fluentui/react-components';
 import { Open16Regular } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router';
+import { ai } from '../../theme/orionTheme';
 import { AiBadge } from '../../components/AiBadge';
 import { AppLink } from '../../components/AppLink';
-import { SafeMarkdown } from '../leadership/SafeMarkdown';
 import { ReadinessCard } from '../gates/ReadinessCard';
 import { ProposalCard } from './ProposalCard';
 import type { FormMessage, OrionMessage } from './api';
@@ -29,7 +29,8 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalM,
     borderRadius: tokens.borderRadiusMedium,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
-    backgroundColor: tokens.colorNeutralBackground2,
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderLeft: `3px solid ${ai.main}`,
     minWidth: 0,
   },
   head: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS },
@@ -51,17 +52,26 @@ const useStyles = makeStyles({
   nowrap: { whiteSpace: 'nowrap' },
   scroll: { overflowX: 'auto' },
   list: { margin: 0, paddingLeft: '18px' },
-  md: {
-    overflowWrap: 'anywhere',
-    maxHeight: '320px',
-    overflow: 'auto',
-    fontSize: tokens.fontSizeBase200,
-  },
   form: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS },
   // A native select is as wide as its longest option; let it shrink to the panel instead.
   fit: { minWidth: 0 },
   row: { display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap', alignItems: 'center' },
 });
+
+/** First lines of the update as plain text (headings and markdown marks removed). */
+const headline = (md: string, title: string): string =>
+  md
+    .split(/\r?\n/)
+    .filter((l) => l.trim() && !l.trim().startsWith('#') && !l.trim().startsWith('|'))
+    .map((l) =>
+      l
+        .replace(/^[>\s-]+/, '')
+        .replace(/[*_`]/g, '')
+        .trim(),
+    )
+    .filter((l) => l !== title && !/^as of /i.test(l))
+    .slice(0, 2)
+    .join(' ');
 
 const cellText = (v: unknown): string => {
   if (v === null || v === undefined) return '';
@@ -259,9 +269,8 @@ export function OrionMessageView(props: {
       case 'leadership':
         return (
           <>
-            <div className={s.md}>
-              <SafeMarkdown source={msg.update.content_md} />
-            </div>
+            <Subtitle2>{msg.update.title}</Subtitle2>
+            <Body1 className={s.text}>{headline(msg.update.content_md, msg.update.title)}</Body1>
             <div>
               <Button
                 size="small"

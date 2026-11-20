@@ -1,4 +1,4 @@
-// Transition register (spec 8.2 columns, 8.3). Shared by the Transitions page and the Control tower.
+// Transition register (spec 8.2 columns, 8.3). Used by the Transitions page.
 import { useMemo, useState, type MouseEvent } from 'react';
 import {
   Caption1,
@@ -16,6 +16,7 @@ import {
 import { Star16Filled } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router';
 import { AppLink } from '../../components/AppLink';
+import { DataTable } from '../../components/DataTable';
 import { RagChip } from '../../components/RagChip';
 import { daysLabel, formatDate, toRag } from '../../lib/format';
 import { lensColors, ragColors, type Lens } from '../../theme/tokens';
@@ -23,28 +24,9 @@ import type { TransitionSummary } from '../../api/types';
 import { useReference } from '../reference/api';
 
 const useStyles = makeStyles({
-  scroll: {
-    overflow: 'auto',
-    maxHeight: '70vh',
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: tokens.borderRadiusMedium,
-  },
-  table: { minWidth: '960px', tableLayout: 'auto' },
-  head: {
-    position: 'sticky',
-    top: 0,
-    zIndex: 1,
-    backgroundColor: tokens.colorNeutralBackground3,
-  },
+  table: { minWidth: '1000px', tableLayout: 'auto' },
   row: { cursor: 'pointer' },
-  // First and last columns stay visible inside the horizontal scroll (narrow screens).
-  stickyLeft: {
-    position: 'sticky',
-    left: 0,
-    zIndex: 1,
-    backgroundColor: tokens.colorNeutralBackground1,
-    boxShadow: `1px 0 0 ${tokens.colorNeutralStroke2}`,
-  },
+  // The last column (RAG) stays visible inside the horizontal scroll; the first is sticky via DataTable.
   stickyRight: {
     position: 'sticky',
     right: 0,
@@ -52,36 +34,30 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground1,
     boxShadow: `-1px 0 0 ${tokens.colorNeutralStroke2}`,
   },
-  headLeft: { left: 0, zIndex: 3 },
-  headRight: { right: 0, zIndex: 3 },
+  headRight: {
+    position: 'sticky',
+    right: 0,
+    zIndex: 3,
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
   name: { display: 'flex', flexDirection: 'column', minWidth: 0 },
   nameLine: { display: 'inline-flex', alignItems: 'center', gap: tokens.spacingHorizontalXS },
   star: { color: ragColors.Amber.border, display: 'inline-flex' },
-  lenses: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '2px',
-    width: '110px',
-    '@media (max-width: 1280px)': { width: 'auto' },
-  },
+  // Lens bars keep a fixed width; the table scrolls inside DataTable instead of hiding them.
+  lenses: { display: 'flex', flexDirection: 'column', gap: '2px', width: '120px' },
   lens: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS },
   lensLetter: {
     width: '12px',
     fontSize: tokens.fontSizeBase100,
     fontWeight: tokens.fontWeightSemibold,
   },
-  track: {
-    flexGrow: 1,
-    height: '6px',
-    borderRadius: '3px',
-    overflow: 'hidden',
-    '@media (max-width: 1280px)': { display: 'none' },
-  },
+  track: { flexGrow: 1, minWidth: '30px', height: '6px', borderRadius: '3px', overflow: 'hidden' },
   fill: { height: '100%' },
   pct: { width: '34px', textAlign: 'right', fontSize: tokens.fontSizeBase100 },
   critical: { color: ragColors.Red.foreground, fontWeight: tokens.fontWeightSemibold },
   overdue: { color: ragColors.Red.foreground },
   cell: { display: 'flex', flexDirection: 'column' },
+  nowrap: { whiteSpace: 'nowrap', minWidth: '96px' },
 });
 
 interface Column {
@@ -91,18 +67,17 @@ interface Column {
   sort?: (t: TransitionSummary) => string | number;
 }
 
-// Columns exactly as spec 8.2: Transition, Portfolio, Region / market, Type, Gate, Lenses, Readiness,
+// Columns as spec 8.2 (Portfolio and Region / market share one cell): Transition, Portfolio / region, Type, Gate, Lenses, Readiness,
 // Gaps, Next decision, OR focal, RAG.
 const RAG_ORDER: Record<string, number> = { Red: 0, Amber: 1, Green: 2, Grey: 3 };
 const COLUMNS: Column[] = [
   { id: 'name', label: 'Transition', sort: (t) => t.name.toLowerCase() },
-  { id: 'portfolio', label: 'Portfolio', sort: (t) => t.portfolio },
-  { id: 'region', label: 'Region / market', sort: (t) => `${t.region} ${t.market}` },
+  { id: 'portfolio', label: 'Portfolio / region', sort: (t) => `${t.portfolio} ${t.region}` },
   { id: 'type', label: 'Type', sort: (t) => t.project_type },
   { id: 'gate', label: 'Gate', sort: (t) => t.current_gate_short },
   { id: 'lenses', label: 'Lenses (B / T / C)' },
   { id: 'readiness', label: 'Readiness %', sort: (t) => t.overall_readiness },
-  { id: 'gaps', label: 'Gaps (open)', sort: (t) => t.critical_gaps * 1000 + t.open_gaps },
+  { id: 'gaps', label: 'Gaps', sort: (t) => t.critical_gaps * 1000 + t.open_gaps },
   {
     id: 'decision',
     label: 'Next decision',
@@ -192,17 +167,16 @@ export function TransitionRegisterTable({ rows }: { rows: TransitionSummary[] })
   };
 
   return (
-    <div className={s.scroll}>
+    <DataTable label="Transition register" stickyFirstColumn>
       <Table sortable aria-label="Transition register" className={s.table}>
-        <TableHeader className={s.head}>
+        <TableHeader>
           <TableRow>
             {COLUMNS.map((c) => (
               <TableHeaderCell
                 key={c.id}
                 className={mergeClasses(
-                  s.head,
-                  c.id === 'name' && s.headLeft,
                   c.id === 'rag' && s.headRight,
+                  (c.id === 'gate' || c.id === 'rag') && s.nowrap,
                 )}
                 sortDirection={sort?.id === c.id ? sort.dir : undefined}
                 onClick={c.sort ? () => onSort(c.id) : undefined}
@@ -218,7 +192,7 @@ export function TransitionRegisterTable({ rows }: { rows: TransitionSummary[] })
             const days = t.days_to_next_decision;
             return (
               <TableRow key={t.id} className={s.row} onClick={(e) => onRowClick(e, t.id)}>
-                <TableCell className={s.stickyLeft}>
+                <TableCell>
                   <div className={s.name}>
                     <span className={s.nameLine}>
                       {t.is_flagship && (
@@ -231,15 +205,16 @@ export function TransitionRegisterTable({ rows }: { rows: TransitionSummary[] })
                     <Caption1>{t.id}</Caption1>
                   </div>
                 </TableCell>
-                <TableCell>{portfolioLabels.get(t.portfolio) ?? t.portfolio}</TableCell>
                 <TableCell>
                   <div className={s.cell}>
-                    <span>{t.region}</span>
-                    <Caption1>{t.market}</Caption1>
+                    <span>{portfolioLabels.get(t.portfolio) ?? t.portfolio}</span>
+                    <Caption1>
+                      {t.region} · {t.market}
+                    </Caption1>
                   </div>
                 </TableCell>
                 <TableCell>{typeLabels.get(t.project_type) ?? t.project_type}</TableCell>
-                <TableCell>{t.current_gate_short}</TableCell>
+                <TableCell className={s.nowrap}>{t.current_gate_short}</TableCell>
                 <TableCell>
                   <LensBars t={t} />
                 </TableCell>
@@ -263,7 +238,7 @@ export function TransitionRegisterTable({ rows }: { rows: TransitionSummary[] })
                   </div>
                 </TableCell>
                 <TableCell>{t.or_focal.name}</TableCell>
-                <TableCell className={s.stickyRight}>
+                <TableCell className={mergeClasses(s.stickyRight, s.nowrap)}>
                   <RagChip rag={toRag(t.rag)} />
                 </TableCell>
               </TableRow>
@@ -271,6 +246,6 @@ export function TransitionRegisterTable({ rows }: { rows: TransitionSummary[] })
           })}
         </TableBody>
       </Table>
-    </div>
+    </DataTable>
   );
 }

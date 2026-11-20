@@ -15,7 +15,6 @@ import {
   Select,
   Subtitle2,
   mergeClasses,
-  shorthands,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
@@ -27,6 +26,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { PageHeader } from '../../components/PageHeader';
+import { palette } from '../../theme/orionTheme';
 import { SectionCard } from '../../components/SectionCard';
 import { useApiErrorToast } from '../../hooks/useApiErrorToast';
 import { splitAddresses, validateRecipients } from '../drafts/richText';
@@ -47,13 +47,16 @@ import {
 import { SafeMarkdown } from './SafeMarkdown';
 
 const useStyles = makeStyles({
+  page: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
   layout: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(260px, 340px) minmax(0, 1fr)',
+    display: 'flex',
+    flexWrap: 'wrap',
     gap: tokens.spacingHorizontalL,
-    alignItems: 'start',
-    '@media (max-width: 1100px)': { gridTemplateColumns: 'minmax(0, 1fr)' },
+    alignItems: 'flex-start',
+    minWidth: 0,
   },
+  listCol: { flex: '1 1 260px', maxWidth: '360px', minWidth: 0 },
+  detailCol: { flex: '3 1 420px', minWidth: 0 },
   list: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS },
   item: {
     display: 'flex',
@@ -64,14 +67,17 @@ const useStyles = makeStyles({
     cursor: 'pointer',
     color: 'inherit',
     font: 'inherit',
+    minWidth: 0,
+    overflowWrap: 'anywhere',
     border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: tokens.borderRadiusMedium,
+    borderRadius: tokens.borderRadiusLarge,
     backgroundColor: tokens.colorNeutralBackground1,
     ':hover': { backgroundColor: tokens.colorNeutralBackground1Hover },
   },
   itemSelected: {
-    ...shorthands.borderColor(tokens.colorBrandStroke1),
     backgroundColor: tokens.colorBrandBackground2,
+    boxShadow: `inset 4px 0 0 ${palette.yellow}`,
+    ':hover': { backgroundColor: tokens.colorBrandBackground2 },
   },
   meta: { display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'center', flexWrap: 'wrap' },
   actions: { display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap' },
@@ -283,6 +289,7 @@ function Detail({ id }: { id: number }) {
 
   return (
     <SectionCard
+      tone="ai"
       title={u.title}
       actions={
         <div className={s.actions}>
@@ -328,7 +335,7 @@ export function LeadershipUpdatesPage() {
   };
 
   return (
-    <div>
+    <div className={s.page}>
       <PageHeader
         title="Leadership updates"
         subtitle="Portfolio updates Orion drafts from live data for the OR focal to review and send."
@@ -341,31 +348,33 @@ export function LeadershipUpdatesPage() {
       )}
       {list.data && list.data.length > 0 && (
         <div className={s.layout}>
-          <div className={s.list} role="list" aria-label="Leadership updates">
-            <Subtitle2>Newest first</Subtitle2>
-            {list.data.map((u) => (
-              <button
-                key={u.id}
-                type="button"
-                role="listitem"
-                aria-current={u.id === selected}
-                className={mergeClasses(s.item, u.id === selected && s.itemSelected)}
-                onClick={() => select(u.id)}
-              >
-                <strong>{u.title}</strong>
-                <Caption1>
-                  {scopeText(u)} · {dayjs(u.created_at).format('D MMM YYYY HH:mm')}
-                </Caption1>
-                <span className={s.meta}>
-                  <ActorBadge actor="Orion agent" />
-                  <Badge appearance="outline" color={u.sent_at ? 'success' : 'brand'}>
-                    {u.sent_at ? 'Sent' : 'Not sent'}
-                  </Badge>
-                </span>
-              </button>
-            ))}
+          <div className={s.listCol}>
+            <div className={s.list} role="list" aria-label="Leadership updates">
+              <Subtitle2>Newest first</Subtitle2>
+              {list.data.map((u) => (
+                <button
+                  key={u.id}
+                  type="button"
+                  role="listitem"
+                  aria-current={u.id === selected}
+                  className={mergeClasses(s.item, u.id === selected && s.itemSelected)}
+                  onClick={() => select(u.id)}
+                >
+                  <strong>{u.title}</strong>
+                  <Caption1>
+                    {scopeText(u)} · {dayjs(u.created_at).format('D MMM YYYY HH:mm')}
+                  </Caption1>
+                  <span className={s.meta}>
+                    <ActorBadge actor="Orion agent" />
+                    <Badge appearance="outline" color={u.sent_at ? 'success' : 'brand'}>
+                      {u.sent_at ? 'Sent' : 'Not sent'}
+                    </Badge>
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
-          {selected !== null && <Detail id={selected} />}
+          <div className={s.detailCol}>{selected !== null && <Detail id={selected} />}</div>
         </div>
       )}
     </div>

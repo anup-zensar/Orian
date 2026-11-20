@@ -16,7 +16,7 @@ import {
 import { AddRegular, DeleteRegular, SaveRegular, SendRegular } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router';
 import { AiBadge } from '../../../components/AiBadge';
-import { SectionCard } from '../../../components/SectionCard';
+import { Panel } from './Panel';
 import { useSuccessToast } from '../../admin/useSavedToast';
 import { useApiErrorToast } from '../../../hooks/useApiErrorToast';
 import {
@@ -37,6 +37,7 @@ import {
 } from '../graph';
 import { useOptions } from '../../reference/options';
 import { statusColor } from '../status';
+import { SplitLayout } from '../../../components/layout/SplitLayout';
 import { LandscapeCanvas, type CanvasSelection } from './LandscapeCanvas';
 import { LandscapePanels } from './LandscapePanels';
 import { useLeaveGuard } from '../../ocet/useLeaveGuard';
@@ -50,13 +51,6 @@ const useStyles = makeStyles({
     flexWrap: 'wrap',
   },
   spacer: { flexGrow: 1 },
-  split: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr) 300px',
-    gap: tokens.spacingHorizontalL,
-    alignItems: 'start',
-    '@media (max-width: 1200px)': { gridTemplateColumns: 'minmax(0, 1fr)' },
-  },
   inspector: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS },
   row: { display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'center' },
   steps: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS },
@@ -259,7 +253,7 @@ export function ReviewStep(props: {
       {sendBlock && <Caption1>{sendBlock}</Caption1>}
 
       {model.approval && (
-        <SectionCard title={`Review chain, ${model.approval.status}`}>
+        <Panel title={`Review chain, ${model.approval.status}`}>
           <div className={s.steps}>
             {model.approval.steps.map((st) => (
               <div key={st.step} className={s.row}>
@@ -285,172 +279,179 @@ export function ReviewStep(props: {
             ))}
           </div>
           <Caption1>Approve or reject from the Approvals page.</Caption1>
-        </SectionCard>
+        </Panel>
       )}
 
-      <div className={s.split}>
-        <LandscapeCanvas
-          landscape={draft}
-          editable={editable}
-          selection={selection}
-          onSelect={setSelection}
-          onConnect={connect}
-        />
-
-        <SectionCard title="Selection">
-          <div className={s.inspector}>
-            {!selComp && !selEdge && !selApp && (
-              <Caption1>
-                Click a node or an edge to edit it.
-                {editable && ' Drag from one node to another to connect them.'}
-              </Caption1>
-            )}
-            {selApp && (
-              <Field label="Central application">
-                <Input
-                  value={draft.central_app}
-                  disabled={!editable}
-                  onChange={(_, d) => {
-                    const old = draft.central_app;
-                    patch({
-                      central_app: d.value,
-                      components: draft.components.map((c) =>
-                        c.target === old ? { ...c, target: d.value } : c,
-                      ),
-                    });
-                  }}
-                />
-              </Field>
-            )}
-            {selComp && (
-              <>
-                <Field
-                  label="Name"
-                  validationState={nameClash(selComp.id, selComp.name) ? 'error' : undefined}
-                  validationMessage={
-                    nameClash(selComp.id, selComp.name) ? 'Names must be unique' : undefined
-                  }
-                >
+      <SplitLayout
+        stickyAside={false}
+        main={
+          <LandscapeCanvas
+            landscape={draft}
+            editable={editable}
+            selection={selection}
+            onSelect={setSelection}
+            onConnect={connect}
+          />
+        }
+        aside={
+          <Panel title="Selection">
+            <div className={s.inspector}>
+              {!selComp && !selEdge && !selApp && (
+                <Caption1>
+                  Click a node or an edge to edit it.
+                  {editable && ' Drag from one node to another to connect them.'}
+                </Caption1>
+              )}
+              {selApp && (
+                <Field label="Central application">
                   <Input
-                    value={selComp.name}
+                    value={draft.central_app}
                     disabled={!editable}
-                    onChange={(_, d) => rename(selComp.id, d.value)}
+                    onChange={(_, d) => {
+                      const old = draft.central_app;
+                      patch({
+                        central_app: d.value,
+                        components: draft.components.map((c) =>
+                          c.target === old ? { ...c, target: d.value } : c,
+                        ),
+                      });
+                    }}
                   />
                 </Field>
-                <Field label="Type">
-                  <datalist id="support-component-types">
-                    {typeOptions.map((o) => (
-                      <option key={o.value} value={o.value} />
-                    ))}
-                  </datalist>
+              )}
+              {selComp && (
+                <>
+                  <Field
+                    label="Name"
+                    validationState={nameClash(selComp.id, selComp.name) ? 'error' : undefined}
+                    validationMessage={
+                      nameClash(selComp.id, selComp.name) ? 'Names must be unique' : undefined
+                    }
+                  >
+                    <Input
+                      value={selComp.name}
+                      disabled={!editable}
+                      onChange={(_, d) => rename(selComp.id, d.value)}
+                    />
+                  </Field>
+                  <Field label="Type">
+                    <datalist id="support-component-types">
+                      {typeOptions.map((o) => (
+                        <option key={o.value} value={o.value} />
+                      ))}
+                    </datalist>
+                    <Input
+                      value={selComp.type}
+                      input={{ list: 'support-component-types' }}
+                      disabled={!editable}
+                      onChange={(_, d) =>
+                        setComponent(selComp.id, (c) => ({ ...c, type: d.value }))
+                      }
+                    />
+                  </Field>
+                  {editable && (
+                    <Button icon={<DeleteRegular />} onClick={() => deleteComponent(selComp.id)}>
+                      Delete component
+                    </Button>
+                  )}
+                </>
+              )}
+              {selEdge && (
+                <>
+                  <Body1>
+                    <strong>{selEdge.name}</strong> relation
+                  </Body1>
+                  <Field label="Connects to">
+                    <Dropdown
+                      value={targetNameOf(selEdge, app)}
+                      selectedOptions={[targetNameOf(selEdge, app)]}
+                      disabled={!editable}
+                      onOptionSelect={(_, d) =>
+                        d.optionValue &&
+                        setComponent(selEdge.id, (c) =>
+                          withEdge(c, directionOf(c), d.optionValue ?? app, app),
+                        )
+                      }
+                    >
+                      {targetOptions(selEdge.id).map((n) => (
+                        <Option key={n} value={n}>
+                          {n}
+                        </Option>
+                      ))}
+                    </Dropdown>
+                  </Field>
+                  <Field label="Direction">
+                    <Dropdown
+                      value={directions.find((d) => d.value === directionOf(selEdge))?.label ?? ''}
+                      selectedOptions={[directionOf(selEdge)]}
+                      disabled={!editable}
+                      onOptionSelect={(_, d) =>
+                        d.optionValue &&
+                        setComponent(selEdge.id, (c) =>
+                          withEdge(c, d.optionValue as Direction, targetNameOf(c, app), app),
+                        )
+                      }
+                    >
+                      {directions.map((d) => (
+                        <Option key={d.value} value={d.value}>
+                          {d.label}
+                        </Option>
+                      ))}
+                    </Dropdown>
+                  </Field>
+                  {editable && (
+                    <Button
+                      icon={<DeleteRegular />}
+                      disabled={
+                        targetNameOf(selEdge, app) === app &&
+                        directionOf(selEdge) === 'bidirectional'
+                      }
+                      onClick={() =>
+                        setComponent(selEdge.id, (c) => withEdge(c, 'bidirectional', app, app))
+                      }
+                    >
+                      Remove edge (reconnect to {app})
+                    </Button>
+                  )}
+                  {editable && (
+                    <Caption1>
+                      Each component has one edge. To drop a connection entirely, delete the
+                      component.
+                    </Caption1>
+                  )}
+                </>
+              )}
+              {editable && (
+                <div className={s.inspector} style={{ marginTop: tokens.spacingVerticalM }}>
+                  <Body1>
+                    <strong>Add component</strong>
+                  </Body1>
                   <Input
-                    value={selComp.type}
+                    placeholder="Name"
+                    aria-label="New component name"
+                    value={newName}
+                    onChange={(_, d) => setNewName(d.value)}
+                  />
+                  <Input
+                    placeholder="Type"
                     input={{ list: 'support-component-types' }}
-                    disabled={!editable}
-                    onChange={(_, d) => setComponent(selComp.id, (c) => ({ ...c, type: d.value }))}
+                    aria-label="New component type"
+                    value={newType}
+                    onChange={(_, d) => setNewType(d.value)}
                   />
-                </Field>
-                {editable && (
-                  <Button icon={<DeleteRegular />} onClick={() => deleteComponent(selComp.id)}>
-                    Delete component
-                  </Button>
-                )}
-              </>
-            )}
-            {selEdge && (
-              <>
-                <Body1>
-                  <strong>{selEdge.name}</strong> relation
-                </Body1>
-                <Field label="Connects to">
-                  <Dropdown
-                    value={targetNameOf(selEdge, app)}
-                    selectedOptions={[targetNameOf(selEdge, app)]}
-                    disabled={!editable}
-                    onOptionSelect={(_, d) =>
-                      d.optionValue &&
-                      setComponent(selEdge.id, (c) =>
-                        withEdge(c, directionOf(c), d.optionValue ?? app, app),
-                      )
-                    }
-                  >
-                    {targetOptions(selEdge.id).map((n) => (
-                      <Option key={n} value={n}>
-                        {n}
-                      </Option>
-                    ))}
-                  </Dropdown>
-                </Field>
-                <Field label="Direction">
-                  <Dropdown
-                    value={directions.find((d) => d.value === directionOf(selEdge))?.label ?? ''}
-                    selectedOptions={[directionOf(selEdge)]}
-                    disabled={!editable}
-                    onOptionSelect={(_, d) =>
-                      d.optionValue &&
-                      setComponent(selEdge.id, (c) =>
-                        withEdge(c, d.optionValue as Direction, targetNameOf(c, app), app),
-                      )
-                    }
-                  >
-                    {directions.map((d) => (
-                      <Option key={d.value} value={d.value}>
-                        {d.label}
-                      </Option>
-                    ))}
-                  </Dropdown>
-                </Field>
-                {editable && (
                   <Button
-                    icon={<DeleteRegular />}
-                    disabled={
-                      targetNameOf(selEdge, app) === app && directionOf(selEdge) === 'bidirectional'
-                    }
-                    onClick={() =>
-                      setComponent(selEdge.id, (c) => withEdge(c, 'bidirectional', app, app))
-                    }
+                    icon={<AddRegular />}
+                    disabled={!newName.trim() || nameClash('', newName.trim())}
+                    onClick={addComponent}
                   >
-                    Remove edge (reconnect to {app})
+                    Add
                   </Button>
-                )}
-                {editable && (
-                  <Caption1>
-                    Each component has one edge. To drop a connection entirely, delete the
-                    component.
-                  </Caption1>
-                )}
-              </>
-            )}
-            {editable && (
-              <div className={s.inspector} style={{ marginTop: tokens.spacingVerticalM }}>
-                <Body1>
-                  <strong>Add component</strong>
-                </Body1>
-                <Input
-                  placeholder="Name"
-                  aria-label="New component name"
-                  value={newName}
-                  onChange={(_, d) => setNewName(d.value)}
-                />
-                <Input
-                  placeholder="Type"
-                  input={{ list: 'support-component-types' }}
-                  aria-label="New component type"
-                  value={newType}
-                  onChange={(_, d) => setNewType(d.value)}
-                />
-                <Button
-                  icon={<AddRegular />}
-                  disabled={!newName.trim() || nameClash('', newName.trim())}
-                  onClick={addComponent}
-                >
-                  Add
-                </Button>
-              </div>
-            )}
-          </div>
-        </SectionCard>
-      </div>
+                </div>
+              )}
+            </div>
+          </Panel>
+        }
+      />
 
       <LandscapePanels
         landscape={draft}

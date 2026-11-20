@@ -53,7 +53,7 @@ def test_exception_status_follows_the_current_step(client, headers, db, fresh_se
     assert _exceptions(client, headers)[0]["status"] == "Pending CISO/BISO"
     assert _approve(client, headers, "U14", 2).status_code == 200
     assert _exceptions(client, headers)[0]["status"] == "Approved"
-    ref = client.get(f"{API}/reference").json()
+    ref = client.get(f"{API}/reference", headers={"X-Demo-User": "U01"}).json()
     assert ref["enums"]["exception_statuses"] == [
         "Draft",
         "Pending IRM",

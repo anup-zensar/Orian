@@ -23,6 +23,8 @@ import {
 import { useEffect, useRef } from 'react';
 import dayjs from 'dayjs';
 import { useSearchParams } from 'react-router';
+import { DataTable } from '../../components/DataTable';
+import { Toolbar } from '../../components/layout/Toolbar';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
@@ -34,7 +36,6 @@ import { AdaptiveCardPreview } from './AdaptiveCardPreview';
 
 const useStyles = makeStyles({
   page: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
-  filters: { display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' },
   row: { cursor: 'pointer' },
   rowSelected: { backgroundColor: tokens.colorBrandBackground2 },
   meta: { display: 'flex', flexDirection: 'column', gap: '2px' },
@@ -45,7 +46,7 @@ const useStyles = makeStyles({
     maxHeight: '320px',
     fontFamily: tokens.fontFamilyMonospace,
     fontSize: tokens.fontSizeBase200,
-    backgroundColor: tokens.colorNeutralBackground3,
+    backgroundColor: tokens.colorNeutralBackground2,
   },
 });
 
@@ -129,7 +130,7 @@ export function OutboxPage() {
         </div>
       )}
 
-      <div className={s.filters}>
+      <Toolbar>
         <Select
           aria-label="Channel"
           value={channel}
@@ -144,7 +145,7 @@ export function OutboxPage() {
             Clear transition filter ({transitionId})
           </Button>
         )}
-      </div>
+      </Toolbar>
 
       {q.isLoading && <LoadingState rows={6} />}
       {q.isError && <ErrorState error={q.error} />}
@@ -154,50 +155,56 @@ export function OutboxPage() {
       {q.data && q.data.length > 0 && (
         <>
           <Subtitle2 as="h2">{q.data.length} messages</Subtitle2>
-          <Table aria-label="Outbox messages" size="small">
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>Channel</TableHeaderCell>
-                <TableHeaderCell>From</TableHeaderCell>
-                <TableHeaderCell>To / Cc</TableHeaderCell>
-                <TableHeaderCell>Subject</TableHeaderCell>
-                <TableHeaderCell>Sent</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {q.data.map((m) => (
-                <TableRow
-                  key={m.id}
-                  className={mergeClasses(s.row, m.id === selected && s.rowSelected)}
-                  tabIndex={0}
-                  onClick={() => setParam('message', String(m.id))}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') setParam('message', String(m.id));
-                  }}
-                >
-                  <TableCell>
-                    <Badge
-                      appearance="outline"
-                      color={m.channel === 'Teams' ? 'informative' : 'brand'}
-                    >
-                      {m.channel}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Caption1>{m.from_address}</Caption1>
-                  </TableCell>
-                  <TableCell>
-                    <Caption1>
-                      {m.to.join(', ')}
-                      {m.cc.length > 0 ? ` (cc ${m.cc.join(', ')})` : ''}
-                    </Caption1>
-                  </TableCell>
-                  <TableCell>{m.subject}</TableCell>
-                  <TableCell>{dayjs(m.sent_at).format('D MMM HH:mm')}</TableCell>
+          <DataTable label="Outbox list">
+            <Table aria-label="Outbox messages" size="small">
+              <TableHeader>
+                <TableRow>
+                  <TableHeaderCell>Channel</TableHeaderCell>
+                  <TableHeaderCell>From</TableHeaderCell>
+                  <TableHeaderCell>To / Cc</TableHeaderCell>
+                  <TableHeaderCell>Subject</TableHeaderCell>
+                  <TableHeaderCell>Sent</TableHeaderCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {q.data.map((m) => (
+                  <TableRow
+                    key={m.id}
+                    className={mergeClasses(s.row, m.id === selected && s.rowSelected)}
+                    tabIndex={0}
+                    onClick={() => setParam('message', String(m.id))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') setParam('message', String(m.id));
+                    }}
+                  >
+                    <TableCell>
+                      <Badge
+                        appearance="outline"
+                        color={m.channel === 'Teams' ? 'informative' : 'brand'}
+                      >
+                        {m.channel}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Caption1>{m.from_address}</Caption1>
+                    </TableCell>
+                    <TableCell>
+                      <Caption1>
+                        {m.to.join(', ')}
+                        {m.cc.length > 0 ? ` (cc ${m.cc.join(', ')})` : ''}
+                      </Caption1>
+                    </TableCell>
+                    <TableCell>
+                      <strong>{m.subject}</strong>
+                    </TableCell>
+                    <TableCell style={{ whiteSpace: 'nowrap' }}>
+                      {dayjs(m.sent_at).format('D MMM HH:mm')}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </DataTable>
         </>
       )}
     </div>

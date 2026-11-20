@@ -8,8 +8,8 @@ import {
   TableHeader,
   TableHeaderCell,
   TableRow,
-  makeStyles,
 } from '@fluentui/react-components';
+import { DataTable } from '../../../components/DataTable';
 import { ErrorState } from '../../../components/ErrorState';
 import { LoadingState } from '../../../components/LoadingState';
 import { SectionCard } from '../../../components/SectionCard';
@@ -17,8 +17,6 @@ import type { ChecklistAdmin } from '../../../api/types';
 import { useReference } from '../../reference/api';
 import { useChecklists } from '../catalogApi';
 import { ChecklistDialog } from './ChecklistDialog';
-
-const useStyles = makeStyles({ scroll: { overflowX: 'auto' } });
 
 const KIND_TEXT: Record<string, string> = {
   library: 'Chosen per project type',
@@ -28,7 +26,6 @@ const KIND_TEXT: Record<string, string> = {
 
 /** The checklists (FRAMEWORK, AI_PLAYBOOK ...) with a New checklist button. */
 export function ChecklistsPanel() {
-  const s = useStyles();
   const q = useChecklists();
   const { data: ref } = useReference();
   const [dialog, setDialog] = useState<ChecklistAdmin | 'new' | null>(null);
@@ -49,7 +46,7 @@ export function ChecklistsPanel() {
       ) : q.isError ? (
         <ErrorState error={q.error} onRetry={() => void q.refetch()} />
       ) : (
-        <div className={s.scroll}>
+        <DataTable label="Checklists table" stickyFirstColumn>
           <Table
             aria-label="Checklists"
             size="small"
@@ -57,16 +54,21 @@ export function ChecklistsPanel() {
           >
             <TableHeader>
               <TableRow>
+                <TableHeaderCell style={{ width: 72 }} />
                 <TableHeaderCell>Name</TableHeaderCell>
                 <TableHeaderCell>How it is used</TableHeaderCell>
                 <TableHeaderCell>Items</TableHeaderCell>
                 <TableHeaderCell>Project types</TableHeaderCell>
-                <TableHeaderCell />
               </TableRow>
             </TableHeader>
             <TableBody>
               {(q.data ?? []).map((c) => (
                 <TableRow key={c.code}>
+                  <TableCell>
+                    <Button size="small" onClick={() => setDialog(c)}>
+                      Edit
+                    </Button>
+                  </TableCell>
                   <TableCell>
                     <div title={`Code: ${c.code}`}>{c.label}</div>
                     {!c.active && (
@@ -78,16 +80,11 @@ export function ChecklistsPanel() {
                   <TableCell>{KIND_TEXT[c.kind] ?? c.kind}</TableCell>
                   <TableCell>{c.item_count}</TableCell>
                   <TableCell>{c.project_types.map(typeLabel).join(', ') || '-'}</TableCell>
-                  <TableCell>
-                    <Button size="small" onClick={() => setDialog(c)}>
-                      Edit
-                    </Button>
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </div>
+        </DataTable>
       )}
       {dialog && (
         <ChecklistDialog

@@ -3,7 +3,6 @@ import { Outlet, useMatch } from 'react-router';
 import { Toaster, makeStyles, tokens } from '@fluentui/react-components';
 import { useAuth } from '../auth/useAuth';
 import { chatStore } from '../features/orion/chatStore';
-import { useMe } from '../features/users/api';
 import { LoadingState } from '../components/LoadingState';
 import { OrionPanel } from '../components/OrionPanel';
 import {
@@ -67,13 +66,11 @@ export function AppShell() {
   const s = useStyles();
   const inlinePanelRange = useMediaQuery('(min-width: 1200px) and (max-width: 1599px)');
   const railWidth = useMediaQuery('(max-width: 899px)');
-  const me = useMe();
   const [orionOpen, setOrionOpen] = useState(false);
   const [orionTarget, setOrionTarget] = useState<OrionPanelTarget>({});
   const { userId } = useAuth();
   const onOrionPage = !!useMatch('/orion');
   useEffect(() => chatStore.resetFor(userId), [userId]);
-  const isAdmin = !!me.data?.permissions.includes('admin');
   const orionPanel = useMemo<OrionPanelState>(
     () => ({
       isOpen: orionOpen,
@@ -96,10 +93,7 @@ export function AppShell() {
         </a>
         <TopBar orionOpen={orionOpen} onToggleOrion={() => setOrionOpen((o) => !o)} />
         <div className={s.body}>
-          <SideNav
-            isAdmin={isAdmin}
-            collapsed={railWidth || (inlinePanelRange && orionOpen && !onOrionPage)}
-          />
+          <SideNav collapsed={railWidth || (inlinePanelRange && orionOpen && !onOrionPage)} />
           <main id="main" tabIndex={-1} className={s.main}>
             <Suspense fallback={<LoadingState />}>
               <Outlet />
@@ -107,7 +101,8 @@ export function AppShell() {
           </main>
           <OrionPanel open={orionOpen && !onOrionPage} onClose={() => setOrionOpen(false)} />
         </div>
-        <Toaster toasterId={TOASTER_ID} position="top-end" />
+        {/* below the 60 px top bar so a toast never covers the Orion button or the user menu */}
+        <Toaster toasterId={TOASTER_ID} position="top-end" offset={{ vertical: 68 }} />
       </div>
     </OrionPanelContext.Provider>
   );

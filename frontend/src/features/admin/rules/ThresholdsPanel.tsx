@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Field, Input, makeStyles, tokens } from '@fluentui/react-components';
+import { FormGrid } from '../../../components/layout/FormGrid';
 import { ErrorState } from '../../../components/ErrorState';
 import { LoadingState } from '../../../components/LoadingState';
 import type { ThresholdsAdmin } from '../../../api/types';
@@ -40,11 +41,6 @@ const FIELDS: FieldDef[] = [
 ];
 
 const useStyles = makeStyles({
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: tokens.spacingHorizontalM,
-  },
   sentence: {
     margin: 0,
     padding: tokens.spacingVerticalM,
@@ -101,7 +97,7 @@ function Editor({ data }: { data: ThresholdsAdmin }) {
         These numbers decide the Red / Amber / Green colour of every transition. They apply to all
         active transitions straight away.
       </p>
-      <div className={s.grid}>
+      <FormGrid minColWidth={220}>
         {FIELDS.map((f, i) => (
           <Field key={f.key} label={f.label} hint={f.unit} validationMessage={problems[i]}>
             <Input
@@ -113,7 +109,7 @@ function Editor({ data }: { data: ThresholdsAdmin }) {
             />
           </Field>
         ))}
-      </div>
+      </FormGrid>
       <div className={s.sentence} aria-live="polite">
         <span>{text.red}</span>
         <span>{text.amber}</span>

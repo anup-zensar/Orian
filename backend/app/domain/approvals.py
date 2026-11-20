@@ -359,6 +359,12 @@ def _check_can_act(db: Session, request: ApprovalRequest, step: int, user: User)
             [f"The request is already {request.status}"],
         )
     if row.status != "Pending":
+        # Role first: a wrong-role user always gets 403; only the right role is told about order.
+        needed = cfg.mock_approver(db)["approver_role"] if is_mock_step(db, row) else row.role
+        if user.role != needed:
+            raise Forbidden(
+                act_denied_reason(db, row, user) or f"This step needs the {needed} role"
+            )
         cur = current_step(request)
         reason = (
             f"Step {step} is already {row.status}"

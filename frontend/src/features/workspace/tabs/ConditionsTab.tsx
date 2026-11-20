@@ -9,6 +9,7 @@ import {
   TableRow,
 } from '@fluentui/react-components';
 import { AppLink } from '../../../components/AppLink';
+import { DataTable } from '../../../components/DataTable';
 import { EmptyState } from '../../../components/EmptyState';
 import { ErrorState } from '../../../components/ErrorState';
 import { LoadingState } from '../../../components/LoadingState';
@@ -108,7 +109,7 @@ export function ConditionsTab({ transitionId }: TabProps) {
         ) : conditions.data.length === 0 ? (
           <EmptyState message="No conditions set." />
         ) : (
-          <div className={s.tableWrap}>
+          <DataTable label="Conditions table">
             <Table aria-label="Conditions" size="small" style={{ minWidth: 620 }}>
               <Head
                 cols={['ID / item', 'Set at - due', 'Owner', 'Status', 'Condition', '']}
@@ -150,7 +151,7 @@ export function ConditionsTab({ transitionId }: TabProps) {
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </DataTable>
         )}
       </SectionCard>
 
@@ -169,7 +170,7 @@ export function ConditionsTab({ transitionId }: TabProps) {
         ) : exceptions.data.length === 0 ? (
           <EmptyState message="No exceptions requested." />
         ) : (
-          <div className={s.tableWrap}>
+          <DataTable label="Exceptions table">
             <Table aria-label="Exceptions" size="small">
               <Head cols={['Ref', 'Control item', 'Rationale', 'Status', 'Approval']} />
               <TableBody>
@@ -196,7 +197,7 @@ export function ConditionsTab({ transitionId }: TabProps) {
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </DataTable>
         )}
       </SectionCard>
 
@@ -215,7 +216,7 @@ export function ConditionsTab({ transitionId }: TabProps) {
         ) : risks.data.length === 0 ? (
           <EmptyState message="No risks recorded." />
         ) : (
-          <div className={s.tableWrap}>
+          <DataTable label="Risk register table">
             <Table aria-label="Risk register" size="small">
               <Head cols={['ID', 'Title', 'Rating', 'Decision', 'Linked items']} />
               <TableBody>
@@ -230,7 +231,7 @@ export function ConditionsTab({ transitionId }: TabProps) {
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </DataTable>
         )}
       </SectionCard>
 

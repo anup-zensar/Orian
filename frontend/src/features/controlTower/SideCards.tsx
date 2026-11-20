@@ -1,16 +1,6 @@
 // Escalation queue, decision calendar and operating rhythm cards (spec 8.2).
 import dayjs from 'dayjs';
-import {
-  Caption1,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  makeStyles,
-  tokens,
-} from '@fluentui/react-components';
+import { Caption1, makeStyles, tokens } from '@fluentui/react-components';
 import type { CalendarEntry, Escalation, OperatingRhythmRow } from '../../api/types';
 import { AppLink } from '../../components/AppLink';
 import { RagChip } from '../../components/RagChip';
@@ -47,6 +37,13 @@ const useStyles = makeStyles({
     alignItems: 'start',
   },
   overdue: { color: ragColors.Red.foreground },
+  rhythm: {
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalL}`,
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+    color: tokens.colorNeutralForeground3,
+  },
+  rhythmTitle: { fontWeight: tokens.fontWeightSemibold, color: tokens.colorNeutralForeground2 },
+  rhythmList: { margin: 0, paddingLeft: tokens.spacingHorizontalL },
 });
 
 export function EscalationCard({ rows }: { rows: Escalation[] }) {
@@ -137,31 +134,22 @@ export function CalendarCard({ rows, today }: { rows: CalendarEntry[]; today: st
   );
 }
 
-export function OperatingRhythmCard({ rows }: { rows: OperatingRhythmRow[] }) {
+/** Small footer note: the forums that use the control tower (spec 8.2 operating rhythm). */
+export function OperatingRhythmNote({ rows }: { rows: OperatingRhythmRow[] }) {
+  const s = useStyles();
+  if (rows.length === 0) return null;
   return (
-    <SectionCard title="Operating rhythm">
-      <div style={{ overflowX: 'auto' }}>
-        <Table aria-label="Operating rhythm" size="small">
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Forum</TableHeaderCell>
-              <TableHeaderCell>Frequency</TableHeaderCell>
-              <TableHeaderCell>Input</TableHeaderCell>
-              <TableHeaderCell>Output</TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r) => (
-              <TableRow key={r.forum}>
-                <TableCell>{r.forum}</TableCell>
-                <TableCell>{r.frequency}</TableCell>
-                <TableCell>{r.input}</TableCell>
-                <TableCell>{r.output}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </SectionCard>
+    <section aria-label="Operating rhythm" className={s.rhythm}>
+      <Caption1 className={s.rhythmTitle}>Operating rhythm</Caption1>
+      <ul className={s.rhythmList}>
+        {rows.map((r) => (
+          <li key={r.forum}>
+            <Caption1>
+              <strong>{r.forum}</strong> ({r.frequency}): {r.input} {'->'} {r.output}
+            </Caption1>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

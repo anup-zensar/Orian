@@ -15,6 +15,7 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { EmptyState } from '../../../components/EmptyState';
+import { DataTable } from '../../../components/DataTable';
 import { ErrorState } from '../../../components/ErrorState';
 import { LoadingState } from '../../../components/LoadingState';
 import { useApiErrorToast } from '../../../hooks/useApiErrorToast';
@@ -29,7 +30,6 @@ interface Draft {
 }
 
 const useStyles = makeStyles({
-  scroll: { overflowX: 'auto' },
   params: { display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' },
   muted: { color: tokens.colorNeutralForeground3 },
 });
@@ -76,12 +76,8 @@ function Editor({ rules }: { rules: ReminderRule[] }) {
       {rules.length === 0 ? (
         <EmptyState message="No reminder rules configured." />
       ) : (
-        <div className={s.scroll}>
-          <Table
-            aria-label="Reminder rules"
-            size="small"
-            style={{ tableLayout: 'auto', minWidth: '100%' }}
-          >
+        <DataTable label="Reminder rules table" stickyFirstColumn>
+          <Table aria-label="Reminder rules" size="small" style={{ tableLayout: 'auto' }}>
             <TableHeader>
               <TableRow>
                 <TableHeaderCell>Rule</TableHeaderCell>
@@ -159,7 +155,7 @@ function Editor({ rules }: { rules: ReminderRule[] }) {
               })}
             </TableBody>
           </Table>
-        </div>
+        </DataTable>
       )}
       <SaveBar
         dirty={dirty}

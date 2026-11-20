@@ -6,7 +6,7 @@ import { fmtFull, fmtK, fmtPct, fmtSigned } from './format';
 const useStyles = makeStyles({
   root: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
   row: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalL, alignItems: 'center' },
-  facts: { display: 'flex', flexDirection: 'column' },
+  facts: { display: 'flex', flexDirection: 'column', minWidth: 0 },
   tiles: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',

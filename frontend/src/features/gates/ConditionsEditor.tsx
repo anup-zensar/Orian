@@ -9,6 +9,7 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { Add16Regular, Delete16Regular } from '@fluentui/react-icons';
+import { FormGrid } from '../../components/layout/FormGrid';
 import { useReference } from '../reference/api';
 import { useUsers } from '../users/api';
 import type { ConditionIn } from './api';
@@ -17,14 +18,16 @@ import { emptyCondition } from './conditionUtils';
 const useStyles = makeStyles({
   root: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
   row: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr)) auto',
+    display: 'flex',
     gap: tokens.spacingHorizontalS,
-    alignItems: 'end',
+    alignItems: 'flex-start',
     padding: tokens.spacingVerticalS,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: tokens.borderRadiusMedium,
+    minWidth: 0,
   },
+  fields: { flex: '1 1 0', minWidth: 0 },
+  remove: { flexShrink: 0, marginTop: '22px' },
 });
 
 /** Conditions editor for Proceed / Approve with conditions: item, owner, due gate (later), text. */
@@ -49,49 +52,52 @@ export function ConditionsEditor(props: {
     <div className={s.root}>
       {props.rows.map((row, i) => (
         <div key={i} className={s.row}>
-          <Field label="Item" required>
-            <Combobox
-              freeform
-              placeholder="Playbook item id"
-              value={row.item_id}
-              selectedOptions={row.item_id ? [row.item_id] : []}
-              onChange={(e) => update(i, { item_id: e.target.value })}
-              onOptionSelect={(_, d) => update(i, { item_id: d.optionValue ?? '' })}
-            >
-              {props.suggestions.map((sg) => (
-                <Option key={sg.id} value={sg.id} text={sg.id}>
-                  {sg.id} · {sg.title}
-                </Option>
-              ))}
-            </Combobox>
-          </Field>
-          <Field label="Owner" required>
-            <Select
-              value={row.owner_user_id}
-              onChange={(_, d) => update(i, { owner_user_id: d.value })}
-            >
-              <option value="">Select owner</option>
-              {(users.data ?? []).map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Due gate (later than this gate)" required>
-            <Select value={row.due_gate} onChange={(_, d) => update(i, { due_gate: d.value })}>
-              <option value="">Select gate</option>
-              {laterGates.map((g) => (
-                <option key={g.code} value={g.code}>
-                  {g.short} · {g.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Condition text" required>
-            <Input value={row.text} onChange={(_, d) => update(i, { text: d.value })} />
-          </Field>
+          <FormGrid minColWidth={180} className={s.fields}>
+            <Field label="Item" required>
+              <Combobox
+                freeform
+                placeholder="Playbook item id"
+                value={row.item_id}
+                selectedOptions={row.item_id ? [row.item_id] : []}
+                onChange={(e) => update(i, { item_id: e.target.value })}
+                onOptionSelect={(_, d) => update(i, { item_id: d.optionValue ?? '' })}
+              >
+                {props.suggestions.map((sg) => (
+                  <Option key={sg.id} value={sg.id} text={sg.id}>
+                    {sg.id} · {sg.title}
+                  </Option>
+                ))}
+              </Combobox>
+            </Field>
+            <Field label="Owner" required>
+              <Select
+                value={row.owner_user_id}
+                onChange={(_, d) => update(i, { owner_user_id: d.value })}
+              >
+                <option value="">Select owner</option>
+                {(users.data ?? []).map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Due gate (later than this gate)" required>
+              <Select value={row.due_gate} onChange={(_, d) => update(i, { due_gate: d.value })}>
+                <option value="">Select gate</option>
+                {laterGates.map((g) => (
+                  <option key={g.code} value={g.code}>
+                    {g.short} · {g.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Condition text" required>
+              <Input value={row.text} onChange={(_, d) => update(i, { text: d.value })} />
+            </Field>
+          </FormGrid>
           <Button
+            className={s.remove}
             appearance="subtle"
             icon={<Delete16Regular />}
             aria-label="Remove condition"

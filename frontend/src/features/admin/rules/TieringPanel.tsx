@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Field, Input, Subtitle2, Textarea, makeStyles, tokens } from '@fluentui/react-components';
+import { FormGrid } from '../../../components/layout/FormGrid';
 import { ErrorState } from '../../../components/ErrorState';
 import { LoadingState } from '../../../components/LoadingState';
 import type { TieringConfig } from '../../../api/types';
@@ -21,11 +22,6 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalM,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: tokens.borderRadiusMedium,
-  },
-  pair: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-    gap: tokens.spacingHorizontalM,
   },
 });
 
@@ -84,7 +80,7 @@ function Editor({ data }: { data: TieringConfig }) {
         {tiers.map((t, i) => (
           <div key={t.tier} className={s.card}>
             <Subtitle2 as="h4">Tier {t.tier}</Subtitle2>
-            <div className={s.pair}>
+            <FormGrid minColWidth={240}>
               <Field label="Name" required>
                 <Input
                   aria-label={`Tier ${t.tier} name`}
@@ -99,7 +95,7 @@ function Editor({ data }: { data: TieringConfig }) {
                   onChange={(_, d) => editTier(i, { builder_persona: d.value })}
                 />
               </Field>
-            </div>
+            </FormGrid>
             <Field label="Definition">
               <Textarea
                 rows={2}

@@ -2,7 +2,7 @@ import { Badge, Body1, Button, Caption1, makeStyles, tokens } from '@fluentui/re
 import { ArrowDownloadRegular } from '@fluentui/react-icons';
 import dayjs from 'dayjs';
 import { download } from '../../../api/client';
-import { SectionCard } from '../../../components/SectionCard';
+import { Panel } from './Panel';
 import { useSuccessToast } from '../../admin/useSavedToast';
 import { useApiErrorToast } from '../../../hooks/useApiErrorToast';
 import { usePerm } from '../../gates/usePerm';
@@ -32,7 +32,7 @@ export function ExportStep(props: { transitionId: string; model: SupportModel })
 
   return (
     <div className={s.stack}>
-      <SectionCard title="PowerPoint export">
+      <Panel title="PowerPoint export">
         <div className={s.row}>
           <Button
             appearance="primary"
@@ -74,9 +74,9 @@ export function ExportStep(props: { transitionId: string; model: SupportModel })
         ) : (
           <Caption1>No PowerPoint generated yet.</Caption1>
         )}
-      </SectionCard>
+      </Panel>
 
-      <SectionCard title="Linked items">
+      <Panel title="Linked items">
         {model.linked_items.length === 0 && <Caption1>No linked items.</Caption1>}
         {model.linked_items.map((it) => (
           <div key={it.item_id} className={s.row}>
@@ -89,7 +89,7 @@ export function ExportStep(props: { transitionId: string; model: SupportModel })
           </div>
         ))}
         <Caption1>These items become Complete when the support model is agreed.</Caption1>
-      </SectionCard>
+      </Panel>
     </div>
   );
 }

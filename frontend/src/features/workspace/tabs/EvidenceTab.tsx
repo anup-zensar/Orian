@@ -10,8 +10,10 @@ import {
   TableHeader,
   TableHeaderCell,
   TableRow,
+  makeStyles,
 } from '@fluentui/react-components';
 import { download } from '../../../api/client';
+import { DataTable } from '../../../components/DataTable';
 import { EmptyState } from '../../../components/EmptyState';
 import { ErrorState } from '../../../components/ErrorState';
 import { LoadingState } from '../../../components/LoadingState';
@@ -25,6 +27,30 @@ import { useRecordStyles, usePerm, useUrlParams } from '../../records/hooks';
 import { AddEvidenceDialog, ReviewEvidenceDialog } from '../../records/EvidenceDialogs';
 import type { TabProps } from '../types';
 
+const useStyles = makeStyles({
+  // Titles wrap at word boundaries (never mid-word) and keep a readable minimum width.
+  wrapCell: {
+    minWidth: '110px',
+    whiteSpace: 'normal',
+    overflowWrap: 'normal',
+    wordBreak: 'normal',
+    verticalAlign: 'top',
+  },
+  linkText: { overflowWrap: 'anywhere' },
+});
+
+/** Column widths (the table layout is fixed, so widths come from the header row). */
+const HEADER_WIDTH: Record<string, number | undefined> = {
+  ID: 56,
+  Title: 140,
+  Item: 120,
+  Type: 80,
+  'Submitted by': 96,
+  Status: 90,
+  Review: 90,
+  '': 100,
+};
+
 const STATUS_COLOR = { Submitted: 'informative', Accepted: 'success', Rejected: 'danger' } as const;
 
 function isHttp(url: string): boolean {
@@ -34,6 +60,7 @@ function isHttp(url: string): boolean {
 /** Evidence tab (FR-033, spec 8.7 d): filterable list, add dialog, accept / reject, download. */
 export function EvidenceTab({ transitionId }: TabProps) {
   const s = useRecordStyles();
+  const c = useStyles();
   const types = useOptions('evidence_types');
   const statuses = useOptions('evidence_statuses');
   const typeLabel = useOptionLabel();
@@ -129,13 +156,15 @@ export function EvidenceTab({ transitionId }: TabProps) {
           }
         />
       ) : (
-        <div className={s.tableWrap}>
-          <Table aria-label="Evidence" size="small">
+        <DataTable label="Evidence">
+          <Table aria-label="Evidence" size="small" style={{ minWidth: 740 }}>
             <TableHeader>
               <TableRow>
                 {['ID', 'Title', 'Item', 'Type', 'Submitted by', 'Status', 'Review', ''].map(
                   (h) => (
-                    <TableHeaderCell key={h || 'actions'}>{h}</TableHeaderCell>
+                    <TableHeaderCell key={h || 'actions'} style={{ width: HEADER_WIDTH[h] }}>
+                      {h}
+                    </TableHeaderCell>
                   ),
                 )}
               </TableRow>
@@ -144,10 +173,15 @@ export function EvidenceTab({ transitionId }: TabProps) {
               {list.data.map((ev) => (
                 <TableRow key={ev.id}>
                   <TableCell>{ev.id}</TableCell>
-                  <TableCell>
+                  <TableCell className={c.wrapCell}>
                     <div>{ev.title}</div>
                     {typeMeta(ev.type).needs === 'url' && ev.url && isHttp(ev.url) && (
-                      <a href={ev.url} target="_blank" rel="noreferrer noopener">
+                      <a
+                        className={c.linkText}
+                        href={ev.url}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                      >
                         {ev.url}
                       </a>
                     )}
@@ -155,7 +189,7 @@ export function EvidenceTab({ transitionId }: TabProps) {
                       <div className={s.muted}>{ev.text}</div>
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className={c.wrapCell}>
                     {ev.item_id ? `${ev.item_id} – ${ev.item_title ?? ''}` : '–'}
                   </TableCell>
                   <TableCell>
@@ -220,7 +254,7 @@ export function EvidenceTab({ transitionId }: TabProps) {
               ))}
             </TableBody>
           </Table>
-        </div>
+        </DataTable>
       )}
 
       {addOpen && (

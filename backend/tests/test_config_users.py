@@ -223,7 +223,7 @@ def test_rename_a_role(client, headers, fresh_seed, db) -> None:
         and pm["user_count"] >= 1
     )
     assert pm["code"] == "PM" and len(r.json()) == 8
-    ref = client.get(f"{API}/reference").json()
+    ref = client.get(f"{API}/reference", headers={"X-Demo-User": "U01"}).json()
     assert next(x for x in ref["roles"] if x["code"] == "PM")["label"] == "Programme manager"
     assert (
         client.get(f"{API}/me", headers=headers("U10")).json()["user"]["role_label"]

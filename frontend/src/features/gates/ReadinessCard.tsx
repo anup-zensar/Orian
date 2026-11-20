@@ -10,6 +10,8 @@ import {
 } from '@fluentui/react-components';
 import { Sparkle16Regular } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router';
+import { Toolbar } from '../../components/layout/Toolbar';
+import { ai } from '../../theme/orionTheme';
 import { ActorBadge } from '../../components/ActorBadge';
 import { AppLink } from '../../components/AppLink';
 import { LensChip } from '../../components/LensChip';
@@ -24,7 +26,7 @@ import { useDraftApprovalRequest, useDraftChaser, type Draft } from '../drafts/a
 import type { Lens } from '../../theme/tokens';
 
 const useStyles = makeStyles({
-  root: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
+  root: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM, minWidth: 0 },
   verdictRow: {
     display: 'flex',
     alignItems: 'center',
@@ -39,11 +41,14 @@ const useStyles = makeStyles({
     gap: tokens.spacingVerticalS,
     padding: tokens.spacingVerticalM,
     borderRadius: tokens.borderRadiusMedium,
+    minWidth: 0,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
-    backgroundColor: tokens.colorNeutralBackground2,
+    borderTop: `3px solid ${ai.main}`,
+    backgroundColor: ai.tint,
   },
   row: { display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap', alignItems: 'center' },
-  chain: { display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap' },
+  chain: { display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap', minWidth: 0 },
+  actions: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS },
   step: {
     padding: tokens.spacingVerticalS,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
@@ -404,8 +409,8 @@ export function ReadinessCard(props: {
         </div>
         <Body1 style={{ whiteSpace: 'pre-wrap' }}>{r.narrative}</Body1>
         {(r.recommended_actions.length > 0 || needsDisabledApproval) && (
-          <div className={s.group}>
-            <div className={s.row} role="group" aria-label="Recommended actions">
+          <div className={s.actions} role="group" aria-label="Recommended actions">
+            <Toolbar>
               {needsDisabledApproval && (
                 <ReasonButton
                   appearance="primary"
@@ -423,16 +428,16 @@ export function ReadinessCard(props: {
                   {showAll ? 'Show fewer' : `Show all (${sorted.length})`}
                 </Button>
               )}
-            </div>
+            </Toolbar>
             {showAll && (
               <>
-                <div className={s.row}>{sorted.slice(0, MAX_ACTIONS).map(renderAction)}</div>
+                <Toolbar>{sorted.slice(0, MAX_ACTIONS).map(renderAction)}</Toolbar>
                 {hiddenGroups.map((g) => (
                   <div key={g.k} className={s.group}>
                     <Caption1>
                       {KIND_TITLES[g.k] ?? g.k} ({g.list.length})
                     </Caption1>
-                    <div className={s.row}>{g.list.map(renderAction)}</div>
+                    <Toolbar>{g.list.map(renderAction)}</Toolbar>
                   </div>
                 ))}
               </>

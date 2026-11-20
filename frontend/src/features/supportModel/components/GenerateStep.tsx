@@ -10,7 +10,6 @@ import {
 } from '@fluentui/react-components';
 import { CheckmarkCircleFilled, CircleRegular } from '@fluentui/react-icons';
 import { AiBadge } from '../../../components/AiBadge';
-import { SectionCard } from '../../../components/SectionCard';
 import { useApiErrorToast } from '../../../hooks/useApiErrorToast';
 import { useGenerate, type GenerateResult, type SupportModel } from '../api';
 
@@ -27,6 +26,7 @@ const STEP_MS = 1500;
 export function GenerateStep(props: {
   transitionId: string;
   model: SupportModel;
+  onStart: () => void;
   onDone: () => void;
 }) {
   const s = useStyles();
@@ -49,6 +49,7 @@ export function GenerateStep(props: {
   }, [steps, active]);
 
   const start = () => {
+    props.onStart();
     setSteps(null);
     setActive(0);
     gen.mutate(undefined, { onSuccess: (r) => setSteps(r.steps), onError: showError });
@@ -59,52 +60,48 @@ export function GenerateStep(props: {
     : (props.model.edit_denied_reason ?? 'The support model cannot be generated in this status.');
 
   return (
-    <SectionCard title="Generate support model">
-      <div className={s.stack}>
-        <Body1>
-          Orion reads the Confluence page, transcript, design and diagrams and drafts the
-          application landscape, support tiers, contacts and open questions.
-        </Body1>
-        <div className={s.row}>
-          <Button
-            appearance="primary"
-            disabled={!!blockedReason || running}
-            title={blockedReason ?? undefined}
-            onClick={start}
-          >
-            Generate support model
-          </Button>
-          <AiBadge />
-          <Caption1>Orion agent</Caption1>
-        </div>
-        {blockedReason && <Caption1>{blockedReason}</Caption1>}
-
-        {(gen.isPending || steps) && (
-          <div className={s.stack} aria-live="polite">
-            <ProgressBar
-              value={steps ? Math.min(active, steps.length) / steps.length : undefined}
-            />
-            {gen.isPending && (
-              <div className={s.row}>
-                <Spinner size="tiny" />
-                <Body1>Starting</Body1>
-              </div>
-            )}
-            {steps?.map((st, i) => (
-              <div key={st.label} className={s.row}>
-                {i < active ? (
-                  <CheckmarkCircleFilled className={s.done} />
-                ) : i === active ? (
-                  <Spinner size="tiny" />
-                ) : (
-                  <CircleRegular />
-                )}
-                <Body1>{st.label}</Body1>
-              </div>
-            ))}
-          </div>
-        )}
+    <div className={s.stack}>
+      <Body1>
+        Orion reads the Confluence page, transcript, design and diagrams and drafts the application
+        landscape, support tiers, contacts and open questions.
+      </Body1>
+      <div className={s.row}>
+        <Button
+          appearance="primary"
+          disabled={!!blockedReason || running}
+          title={blockedReason ?? undefined}
+          onClick={start}
+        >
+          Generate support model
+        </Button>
+        <AiBadge />
+        <Caption1>Orion agent</Caption1>
       </div>
-    </SectionCard>
+      {blockedReason && <Caption1>{blockedReason}</Caption1>}
+
+      {(gen.isPending || steps) && (
+        <div className={s.stack} aria-live="polite">
+          <ProgressBar value={steps ? Math.min(active, steps.length) / steps.length : undefined} />
+          {gen.isPending && (
+            <div className={s.row}>
+              <Spinner size="tiny" />
+              <Body1>Starting</Body1>
+            </div>
+          )}
+          {steps?.map((st, i) => (
+            <div key={st.label} className={s.row}>
+              {i < active ? (
+                <CheckmarkCircleFilled className={s.done} />
+              ) : i === active ? (
+                <Spinner size="tiny" />
+              ) : (
+                <CircleRegular />
+              )}
+              <Body1>{st.label}</Body1>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

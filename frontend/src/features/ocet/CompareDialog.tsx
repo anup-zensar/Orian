@@ -28,7 +28,7 @@ const useStyles = makeStyles({
   th: {
     textAlign: 'right',
     padding: tokens.spacingHorizontalS,
-    backgroundColor: tokens.colorNeutralBackground3,
+    backgroundColor: tokens.colorNeutralBackground2,
     position: 'sticky',
     top: 0,
   },

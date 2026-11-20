@@ -12,6 +12,7 @@ import {
   Select,
   Textarea,
 } from '@fluentui/react-components';
+import { FormFull, FormGrid } from '../../components/layout/FormGrid';
 import { useApiErrorToast } from '../../hooks/useApiErrorToast';
 import { useOptions } from '../reference/options';
 import { useAddEvidence, useReviewEvidence, type Evidence, type Item } from './api';
@@ -26,7 +27,6 @@ export function AddEvidenceDialog(props: {
   items: Item[] | undefined;
   initialItem?: string;
 }) {
-  const s = useRecordStyles();
   const add = useAddEvidence(props.transitionId);
   const showError = useApiErrorToast();
   const [title, setTitle] = useState('');
@@ -69,48 +69,64 @@ export function AddEvidenceDialog(props: {
 
   return (
     <ReturnFocusDialog open={props.open} onOpenChange={(_, d) => !d.open && props.onClose()}>
-      <DialogSurface>
+      <DialogSurface style={{ maxWidth: 640, width: '95vw' }}>
         <DialogBody>
           <DialogTitle>Add evidence</DialogTitle>
-          <DialogContent className={s.form}>
-            <Field label="Title" required>
-              <Input value={title} onChange={(_, d) => setTitle(d.value)} />
-            </Field>
-            <Field label="Type" required>
-              <Select value={type} onChange={(_, d) => setType(d.value)}>
-                {types.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <ItemSelect
-              label="Checklist item"
-              items={props.items}
-              value={itemId}
-              onChange={setItemId}
-              emptyLabel="General evidence (no item)"
-            />
-            {isLink && (
-              <Field label="Link URL" required>
-                <Input value={url} onChange={(_, d) => setUrl(d.value)} placeholder="https://" />
+          <DialogContent>
+            <FormGrid minColWidth={220}>
+              <FormFull>
+                <Field label="Title" required>
+                  <Input value={title} onChange={(_, d) => setTitle(d.value)} />
+                </Field>
+              </FormFull>
+              <Field label="Type" required>
+                <Select value={type} onChange={(_, d) => setType(d.value)}>
+                  {types.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </Select>
               </Field>
-            )}
-            {isEmail && (
-              <Field label="Sign-off text" required hint="Paste the email sign-off wording.">
-                <Textarea value={text} onChange={(_, d) => setText(d.value)} rows={4} />
-              </Field>
-            )}
-            {!isLink && !isEmail && (
-              <Field label="File" required>
-                <input
-                  type="file"
-                  aria-label="File"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              <FormFull>
+                <ItemSelect
+                  label="Checklist item"
+                  items={props.items}
+                  value={itemId}
+                  onChange={setItemId}
+                  emptyLabel="General evidence (no item)"
                 />
-              </Field>
-            )}
+              </FormFull>
+              {isLink && (
+                <FormFull>
+                  <Field label="Link URL" required>
+                    <Input
+                      value={url}
+                      onChange={(_, d) => setUrl(d.value)}
+                      placeholder="https://"
+                    />
+                  </Field>
+                </FormFull>
+              )}
+              {isEmail && (
+                <FormFull>
+                  <Field label="Sign-off text" required hint="Paste the email sign-off wording.">
+                    <Textarea value={text} onChange={(_, d) => setText(d.value)} rows={4} />
+                  </Field>
+                </FormFull>
+              )}
+              {!isLink && !isEmail && (
+                <FormFull>
+                  <Field label="File" required>
+                    <input
+                      type="file"
+                      aria-label="File"
+                      onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    />
+                  </Field>
+                </FormFull>
+              )}
+            </FormGrid>
           </DialogContent>
           <DialogActions>
             <Button appearance="secondary" onClick={props.onClose}>
@@ -142,7 +158,7 @@ export function ReviewEvidenceDialog(props: {
 
   return (
     <ReturnFocusDialog open={!!ev} onOpenChange={(_, d) => !d.open && props.onClose()}>
-      <DialogSurface>
+      <DialogSurface style={{ maxWidth: 640, width: '95vw' }}>
         <DialogBody>
           <DialogTitle>
             {props.decision === 'Accept' ? 'Accept' : 'Reject'} evidence {ev?.id}

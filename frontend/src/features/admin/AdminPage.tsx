@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Field, Select, Tab, TabList, makeStyles, tokens } from '@fluentui/react-components';
 import { Navigate, useNavigate, useParams } from 'react-router';
+import { cardRadius, cardShadow } from '../../theme/orionTheme';
 import { PageHeader } from '../../components/PageHeader';
 import { useReference } from '../reference/api';
 import { ChecklistsSection } from './checklists/ChecklistsSection';
@@ -43,7 +44,7 @@ const OLD_LINKS: Record<string, string> = {
 };
 
 /** On narrow windows the left menu becomes a dropdown so the tables get the full width. */
-const NARROW = '(max-width: 1100px)';
+const NARROW = '(max-width: 1399px)';
 function useNarrow(): boolean {
   const [narrow, setNarrow] = useState(() => window.matchMedia(NARROW).matches);
   useEffect(() => {
@@ -62,8 +63,24 @@ const useStyles = makeStyles({
     alignItems: 'flex-start',
     flexWrap: 'wrap',
   },
-  nav: { minWidth: '210px' },
-  picker: { width: '100%', maxWidth: '360px' },
+  nav: {
+    minWidth: '190px',
+    padding: tokens.spacingVerticalS,
+    backgroundColor: tokens.colorNeutralBackground1,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: cardRadius,
+    boxShadow: cardShadow,
+  },
+  tab: { justifyContent: 'flex-start', width: '100%' },
+  picker: {
+    width: '100%',
+    maxWidth: '360px',
+    padding: tokens.spacingHorizontalM,
+    backgroundColor: tokens.colorNeutralBackground1,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: cardRadius,
+    boxShadow: cardShadow,
+  },
   content: {
     flexGrow: 1,
     flexBasis: '480px',
@@ -113,7 +130,7 @@ export function AdminPage() {
             onTabSelect={(_, d) => navigate(`/admin/${String(d.value)}`)}
           >
             {visible.map((x) => (
-              <Tab key={x.key} value={x.key}>
+              <Tab key={x.key} value={x.key} className={s.tab}>
                 {x.label}
               </Tab>
             ))}

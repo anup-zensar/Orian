@@ -14,6 +14,7 @@ import {
   mergeClasses,
   tokens,
 } from '@fluentui/react-components';
+import { DataTable } from '../../../components/DataTable';
 import { EmptyState } from '../../../components/EmptyState';
 import { ErrorState } from '../../../components/ErrorState';
 import { LoadingState } from '../../../components/LoadingState';
@@ -37,7 +38,7 @@ const useStyles = makeStyles({
     flexWrap: 'wrap',
     alignItems: 'flex-start',
   },
-  table: { flexGrow: 2, flexBasis: '460px', minWidth: 0, overflowX: 'auto' },
+  table: { flexGrow: 2, flexBasis: '460px', minWidth: 0 },
   panel: { flexGrow: 1, flexBasis: '340px', minWidth: 0 },
   row: { cursor: 'pointer' },
   selected: { backgroundColor: tokens.colorBrandBackground2 },
@@ -180,56 +181,58 @@ export function ProjectTypesSection() {
         ) : (
           <div className={s.layout}>
             <div className={s.table}>
-              <Table
-                aria-label="Project types"
-                size="small"
-                style={{ tableLayout: 'auto', minWidth: '100%' }}
-              >
-                <TableHeader>
-                  <TableRow>
-                    <TableHeaderCell>Project type</TableHeaderCell>
-                    <TableHeaderCell>Checklists</TableHeaderCell>
-                    <TableHeaderCell>Switches</TableHeaderCell>
-                    <TableHeaderCell>Used by</TableHeaderCell>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((t) => (
-                    <TableRow
-                      key={t.code}
-                      className={mergeClasses(s.row, t.code === selected.code && s.selected)}
-                      aria-selected={t.code === selected.code}
-                      tabIndex={0}
-                      onClick={() => guard(() => setPicked(t.code))}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          guard(() => setPicked(t.code));
-                        }
-                      }}
-                    >
-                      <TableCell>
-                        <div>{t.label}</div>
-                        <code>{t.code}</code>
-                        {!t.active && (
-                          <Badge appearance="tint" color="subtle" style={{ marginLeft: 6 }}>
-                            inactive
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>{t.checklists.map(labelOf).join(', ') || '-'}</TableCell>
-                      <TableCell>
-                        <div className={s.chips}>
-                          {t.requires_tiering && <Badge appearance="outline">Tiering</Badge>}
-                          {t.has_ai_profile && <Badge appearance="outline">AI profile</Badge>}
-                          {t.has_eval_metrics && <Badge appearance="outline">Eval metrics</Badge>}
-                        </div>
-                      </TableCell>
-                      <TableCell>{t.used_by}</TableCell>
+              <DataTable label="Project types table" stickyFirstColumn>
+                <Table
+                  aria-label="Project types"
+                  size="small"
+                  style={{ tableLayout: 'auto', minWidth: '100%' }}
+                >
+                  <TableHeader>
+                    <TableRow>
+                      <TableHeaderCell>Project type</TableHeaderCell>
+                      <TableHeaderCell>Checklists</TableHeaderCell>
+                      <TableHeaderCell>Switches</TableHeaderCell>
+                      <TableHeaderCell>Used by</TableHeaderCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {rows.map((t) => (
+                      <TableRow
+                        key={t.code}
+                        className={mergeClasses(s.row, t.code === selected.code && s.selected)}
+                        aria-selected={t.code === selected.code}
+                        tabIndex={0}
+                        onClick={() => guard(() => setPicked(t.code))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            guard(() => setPicked(t.code));
+                          }
+                        }}
+                      >
+                        <TableCell>
+                          <div>{t.label}</div>
+                          <code>{t.code}</code>
+                          {!t.active && (
+                            <Badge appearance="tint" color="subtle" style={{ marginLeft: 6 }}>
+                              inactive
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>{t.checklists.map(labelOf).join(', ') || '-'}</TableCell>
+                        <TableCell>
+                          <div className={s.chips}>
+                            {t.requires_tiering && <Badge appearance="outline">Tiering</Badge>}
+                            {t.has_ai_profile && <Badge appearance="outline">AI profile</Badge>}
+                            {t.has_eval_metrics && <Badge appearance="outline">Eval metrics</Badge>}
+                          </div>
+                        </TableCell>
+                        <TableCell>{t.used_by}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </DataTable>
             </div>
             <div className={s.panel}>
               <TypePanel

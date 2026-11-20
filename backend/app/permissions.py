@@ -131,7 +131,7 @@ DEFAULT_DENIAL_REASONS: dict[Perm, str] = {
     Perm.EDIT_EVAL_RESULTS: "Only the OR focal, PM or Architect can enter eval results",
     Perm.EDIT_AI_PROFILE: "Only the OR focal, PM or Architect can edit the AI profile",
     Perm.TOGGLE_AUTONOMOUS: "Only the OR focal can change autonomous mode",
-    Perm.GENERATE_LEADERSHIP_UPDATE: "Only the OR focal can generate and send leadership updates",
+    Perm.GENERATE_LEADERSHIP_UPDATE: "Only the OR focal or Admin can generate and send leadership updates",
     Perm.RUN_REMINDERS: "Only the OR focal or Admin can run the reminder engine",
     Perm.EDIT_TRANSITION: "Only the OR focal of the transition or an Admin can edit it",
     Perm.VIEW_ALL_APPROVALS: "Only the OR focal or Admin can see all approvals",

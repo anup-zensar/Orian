@@ -68,7 +68,7 @@ def test_relabel_keeps_the_stored_value(client, headers, fresh_seed, db) -> None
     out = _put(client, headers, "severities", body).json()
     assert [i["value"] for i in out["items"]] == ["Critical", "Major", "Minor"]
     assert out["items"][1]["label"] == "Serious"
-    ref = client.get(f"{API}/reference").json()
+    ref = client.get(f"{API}/reference", headers={"X-Demo-User": "U01"}).json()
     assert (
         next(o for o in ref["lists"]["severities"] if o["value"] == "Major")["label"] == "Serious"
     )
@@ -88,7 +88,7 @@ def test_add_and_reorder_values(client, headers, fresh_seed) -> None:
     values = [i["value"] for i in out["items"]]
     assert values[0] == "Antarctica" and values[-1] == first["value"]
     assert [i["sort_order"] for i in out["items"]] == list(range(len(values)))
-    ref = client.get(f"{API}/reference").json()
+    ref = client.get(f"{API}/reference", headers={"X-Demo-User": "U01"}).json()
     assert ref["regions"] == values
     # a duplicate value in one request is refused
     body["items"].append({"value": "Antarctica"})
@@ -105,8 +105,15 @@ def test_used_value_is_deactivated_not_removed(client, headers, fresh_seed, db) 
     after = {i["value"]: i for i in r.json()["items"]}
     assert after[used["value"]]["active"] is False  # kept, hidden from new records
     assert any(used["value"] in w for w in r.json()["warnings"])
-    assert used["value"] not in client.get(f"{API}/reference").json()["enums"]["severities"]
-    inactive = client.get(f"{API}/reference", params={"include_inactive": "true"}).json()
+    assert (
+        used["value"]
+        not in client.get(f"{API}/reference", headers={"X-Demo-User": "U01"}).json()["enums"][
+            "severities"
+        ]
+    )
+    inactive = client.get(
+        f"{API}/reference", params={"include_inactive": "true"}, headers={"X-Demo-User": "U01"}
+    ).json()
     assert used["value"] in [o["value"] for o in inactive["lists"]["severities"]]
     # an UNCHANGED existing record with that value stays valid
     cfg.validate_option(db, "severities", used["value"], current=used["value"])

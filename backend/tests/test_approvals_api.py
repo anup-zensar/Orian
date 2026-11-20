@@ -171,3 +171,13 @@ def test_create_exception_flow(client, headers, db, fresh_seed):
     res = client.post(url, json={"item_id": non_c, "text": "x"}, headers=headers("U01"))
     assert res.status_code == 409
     assert "Compliance items only" in res.json()["detail"]
+
+
+def test_wrong_role_on_a_waiting_step_is_403_right_role_is_409(client, headers, fresh_seed):
+    # step 2 (mock CISO/BISO step) is still waiting: role is checked before order
+    wrong = _approve(client, headers, "U12", 2)  # OLM
+    assert wrong.status_code == 403 and "IRM" in wrong.json()["reasons"][0]
+    wrong_on_decided_order = _approve(client, headers, "U10", 2)  # PM
+    assert wrong_on_decided_order.status_code == 403
+    right = _approve(client, headers, "U14", 2)  # IRM, right role, wrong moment
+    assert right.status_code == 409 and "sequence" in right.json()["reasons"][0]

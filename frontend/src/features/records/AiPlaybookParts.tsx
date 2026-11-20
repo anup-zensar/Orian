@@ -14,6 +14,8 @@ import {
   TableRow,
   Textarea,
 } from '@fluentui/react-components';
+import { FormFull, FormGrid } from '../../components/layout/FormGrid';
+import { DataTable } from '../../components/DataTable';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { SectionCard } from '../../components/SectionCard';
@@ -56,7 +58,7 @@ export function TierCard({ transition }: { transition: TransitionDetail }) {
       ) : (
         <>
           <div className={s.row}>
-            <Badge appearance="filled" color={t.confirmed_tier ? 'success' : 'warning'}>
+            <Badge appearance="tint" size="large" color={t.confirmed_tier ? 'success' : 'warning'}>
               Tier {shown}
               {tierName ? ` – ${tierName}` : ''}
             </Badge>
@@ -98,6 +100,10 @@ const PROFILE_FIELDS: { key: StringKey; label: string; multiline?: boolean }[] =
   { key: 'write_actions_detail', label: 'Write actions detail', multiline: true },
 ];
 
+function FormCell(props: { full?: boolean; children: React.ReactNode }) {
+  return props.full ? <FormFull>{props.children}</FormFull> : <div>{props.children}</div>;
+}
+
 function ProfileForm({ transitionId, profile }: { transitionId: string; profile: AiProfile }) {
   const s = useRecordStyles();
   const save = useSaveAiProfile(transitionId);
@@ -118,26 +124,28 @@ function ProfileForm({ transitionId, profile }: { transitionId: string; profile:
 
   return (
     <div className={s.form}>
-      <div className={s.grid}>
+      <FormGrid minColWidth={260}>
         {PROFILE_FIELDS.map((f) => (
-          <Field key={f.key} label={f.label}>
-            {f.multiline ? (
-              <Textarea
-                rows={3}
-                value={form[f.key]}
-                disabled={!!perm.reason}
-                onChange={(_, d) => set({ [f.key]: d.value })}
-              />
-            ) : (
-              <Input
-                value={form[f.key]}
-                disabled={!!perm.reason}
-                onChange={(_, d) => set({ [f.key]: d.value })}
-              />
-            )}
-          </Field>
+          <FormCell key={f.key} full={f.multiline}>
+            <Field label={f.label}>
+              {f.multiline ? (
+                <Textarea
+                  rows={3}
+                  value={form[f.key]}
+                  disabled={!!perm.reason}
+                  onChange={(_, d) => set({ [f.key]: d.value })}
+                />
+              ) : (
+                <Input
+                  value={form[f.key]}
+                  disabled={!!perm.reason}
+                  onChange={(_, d) => set({ [f.key]: d.value })}
+                />
+              )}
+            </Field>
+          </FormCell>
         ))}
-      </div>
+      </FormGrid>
       <Switch
         label="Multi-agent orchestration"
         checked={form.multi_agent_orchestration}
@@ -267,12 +275,14 @@ export function EvalCard({ transitionId }: { transitionId: string }) {
               : 'No tier yet; showing the lowest tier targets. '}
             {q.data.failed_count} failing, {q.data.not_evaluated_count} not evaluated.
           </span>
-          <div className={s.tableWrap}>
-            <Table aria-label="Evaluation metrics" size="small">
+          <DataTable label="Evaluation metrics table">
+            <Table aria-label="Evaluation metrics" size="small" style={{ minWidth: 820 }}>
               <TableHeader>
                 <TableRow>
-                  {['Metric', 'Target', 'Result', 'Pass / fail', 'Last evaluated'].map((h) => (
-                    <TableHeaderCell key={h}>{h}</TableHeaderCell>
+                  {['Metric', 'Target', 'Result', 'Pass / fail', 'Last evaluated'].map((h, i) => (
+                    <TableHeaderCell key={h} style={{ minWidth: [190, 150, 190, 210, 110][i] }}>
+                      {h}
+                    </TableHeaderCell>
                   ))}
                 </TableRow>
               </TableHeader>
@@ -328,7 +338,7 @@ export function EvalCard({ transitionId }: { transitionId: string }) {
                 })}
               </TableBody>
             </Table>
-          </div>
+          </DataTable>
           {perm.reason && <span className={s.muted}>{perm.reason}</span>}
         </>
       )}

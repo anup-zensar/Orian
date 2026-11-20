@@ -12,6 +12,7 @@ import {
   TableRow,
   Tooltip,
 } from '@fluentui/react-components';
+import { DataTable } from '../../../components/DataTable';
 import { EmptyState } from '../../../components/EmptyState';
 import { ErrorState } from '../../../components/ErrorState';
 import { LoadingState } from '../../../components/LoadingState';
@@ -95,7 +96,7 @@ export function HypercareTab({ transitionId }: TabProps) {
                 }
               />
             ) : (
-              <div className={s.tableWrap}>
+              <DataTable label="Defects">
                 <Table aria-label="Defects" size="small">
                   <TableHeader>
                     <TableRow>
@@ -148,7 +149,7 @@ export function HypercareTab({ transitionId }: TabProps) {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              </DataTable>
             )}
           </SectionCard>
         </>

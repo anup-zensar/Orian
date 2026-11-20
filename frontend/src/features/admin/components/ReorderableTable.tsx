@@ -16,6 +16,7 @@ import {
   LockClosed16Regular,
   ReOrderDotsVertical16Regular,
 } from '@fluentui/react-icons';
+import { DataTable } from '../../../components/DataTable';
 import { DisabledReason } from './DisabledReason';
 
 export interface ReorderColumn<T> {
@@ -25,7 +26,6 @@ export interface ReorderColumn<T> {
 }
 
 const useStyles = makeStyles({
-  scroll: { overflowX: 'auto' },
   handleCell: { display: 'flex', alignItems: 'center', gap: '2px' },
   handle: { cursor: 'grab', minWidth: 0 },
   dropTarget: { boxShadow: `inset 0 2px 0 ${tokens.colorBrandStroke1}` },
@@ -71,7 +71,7 @@ export function ReorderableTable<T>(props: {
   };
 
   return (
-    <div className={s.scroll}>
+    <DataTable label={props.ariaLabel}>
       <Table
         aria-label={props.ariaLabel}
         size="small"
@@ -163,6 +163,6 @@ export function ReorderableTable<T>(props: {
           ))}
         </TableBody>
       </Table>
-    </div>
+    </DataTable>
   );
 }

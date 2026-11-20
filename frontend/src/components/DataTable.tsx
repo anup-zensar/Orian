@@ -35,7 +35,7 @@ const useStyles = makeStyles({
       zIndex: 2,
       backgroundColor: tokens.colorNeutralBackground1,
     },
-    '& td:first-child': {
+    '& td:first-child:not([colspan])': {
       position: 'sticky',
       left: 0,
       zIndex: 1,

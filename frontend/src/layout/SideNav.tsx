@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router';
 import { Tooltip, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
+import { useMe } from '../features/users/api';
 import { palette } from '../theme/orionTheme';
 import { NAV_ITEMS } from './navItems';
 
@@ -72,11 +73,14 @@ const useStyles = makeStyles({
 
 /** Left navigation (FR-002). Real links, so keyboard Tab/Enter works and the URL is the state.
  * `collapsed` shows an icon rail (same links, name in a tooltip) so content keeps room. */
-export function SideNav({ isAdmin, collapsed }: { isAdmin: boolean; collapsed?: boolean }) {
+export function SideNav({ collapsed }: { collapsed?: boolean }) {
   const s = useStyles();
+  const perms = useMe().data?.permissions ?? [];
   return (
     <nav className={mergeClasses(s.nav, collapsed && s.rail)} aria-label="Main navigation">
-      {NAV_ITEMS.filter((i) => !i.adminOnly || isAdmin).map(({ label, to, icon: Icon }) => {
+      {NAV_ITEMS.filter(
+        (i) => !i.anyPermission || i.anyPermission.some((p) => perms.includes(p)),
+      ).map(({ label, to, icon: Icon }) => {
         const link = (
           <NavLink
             key={to}

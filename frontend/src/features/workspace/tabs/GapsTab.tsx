@@ -19,6 +19,7 @@ import { EmptyState } from '../../../components/EmptyState';
 import { ErrorState } from '../../../components/ErrorState';
 import { LensChip } from '../../../components/LensChip';
 import { LoadingState } from '../../../components/LoadingState';
+import { DataTable } from '../../../components/DataTable';
 import { PageHeader } from '../../../components/PageHeader';
 import { SectionCard } from '../../../components/SectionCard';
 import { useApiErrorToast } from '../../../hooks/useApiErrorToast';
@@ -55,6 +56,7 @@ export function GapsTab({ transitionId }: TabProps) {
   const { params, set } = useUrlParams();
   const showError = useApiErrorToast();
   const manage = usePerm('manage_actions', transitionId);
+  const sendDrafts = usePerm('send_drafts', transitionId);
   const rowReason = useOwnerException('manage_actions', manage.reason);
   const ref = useReference();
   const transition = useTransition(transitionId);
@@ -180,7 +182,7 @@ export function GapsTab({ transitionId }: TabProps) {
                       </GuardedButton>
                       <GuardedButton
                         size="small"
-                        reason={manage.reason}
+                        reason={sendDrafts.reason}
                         disabled={chaser.isPending}
                         onClick={() => draftChaser(item.item_id)}
                       >
@@ -210,7 +212,7 @@ export function GapsTab({ transitionId }: TabProps) {
             }
           />
         ) : (
-          <div className={s.tableWrap}>
+          <DataTable label="Actions">
             <Table aria-label="Actions" size="small">
               <TableHeader>
                 <TableRow>
@@ -271,7 +273,7 @@ export function GapsTab({ transitionId }: TabProps) {
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </DataTable>
         )}
       </SectionCard>
 

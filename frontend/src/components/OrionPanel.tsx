@@ -8,15 +8,14 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import { Dismiss24Regular, Open20Regular, Sparkle20Filled } from '@fluentui/react-icons';
+import { Dismiss24Regular, Sparkle20Filled } from '@fluentui/react-icons';
 import { ai } from '../theme/orionTheme';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
 import { OrionChat } from '../features/orion/OrionChat';
 
 const useStyles = makeStyles({
   drawer: {
-    width: '420px',
+    width: 'clamp(340px, 28vw, 420px)',
     maxWidth: '100vw',
     flexShrink: 0,
     borderTop: `3px solid ${ai.main}`,
@@ -40,7 +39,7 @@ const useStyles = makeStyles({
     flexShrink: 0,
     borderRadius: '50%',
     backgroundColor: ai.main,
-    color: '#FFFFFF',
+    color: tokens.colorNeutralForegroundInverted,
   },
   body: { display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' },
 });
@@ -64,7 +63,6 @@ function useNarrow() {
 /** Right-side Orion assistant panel (FR-090): the shared chat, available on every page. */
 export function OrionPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const s = useStyles();
-  const navigate = useNavigate();
   const narrow = useNarrow();
   const wasOpen = useRef(false);
   useEffect(() => {
@@ -99,13 +97,6 @@ export function OrionPanel({ open, onClose }: { open: boolean; onClose: () => vo
         <DrawerHeaderTitle
           action={
             <>
-              <Button
-                appearance="subtle"
-                aria-label="Open the full Orion page"
-                title="Open the full Orion page"
-                icon={<Open20Regular />}
-                onClick={() => navigate('/orion')}
-              />
               <Button
                 appearance="subtle"
                 aria-label="Close Orion panel"

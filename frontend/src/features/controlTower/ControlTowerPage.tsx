@@ -1,76 +1,99 @@
-// FR-011 Control tower (spec 8.2): filters, KPI tiles, heatmap, readiness by region, register,
-// escalation queue, decision calendar, Orion insights and the operating rhythm. Everything is
-// computed by the API: the register, regions, escalations and calendar use all filters; the KPI
-// tiles ignore the tile filters and the heatmap ignores portfolio and gate (the user keeps context).
+// FR-011 Control tower (spec 8.2): KPI tiles, heatmap, readiness by region, escalation queue, decision
+// calendar, Orion insights and the operating rhythm. Everything is computed by the API. The full
+// register lives on the Transitions page: a KPI tile or heatmap cell opens /transitions with the same
+// URL filters. Old deep links (/control-tower?portfolio=X) still show the filtered tower.
 import { Button, Caption1, makeStyles, tokens } from '@fluentui/react-components';
+import { ArrowRight16Regular } from '@fluentui/react-icons';
+import { useNavigate } from 'react-router';
 import { ErrorState } from '../../components/ErrorState';
 import { InsightsCard } from '../../components/InsightsCard';
 import { KpiTile } from '../../components/KpiTile';
 import { LoadingState } from '../../components/LoadingState';
 import { PageHeader } from '../../components/PageHeader';
 import { SectionCard } from '../../components/SectionCard';
-import { EmptyState } from '../../components/EmptyState';
 import { useInsights } from '../orion/api';
-import { FilterBar } from '../transitions/FilterBar';
-import { TransitionRegisterTable } from '../transitions/TransitionRegisterTable';
-import { useUrlFilters, type FilterKey } from '../transitions/useUrlFilters';
-import { plural } from '../../lib/format';
+import { useUrlFilters } from '../transitions/useUrlFilters';
 import { useControlTower } from './api';
 import { Heatmap } from './Heatmap';
 import { RegionChart } from './RegionChart';
-import { CalendarCard, EscalationCard, OperatingRhythmCard } from './SideCards';
+import { CalendarCard, EscalationCard, OperatingRhythmNote } from './SideCards';
 
 const useStyles = makeStyles({
   tiles: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 125px), 1fr))',
     gap: tokens.spacingHorizontalM,
     marginBottom: tokens.spacingVerticalL,
   },
-  // Columns wrap (single column at ~1024 px) instead of squeezing the content.
+  // Columns wrap (single column when the content is narrow) instead of squeezing the content.
   pair: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(540px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 480px), 1fr))',
     gap: tokens.spacingHorizontalL,
     marginBottom: tokens.spacingVerticalL,
   },
   triple: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
     gap: tokens.spacingHorizontalL,
-    margin: `${tokens.spacingVerticalL} 0`,
+    marginBottom: tokens.spacingVerticalL,
     alignItems: 'start',
   },
-  block: { marginBottom: tokens.spacingVerticalL },
+  filtered: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    marginBottom: tokens.spacingVerticalM,
+  },
 });
+
+/** URL for /transitions from a set of filter keys (the same keys the register filters use). */
+function transitionsLink(filters: Record<string, string | undefined>) {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(filters)) if (v) q.set(k, v);
+  const text = q.toString();
+  return text ? `/transitions?${text}` : '/transitions';
+}
 
 export function ControlTowerPage() {
   const s = useStyles();
-  const { filters, update, clear, notice } = useUrlFilters();
+  const navigate = useNavigate();
+  const { filters, clear, notice } = useUrlFilters();
   const ct = useControlTower(filters);
   const insights = useInsights('control-tower', filters);
   const d = ct.data;
-
-  /** Does the tile's filter match what is currently in the URL? */
-  const isActive = (f: Record<string, string>) => {
-    const entries = Object.entries(f);
-    return entries.length > 0 && entries.every(([k, v]) => filters[k as FilterKey] === v);
-  };
-  /** Click a tile: apply its filter, or remove it when it is already applied. */
-  const toggleTile = (f: Record<string, string>) => {
-    const patch: Partial<Record<FilterKey, string | undefined>> = {};
-    const active = isActive(f);
-    for (const [k, v] of Object.entries(f)) patch[k as FilterKey] = active ? undefined : v;
-    update(patch);
-  };
+  const filterCount = Object.keys(filters).length;
+  const filterText = Object.entries(filters)
+    .map(([k, v]) => `${k.replace(/_/g, ' ')} ${v}`)
+    .join(', ');
 
   return (
     <>
       <PageHeader
         title="Control tower"
         subtitle="Portfolio-wide readiness: where it is Red, what is blocked and which decisions are next."
+        actions={
+          <Button
+            icon={<ArrowRight16Regular />}
+            iconPosition="after"
+            onClick={() => navigate(transitionsLink(filters))}
+          >
+            View all in Transitions
+          </Button>
+        }
       />
-      <FilterBar filters={filters} update={update} clear={clear} notice={notice} />
+      {(filterCount > 0 || notice) && (
+        <div className={s.filtered} role="status">
+          {filterCount > 0 && <Caption1>Filtered view: {filterText}</Caption1>}
+          {notice && <Caption1>{notice}</Caption1>}
+          {filterCount > 0 && (
+            <Button size="small" appearance="subtle" onClick={clear}>
+              Clear filters
+            </Button>
+          )}
+        </div>
+      )}
 
       {ct.isLoading ? (
         <LoadingState rows={8} />
@@ -88,8 +111,8 @@ export function ControlTowerPage() {
                   value={k.value}
                   tone={k.tone}
                   hint={k.hint}
-                  active={hasFilter ? isActive(k.filter) : undefined}
-                  onClick={hasFilter ? () => toggleTile(k.filter) : undefined}
+                  caption={hasFilter ? 'Open in Transitions' : undefined}
+                  onClick={hasFilter ? () => navigate(transitionsLink(k.filter)) : undefined}
                 />
               );
             })}
@@ -97,41 +120,14 @@ export function ControlTowerPage() {
 
           <div className={s.pair}>
             <SectionCard title="Heatmap: portfolio by gate">
-              {filters.portfolio && filters.gate && (
-                <Caption1 role="status" style={{ display: 'block', marginBottom: 6 }}>
-                  Selected: {filters.portfolio} at{' '}
-                  {d.heatmap.gates.find((g) => g.code === filters.gate)?.short ?? filters.gate}{' '}
-                  (click the cell again to clear)
-                </Caption1>
-              )}
+              <Caption1>Click a cell to open those transitions in Transitions.</Caption1>
               <Heatmap
                 data={d.heatmap}
-                selectedPortfolio={filters.portfolio}
-                selectedGate={filters.gate}
-                onSelect={(portfolio, gate) =>
-                  filters.portfolio === portfolio && filters.gate === gate
-                    ? update({ portfolio: undefined, gate: undefined })
-                    : update({ portfolio, gate })
-                }
+                onSelect={(portfolio, gate) => navigate(transitionsLink({ portfolio, gate }))}
               />
             </SectionCard>
             <SectionCard title="Readiness by region">
               <RegionChart data={d.readiness_by_region} />
-            </SectionCard>
-          </div>
-
-          <div className={s.block}>
-            <SectionCard
-              title={`Transition register (${plural(d.transitions.length, 'transition')})`}
-            >
-              {d.transitions.length === 0 ? (
-                <EmptyState
-                  message="No transitions match these filters"
-                  action={<Button onClick={clear}>Clear filters</Button>}
-                />
-              ) : (
-                <TransitionRegisterTable rows={d.transitions} />
-              )}
             </SectionCard>
           </div>
 
@@ -147,7 +143,7 @@ export function ControlTowerPage() {
             />
           </div>
 
-          <OperatingRhythmCard rows={d.operating_rhythm} />
+          <OperatingRhythmNote rows={d.operating_rhythm} />
         </>
       )}
     </>

@@ -34,7 +34,7 @@ import {
   useOptionLabel,
 } from '../../reference/options';
 import type { ItemOut } from '../api';
-import { ROW_GRID, STICKY } from './rowLayout';
+import { ROW_GRID } from './rowLayout';
 
 const useStyles = makeStyles({
   row: {
@@ -52,20 +52,33 @@ const useStyles = makeStyles({
   },
   excluded: { color: tokens.colorNeutralForeground3 },
   title: { display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 },
-  titleText: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  titleText: {
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
+    overflowWrap: 'break-word',
+    lineHeight: tokens.lineHeightBase300,
+  },
   cell: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   marks: { display: 'flex', gap: tokens.spacingHorizontalXS, flexWrap: 'wrap' },
   detail: {
     display: 'grid',
-    gridTemplateColumns: 'max-content 1fr',
+    gridTemplateColumns: 'max-content minmax(0, 1fr)',
     gap: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalL}`,
     padding: tokens.spacingVerticalM,
-    paddingLeft: '150px',
+    paddingLeft: '64px',
     backgroundColor: tokens.colorNeutralBackground2,
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   label: { color: tokens.colorNeutralForeground3 },
-  updated: { display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-start' },
+  updated: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: tokens.spacingHorizontalS,
+    alignItems: 'center',
+  },
+  de: { minWidth: '96px' },
 });
 
 export interface RowPermissions {
@@ -94,8 +107,6 @@ function ItemRowImpl(p: ItemRowProps) {
   const navigate = useNavigate();
   const { item } = p;
   const { data: reference } = useReference();
-  const sourceLabel =
-    reference?.checklists?.find((c) => c.code === item.source)?.label ?? item.source;
   const [open, setOpen] = useState(p.autoOpen);
   const excluded = item.applicability === 'Not applicable';
   const base = `/transitions/${encodeURIComponent(p.transitionId)}`;
@@ -137,7 +148,7 @@ function ItemRowImpl(p: ItemRowProps) {
         className={mergeClasses(s.row, p.highlighted && s.highlight, excluded && s.excluded)}
         role="row"
       >
-        <div style={STICKY.c1}>
+        <div>
           {p.selectable && (
             <Checkbox
               aria-label={`Select ${item.item_id}`}
@@ -150,13 +161,13 @@ function ItemRowImpl(p: ItemRowProps) {
           appearance="subtle"
           size="small"
           icon={open ? <ChevronDown20Regular /> : <ChevronRight20Regular />}
-          style={STICKY.c2}
+
           aria-expanded={open}
           aria-label={open ? `Collapse ${item.item_id}` : `Expand ${item.item_id}`}
           onClick={() => setOpen((o) => !o)}
         />
-        <strong style={STICKY.c3}>{item.item_id}</strong>
-        <div className={s.title} style={STICKY.c4}>
+        <strong>{item.item_id}</strong>
+        <div className={s.title}>
           <span className={s.titleText} title={item.title}>
             {item.title}
           </span>
@@ -176,6 +187,15 @@ function ItemRowImpl(p: ItemRowProps) {
                 Not applicable{item.excluded_by ? ` (${item.excluded_by.replace('_', ' ')})` : ''}
               </Badge>
             )}
+            {item.gap_severity && (
+              <Badge
+                size="small"
+                appearance="tint"
+                color={colorForOption(reference, 'severities', item.gap_severity)}
+              >
+                {optionLabelFrom(reference, 'severities', item.gap_severity)}
+              </Badge>
+            )}
             {item.covered && (
               <Badge size="small" appearance="tint" color="success">
                 {item.exception_status === 'Approved' && !item.open_condition_id
@@ -185,25 +205,11 @@ function ItemRowImpl(p: ItemRowProps) {
             )}
           </div>
         </div>
-        <Badge
-          appearance="outline"
-          shape="rounded"
-          size="small"
-          title={sourceLabel}
-          style={{
-            maxWidth: '100%',
-            display: 'block',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {sourceLabel}
-        </Badge>
         <LensChip lens={item.lens as Lens} />
         <Caption1 className={s.cell} title={item.owner?.name ?? 'Unassigned'}>
           {item.owner?.name ?? 'Unassigned'}
         </Caption1>
-        <div style={STICKY.status}>
+        <div>
           {item.can_edit ? (
             statusSelect
           ) : (
@@ -214,48 +220,6 @@ function ItemRowImpl(p: ItemRowProps) {
               <span>{statusSelect}</span>
             </Tooltip>
           )}
-        </div>
-        <div>
-          {item.gap_severity && (
-            <Badge
-              appearance="tint"
-              color={colorForOption(reference, 'severities', item.gap_severity)}
-            >
-              {optionLabelFrom(reference, 'severities', item.gap_severity)}
-            </Badge>
-          )}
-        </div>
-        <div>
-          {item.lens === 'Compliance' && (
-            <Select
-              size="small"
-              aria-label={`Design effectiveness of ${item.item_id}`}
-              value={item.design_effectiveness ?? '–'}
-              disabled={!item.can_edit || p.busy}
-              title={item.can_edit ? undefined : (item.edit_denied_reason ?? undefined)}
-              onChange={(_, d) => p.onDesignEffectiveness(item, d.value)}
-            >
-              {p.deOptions.map((o) => (
-                <option key={o} value={o}>
-                  {o}
-                </option>
-              ))}
-            </Select>
-          )}
-        </div>
-        <Button
-          appearance="transparent"
-          size="small"
-          aria-label={`${item.evidence_count} evidence for ${item.item_id}`}
-          onClick={() => go(`evidence?item=${pid}`)}
-        >
-          {item.evidence_count}
-        </Button>
-        <div className={s.updated}>
-          <Caption1>
-            {item.last_updated_by?.name ?? '–'} · {dayjs(item.updated_at).format('D MMM HH:mm')}
-          </Caption1>
-          <ActorBadge actor={item.last_updated_source as ActorType} />
         </div>
         <Menu>
           <MenuTrigger disableButtonEnhancement>
@@ -301,6 +265,45 @@ function ItemRowImpl(p: ItemRowProps) {
             {item.source_label}
             {item.source_sheet ? ` · sheet ${item.source_sheet}` : ''}
             {item.source_cell ? ` · cell ${item.source_cell}` : ''}
+          </span>
+          {item.lens === 'Compliance' && (
+            <>
+              <span className={s.label}>Design effectiveness</span>
+              <span className={s.de}>
+                <Select
+                  size="small"
+                  aria-label={`Design effectiveness of ${item.item_id}`}
+                  value={item.design_effectiveness ?? '–'}
+                  disabled={!item.can_edit || p.busy}
+                  title={item.can_edit ? undefined : (item.edit_denied_reason ?? undefined)}
+                  onChange={(_, d) => p.onDesignEffectiveness(item, d.value)}
+                >
+                  {p.deOptions.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </Select>
+              </span>
+            </>
+          )}
+          <span className={s.label}>Evidence</span>
+          <span>
+            <Button
+              appearance="transparent"
+              size="small"
+              aria-label={`${item.evidence_count} evidence for ${item.item_id}`}
+              onClick={() => go(`evidence?item=${pid}`)}
+            >
+              {item.evidence_count}
+            </Button>
+          </span>
+          <span className={s.label}>Last updated</span>
+          <span className={s.updated}>
+            <Caption1>
+              {item.last_updated_by?.name ?? '–'} · {dayjs(item.updated_at).format('D MMM HH:mm')}
+            </Caption1>
+            <ActorBadge actor={item.last_updated_source as ActorType} />
           </span>
           <span className={s.label}>Category</span>
           <span>

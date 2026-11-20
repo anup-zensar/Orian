@@ -20,7 +20,6 @@ import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { SectionCard } from '../../components/SectionCard';
 import { useApiErrorToast } from '../../hooks/useApiErrorToast';
-import { RunRemindersControl } from '../drafts/RunReminders';
 import { useReference } from '../reference/api';
 import {
   useDemoReset,
@@ -231,12 +230,10 @@ export function DemoSection() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Run reminder engine">
+      <SectionCard title="Reminders">
         <Body1>
-          Evaluates reminder rules R1-R7 now: assistive transitions get drafts, autonomous ones may
-          send on their own. Duplicates of open drafts are skipped.
+          <Link to="/drafts">Run the reminder engine from Orion drafts</Link>
         </Body1>
-        <RunRemindersControl buttonLabel="Run reminder engine" />
       </SectionCard>
     </div>
   );
