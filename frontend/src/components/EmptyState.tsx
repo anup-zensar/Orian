@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Body1, makeStyles, tokens } from '@fluentui/react-components';
+import { Info20Regular } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
   root: {
@@ -10,6 +11,17 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalXXL,
     color: tokens.colorNeutralForeground2,
     textAlign: 'center',
+    minWidth: 0,
+  },
+  icon: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '40px',
+    height: '40px',
+    borderRadius: '50%',
+    backgroundColor: tokens.colorBrandBackground2,
+    color: tokens.colorNeutralForeground1,
   },
 });
 
@@ -18,6 +30,9 @@ export function EmptyState({ message, action }: { message: string; action?: Reac
   const s = useStyles();
   return (
     <div className={s.root}>
+      <span className={s.icon} aria-hidden>
+        <Info20Regular />
+      </span>
       <Body1>{message}</Body1>
       {action}
     </div>

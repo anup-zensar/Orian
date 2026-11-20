@@ -32,6 +32,9 @@ import { Add16Regular, Delete16Regular } from '@fluentui/react-icons';
 import { AiBadge } from '../../components/AiBadge';
 import { PageHeader } from '../../components/PageHeader';
 import { SectionCard } from '../../components/SectionCard';
+import { FormGrid } from '../../components/layout/FormGrid';
+import { SplitLayout } from '../../components/layout/SplitLayout';
+import { Toolbar } from '../../components/layout/Toolbar';
 import { LoadingState } from '../../components/LoadingState';
 import { ErrorState } from '../../components/ErrorState';
 import { ApiError } from '../../api/client';
@@ -147,26 +150,23 @@ function makeSchema(config: IntakeConfig) {
 }
 
 const useStyles = makeStyles({
-  layout: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 2fr) minmax(280px, 1fr)',
-    gap: tokens.spacingHorizontalL,
-    alignItems: 'start',
-    '@media (max-width: 1000px)': { gridTemplateColumns: '1fr' },
+  full: { gridColumn: '1 / -1', minWidth: 0 },
+  row: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: tokens.spacingHorizontalS,
+    alignItems: 'flex-end',
+    minWidth: 0,
   },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: tokens.spacingHorizontalM,
-    '@media (max-width: 700px)': { gridTemplateColumns: '1fr' },
+  grow: { flex: '1 1 200px', minWidth: 0 },
+  siteRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: tokens.spacingHorizontalS,
+    alignItems: 'flex-start',
+    minWidth: 0,
   },
-  full: { gridColumn: '1 / -1' },
-  row: { display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'flex-end' },
-  grow: { flexGrow: 1 },
-  siteRow: { display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'flex-start' },
-  actions: { display: 'flex', gap: tokens.spacingHorizontalM, justifyContent: 'flex-end' },
-  stack: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
-  panel: { position: 'sticky', top: tokens.spacingVerticalL },
+  stack: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM, minWidth: 0 },
   list: { margin: 0, paddingLeft: '20px' },
 });
 
@@ -755,7 +755,7 @@ function IntakeForm(props: {
     );
 
   return (
-    <form onSubmit={onSubmit} noValidate className={s.layout}>
+    <form onSubmit={onSubmit} noValidate>
       {duplicate && (
         <DuplicateDialog
           reasons={duplicate.reasons}
@@ -765,236 +765,238 @@ function IntakeForm(props: {
           onClose={() => setDuplicate(null)}
         />
       )}
-      <div className={s.stack}>
-        <SectionCard title="Transition details">
-          <div className={s.grid}>
-            <div className={s.full}>
-              <Field
-                label={
-                  <>
-                    {label('name', 'Solution / transition name')}
-                    {decor('name').marker}
-                  </>
-                }
-                hint={hintOf(decor('name').hint)}
-                required
-                validationMessage={formState.errors.name?.message}
-                validationState={formState.errors.name ? 'error' : 'none'}
-              >
-                <Input {...bind('name')} />
-              </Field>
-            </div>
-            <div className={`${s.row} ${s.full}`}>
-              <Field label="ServiceNow project ID" className={s.grow}>
-                <Input
-                  {...bind('servicenow_project_id')}
-                  placeholder="e.g. PRJ0052210"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      if (!fetchSn.isPending) doFetch();
+      <SplitLayout
+        main={
+          <div className={s.stack}>
+            <SectionCard title="Transition details">
+              <FormGrid>
+                <div className={s.full}>
+                  <Field
+                    label={
+                      <>
+                        {label('name', 'Solution / transition name')}
+                        {decor('name').marker}
+                      </>
                     }
-                  }}
-                />
-              </Field>
-              <Button onClick={doFetch} disabled={fetchSn.isPending}>
-                {fetchSn.isPending ? 'Fetching…' : 'Fetch from ServiceNow'}
-              </Button>
-            </div>
-            {snMessage && (
-              <div className={s.full}>
-                <MessageBar intent="warning" layout="multiline" role="status">
-                  <MessageBarBody>{snMessage}</MessageBarBody>
-                </MessageBar>
-              </div>
-            )}
-            {select('project_type')}
-            {select('portfolio')}
-            {select('region')}
-            {shown('market') && (
-              <Field
-                label={
-                  <>
-                    {label('market', 'Market / country')}
-                    {decor('market').marker}
-                  </>
-                }
-                hint={hintOf(decor('market').hint)}
-                required={decor('market').required}
-              >
-                {regionMarkets.length > 0 ? (
-                  <Select
-                    value={market}
-                    onChange={(_, d) => {
-                      clearAi('market');
-                      setValue('market', d.value, { shouldDirty: true });
-                    }}
+                    hint={hintOf(decor('name').hint)}
+                    required
+                    validationMessage={formState.errors.name?.message}
+                    validationState={formState.errors.name ? 'error' : 'none'}
                   >
-                    <option value="">Select…</option>
-                    {marketChoices.map((m) => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                  </Select>
-                ) : (
-                  <Input {...bind('market')} />
-                )}
-              </Field>
-            )}
-
-            {requiresSites && (
-              <div className={`${s.full} ${s.stack}`}>
-                <Subtitle2>
-                  {portfolioCfg?.sites_label || 'In-scope sites (Site ID + Site key)'}
-                  {decor('sites').marker}
-                </Subtitle2>
-                {decor('sites').hint}
-                {siteRows.map((f, i) => (
-                  <div key={f.id} className={s.siteRow}>
-                    <Field
-                      label="Site ID"
-                      required
-                      className={s.grow}
-                      validationMessage={formState.errors.sites?.[i]?.site_id?.message}
-                      validationState={formState.errors.sites?.[i]?.site_id ? 'error' : 'none'}
-                    >
-                      <Input {...bindSite(i, 'site_id')} />
-                    </Field>
-                    <Field
-                      label="Site key"
-                      required
-                      className={s.grow}
-                      validationMessage={formState.errors.sites?.[i]?.site_key?.message}
-                      validationState={formState.errors.sites?.[i]?.site_key ? 'error' : 'none'}
-                    >
-                      <Input {...bindSite(i, 'site_key')} />
-                    </Field>
-                    <Tooltip
-                      content={
-                        siteRows.length <= 1 ? 'At least one site is required' : 'Remove site'
-                      }
-                      relationship="label"
-                    >
-                      <Button
-                        icon={<Delete16Regular />}
-                        aria-label="Remove site"
-                        style={{ marginTop: 22 }}
-                        disabledFocusable={siteRows.length <= 1}
-                        onClick={() => {
-                          if (siteRows.length > 1) remove(i);
-                        }}
-                      />
-                    </Tooltip>
-                  </div>
-                ))}
-                {formState.errors.sites?.message && (
-                  <Caption1 style={{ color: tokens.colorPaletteRedForeground1 }}>
-                    {formState.errors.sites.message}
-                  </Caption1>
-                )}
-                <div>
-                  <Button
-                    icon={<Add16Regular />}
-                    onClick={() => append({ site_id: '', site_key: '' })}
-                  >
-                    Add site
+                    <Input {...bind('name')} />
+                  </Field>
+                </div>
+                <div className={`${s.row} ${s.full}`}>
+                  <Field label="ServiceNow project ID" className={s.grow}>
+                    <Input
+                      {...bind('servicenow_project_id')}
+                      placeholder="e.g. PRJ0052210"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (!fetchSn.isPending) doFetch();
+                        }
+                      }}
+                    />
+                  </Field>
+                  <Button onClick={doFetch} disabled={fetchSn.isPending}>
+                    {fetchSn.isPending ? 'Fetching…' : 'Fetch from ServiceNow'}
                   </Button>
                 </div>
-              </div>
-            )}
-
-            {select('audience')}
-            {select('write_actions')}
-            {select('sensitive_data')}
-            {select('target_gate')}
-            {select('investment_type')}
-            {select('delivery_method')}
-            {shown('description') && (
-              <div className={s.full}>
-                <Field
-                  label={
-                    <>
-                      {label('description', 'Description')}
-                      {decor('description').marker}
-                    </>
-                  }
-                  hint={hintOf(decor('description').hint)}
-                  required={decor('description').required}
-                >
-                  <Textarea {...bind('description')} rows={3} resize="vertical" />
-                </Field>
-              </div>
-            )}
-            {select('or_focal_user_id')}
-            {select('pm_user_id')}
-            {select('architect_user_id')}
-            {select('olm_user_id')}
-            {select('irm_user_id')}
-            {shown('next_decision_date') && (
-              <Field
-                label={
-                  <>
-                    {label('next_decision_date', 'Next decision date')}
-                    {decor('next_decision_date').marker}
-                  </>
-                }
-                hint={hintOf(decor('next_decision_date').hint)}
-                required={decor('next_decision_date').required}
-              >
-                <Input type="date" {...bind('next_decision_date')} />
-              </Field>
-            )}
-          </div>
-        </SectionCard>
-        {shownCustom.length > 0 && (
-          <SectionCard title="Additional details">
-            <div className={s.grid}>
-              {shownCustom.map((f) => {
-                const info = decor(f.key);
-                return (
-                  <div
-                    key={f.key}
-                    className={
-                      f.type === 'textarea' || f.type === 'multiselect' ? s.full : undefined
-                    }
-                  >
-                    <DynamicField
-                      field={f}
-                      users={users}
-                      value={allValues.custom?.[f.key] as FieldValue | undefined}
-                      onChange={(value) => {
-                        clearAi(f.key);
-                        setValue(`custom.${f.key}`, value, {
-                          shouldDirty: true,
-                          shouldValidate: formState.isSubmitted,
-                        });
-                      }}
-                      required={info.required}
-                      marker={'marker' in info ? info.marker : undefined}
-                      hint={info.hint}
-                      error={formState.errors.custom?.[f.key]?.message}
-                    />
+                {snMessage && (
+                  <div className={s.full}>
+                    <MessageBar intent="warning" layout="multiline" role="status">
+                      <MessageBarBody>{snMessage}</MessageBarBody>
+                    </MessageBar>
                   </div>
-                );
-              })}
-            </div>
-          </SectionCard>
-        )}
-        <div className={s.actions}>
-          <Button onClick={() => navigate('/transitions')}>Cancel</Button>
-          {canCreate ? (
-            submit
-          ) : (
-            <Tooltip content={denied} relationship="description">
-              <span>{submit}</span>
-            </Tooltip>
-          )}
-        </div>
-      </div>
-      <div className={s.panel}>
-        <AutoScopePanel control={control} reference={reference} />
-      </div>
+                )}
+                {select('project_type')}
+                {select('portfolio')}
+                {select('region')}
+                {shown('market') && (
+                  <Field
+                    label={
+                      <>
+                        {label('market', 'Market / country')}
+                        {decor('market').marker}
+                      </>
+                    }
+                    hint={hintOf(decor('market').hint)}
+                    required={decor('market').required}
+                  >
+                    {regionMarkets.length > 0 ? (
+                      <Select
+                        value={market}
+                        onChange={(_, d) => {
+                          clearAi('market');
+                          setValue('market', d.value, { shouldDirty: true });
+                        }}
+                      >
+                        <option value="">Select…</option>
+                        {marketChoices.map((m) => (
+                          <option key={m} value={m}>
+                            {m}
+                          </option>
+                        ))}
+                      </Select>
+                    ) : (
+                      <Input {...bind('market')} />
+                    )}
+                  </Field>
+                )}
+
+                {requiresSites && (
+                  <div className={`${s.full} ${s.stack}`}>
+                    <Subtitle2>
+                      {portfolioCfg?.sites_label || 'In-scope sites (Site ID + Site key)'}
+                      {decor('sites').marker}
+                    </Subtitle2>
+                    {decor('sites').hint}
+                    {siteRows.map((f, i) => (
+                      <div key={f.id} className={s.siteRow}>
+                        <Field
+                          label="Site ID"
+                          required
+                          className={s.grow}
+                          validationMessage={formState.errors.sites?.[i]?.site_id?.message}
+                          validationState={formState.errors.sites?.[i]?.site_id ? 'error' : 'none'}
+                        >
+                          <Input {...bindSite(i, 'site_id')} />
+                        </Field>
+                        <Field
+                          label="Site key"
+                          required
+                          className={s.grow}
+                          validationMessage={formState.errors.sites?.[i]?.site_key?.message}
+                          validationState={formState.errors.sites?.[i]?.site_key ? 'error' : 'none'}
+                        >
+                          <Input {...bindSite(i, 'site_key')} />
+                        </Field>
+                        <Tooltip
+                          content={
+                            siteRows.length <= 1 ? 'At least one site is required' : 'Remove site'
+                          }
+                          relationship="label"
+                        >
+                          <Button
+                            icon={<Delete16Regular />}
+                            aria-label="Remove site"
+                            style={{ marginTop: 22 }}
+                            disabledFocusable={siteRows.length <= 1}
+                            onClick={() => {
+                              if (siteRows.length > 1) remove(i);
+                            }}
+                          />
+                        </Tooltip>
+                      </div>
+                    ))}
+                    {formState.errors.sites?.message && (
+                      <Caption1 style={{ color: tokens.colorPaletteRedForeground1 }}>
+                        {formState.errors.sites.message}
+                      </Caption1>
+                    )}
+                    <div>
+                      <Button
+                        icon={<Add16Regular />}
+                        onClick={() => append({ site_id: '', site_key: '' })}
+                      >
+                        Add site
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {select('audience')}
+                {select('write_actions')}
+                {select('sensitive_data')}
+                {select('target_gate')}
+                {select('investment_type')}
+                {select('delivery_method')}
+                {shown('description') && (
+                  <div className={s.full}>
+                    <Field
+                      label={
+                        <>
+                          {label('description', 'Description')}
+                          {decor('description').marker}
+                        </>
+                      }
+                      hint={hintOf(decor('description').hint)}
+                      required={decor('description').required}
+                    >
+                      <Textarea {...bind('description')} rows={3} resize="vertical" />
+                    </Field>
+                  </div>
+                )}
+                {select('or_focal_user_id')}
+                {select('pm_user_id')}
+                {select('architect_user_id')}
+                {select('olm_user_id')}
+                {select('irm_user_id')}
+                {shown('next_decision_date') && (
+                  <Field
+                    label={
+                      <>
+                        {label('next_decision_date', 'Next decision date')}
+                        {decor('next_decision_date').marker}
+                      </>
+                    }
+                    hint={hintOf(decor('next_decision_date').hint)}
+                    required={decor('next_decision_date').required}
+                  >
+                    <Input type="date" {...bind('next_decision_date')} />
+                  </Field>
+                )}
+              </FormGrid>
+            </SectionCard>
+            {shownCustom.length > 0 && (
+              <SectionCard title="Additional details">
+                <FormGrid>
+                  {shownCustom.map((f) => {
+                    const info = decor(f.key);
+                    return (
+                      <div
+                        key={f.key}
+                        className={
+                          f.type === 'textarea' || f.type === 'multiselect' ? s.full : undefined
+                        }
+                      >
+                        <DynamicField
+                          field={f}
+                          users={users}
+                          value={allValues.custom?.[f.key] as FieldValue | undefined}
+                          onChange={(value) => {
+                            clearAi(f.key);
+                            setValue(`custom.${f.key}`, value, {
+                              shouldDirty: true,
+                              shouldValidate: formState.isSubmitted,
+                            });
+                          }}
+                          required={info.required}
+                          marker={'marker' in info ? info.marker : undefined}
+                          hint={info.hint}
+                          error={formState.errors.custom?.[f.key]?.message}
+                        />
+                      </div>
+                    );
+                  })}
+                </FormGrid>
+              </SectionCard>
+            )}
+            <Toolbar align="end">
+              <Button onClick={() => navigate('/transitions')}>Cancel</Button>
+              {canCreate ? (
+                submit
+              ) : (
+                <Tooltip content={denied} relationship="description">
+                  <span>{submit}</span>
+                </Tooltip>
+              )}
+            </Toolbar>
+          </div>
+        }
+        aside={<AutoScopePanel control={control} reference={reference} />}
+      />
     </form>
   );
 }

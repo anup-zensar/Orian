@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shell Color Preview</title>
+    <style>
+      :root {
+        --bg: #f5f5f5;
+        --surface: #ffffff;
+        --raised: #ffffff;
+        --text-strong: #292929;
+        --text-subtle: #757575;
+        --link: #4b78aa;
+        --link-visited: #9a60a4;
+        --border-strong: #292929;
+        --border-medium: #757575;
+        --border-subtle: rgba(28, 28, 28, 0.135);
+        --hover-bg: #ebebeb;
+        --press-bg: #e0e0e0;
+        --hover-link: #6e94c0;
+        --press-link: #4b78aa;
+        --disabled-bg: rgba(28, 28, 28, 0.04);
+        --disabled-text: rgba(28, 28, 28, 0.38);
+        --disabled-border: rgba(28, 28, 28, 0.135);
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text-strong);
+        padding: 24px;
+      }
+
+      h1 { margin-bottom: 8px; }
+      .subtitle {
+        color: var(--text-subtle);
+        margin-bottom: 24px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 18px;
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      }
+
+      .swatch {
+        height: 90px;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+
+      .info {
+        padding: 14px 16px;
+      }
+
+      .name {
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+
+      .value {
+        font-size: 12px;
+        color: var(--text-subtle);
+        font-family: Consolas, monospace;
+      }
+
+      .brand-section {
+        margin: 24px 0;
+      }
+
+      .brand-section h2 {
+        margin-bottom: 12px;
+      }
+
+      .dark-section {
+        margin-top: 28px;
+        background: #1c1c1c;
+        color: #f5f5f5;
+        border-radius: 16px;
+        padding: 20px;
+      }
+
+      .dark-section .card {
+        background: #292929;
+        border-color: rgba(255,255,255,0.09);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+      }
+
+      .dark-section .value {
+        color: #919191;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Shell Color Preview</h1>
+    <div class="subtitle">Light and dark theme tokens based on the Shell Design System inspiration prompt.</div>
+
+    <section class="brand-section">
+      <h2>Shell Brand Colors</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="swatch" style="background: rgba(255, 198, 0, 1);"></div>
+          <div class="info">
+            <div class="name">Primary Yellow</div>
+            <div class="value">rgba(255, 198, 0, 1)</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="swatch" style="background: rgba(255, 203, 20, 1);"></div>
+          <div class="info">
+            <div class="name">Primary Yellow — Hover</div>
+            <div class="value">rgba(255, 203, 20, 1)</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="swatch" style="background: rgba(235, 182, 0, 1);"></div>
+          <div class="info">
+            <div class="name">Primary Yellow — Press</div>
+            <div class="value">rgba(235, 182, 0, 1)</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="swatch" style="background: rgba(221, 29, 33, 1);"></div>
+          <div class="info">
+            <div class="name">Secondary Red</div>
+            <div class="value">rgba(221, 29, 33, 1)</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid">
+      <div class="card">
+        <div class="swatch" style="background: var(--bg);"></div>
+        <div class="info">
+          <div class="name">Foundation Base</div>
+          <div class="value">rgba(245, 245, 245, 1)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="swatch" style="background: var(--surface);"></div>
+        <div class="info">
+          <div class="name">Surface</div>
+          <div class="value">rgba(255, 255, 255, 1)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="swatch" style="background: var(--raised);"></div>
+        <div class="info">
+          <div class="name">Raised</div>
+          <div class="value">rgba(255, 255, 255, 1)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="swatch" style="background: var(--text-strong);"></div>
+        <div class="info">
+          <div class="name">Text Strong</div>
+          <div class="value">rgba(41, 41, 41, 1)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="swatch" style="background: var(--text-subtle);"></div>
+        <div class="info">
+          <div class="name">Text Subtle</div>
+          <div class="value">rgba(117, 117, 117, 1)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="swatch" style="background: var(--link);"></div>
+        <div class="info">
+          <div class="name">Link</div>
+          <div class="value">rgba(75, 120, 170, 1)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="swatch" style="background: var(--link-visited);"></div>
+        <div class="info">
+          <div class="name">Link Visited</div>
+          <div class="value">rgba(154, 96, 164, 1)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="swatch" style="background: var(--border-strong);"></div>
+        <div class="info">
+          <div class="name">Border Strong</div>
+          <div class="value">rgba(41, 41, 41, 1)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="swatch" style="background: var(--border-medium);"></div>
+        <div class="info">
+          <div class="name">Border Medium</div>
+          <div class="value">rgba(117, 117, 117, 1)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="swatch" style="background: var(--hover-bg);"></div>
+        <div class="info">
+          <div class="name">Hover Background</div>
+          <div class="value">rgba(235, 235, 235, 1)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="swatch" style="background: var(--press-bg);"></div>
+        <div class="info">
+          <div class="name">Press Background</div>
+          <div class="value">rgba(224, 224, 224, 1)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="swatch" style="background: var(--disabled-bg);"></div>
+        <div class="info">
+          <div class="name">Disabled Background</div>
+          <div class="value">rgba(28, 28, 28, 0.04)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dark-section">
+      <h2>Dark Theme Tokens</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="swatch" style="background: #1c1c1c;"></div>
+          <div class="info">
+            <div class="name">Foundation Base</div>
+            <div class="value">rgba(28, 28, 28, 1)</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="swatch" style="background: #292929;"></div>
+          <div class="info">
+            <div class="name">Surface</div>
+            <div class="value">rgba(41, 41, 41, 1)</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="swatch" style="background: #343434;"></div>
+          <div class="info">
+            <div class="name">Raised</div>
+            <div class="value">rgba(52, 52, 52, 1)</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="swatch" style="background: #f5f5f5;"></div>
+          <div class="info">
+            <div class="name">Text Strong</div>
+            <div class="value">rgba(245, 245, 245, 1)</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="swatch" style="background: #919191;"></div>
+          <div class="info">
+            <div class="name">Text Subtle</div>
+            <div class="value">rgba(145, 145, 145, 1)</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="swatch" style="background: #54b8c8;"></div>
+          <div class="info">
+            <div class="name">Link</div>
+            <div class="value">rgba(84, 184, 200, 1)</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="swatch" style="background: #af81b7;"></div>
+          <div class="info">
+            <div class="name">Link Visited</div>
+            <div class="value">rgba(175, 129, 183, 1)</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="swatch" style="background: rgba(255,255,255,0.09);"></div>
+          <div class="info">
+            <div class="name">Border Subtle</div>
+            <div class="value">rgba(255, 255, 255, 0.09)</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="swatch" style="background: #262626;"></div>
+          <div class="info">
+            <div class="name">Hover Background</div>
+            <div class="value">rgba(38, 38, 38, 1)</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="swatch" style="background: #121212;"></div>
+          <div class="info">
+            <div class="name">Press Background</div>
+            <div class="value">rgba(18, 18, 18, 1)</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="swatch" style="background: rgba(255,255,255,0.032);"></div>
+          <div class="info">
+            <div class="name">Disabled Background</div>
+            <div class="value">rgba(255, 255, 255, 0.032)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

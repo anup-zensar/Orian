@@ -3,6 +3,7 @@ import { NavLink, Navigate, useLocation, useParams } from 'react-router';
 import { makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
+import { palette } from '../../theme/orionTheme';
 import { WorkspaceHeader } from '../workspace/header/WorkspaceHeader';
 import { TAB_COMPONENTS } from '../workspace/tabRegistry';
 import { useTransition } from '../transition/api';
@@ -32,13 +33,19 @@ const useStyles = makeStyles({
     padding: '8px 12px',
     color: tokens.colorNeutralForeground2,
     textDecorationLine: 'none',
-    borderBottom: '2px solid transparent',
-    ':hover': { color: tokens.colorNeutralForeground1 },
+    borderBottom: '3px solid transparent',
+    marginBottom: '-1px',
+    borderTopLeftRadius: '6px',
+    borderTopRightRadius: '6px',
+    ':hover': {
+      color: tokens.colorNeutralForeground1,
+      backgroundColor: tokens.colorNeutralBackground1Hover,
+    },
     ':focus-visible': { outline: `2px solid ${tokens.colorStrokeFocus2}` },
   },
   active: {
-    color: tokens.colorBrandForeground1,
-    borderBottomColor: tokens.colorBrandForeground1,
+    color: tokens.colorNeutralForeground1,
+    borderBottomColor: palette.yellow,
     fontWeight: tokens.fontWeightSemibold,
   },
 });

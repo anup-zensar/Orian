@@ -13,7 +13,7 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
   const detail = error instanceof ApiError ? error.detail : 'Something went wrong';
   const reasons = error instanceof ApiError ? error.reasons : [];
   return (
-    <MessageBar intent="error" role="alert">
+    <MessageBar intent="error" role="alert" style={{ borderRadius: 8 }}>
       <MessageBarBody>
         <MessageBarTitle>{detail}</MessageBarTitle>
         {reasons.length > 0 && (

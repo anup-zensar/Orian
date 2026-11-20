@@ -6,14 +6,42 @@ import {
   InlineDrawer,
   OverlayDrawer,
   makeStyles,
+  tokens,
 } from '@fluentui/react-components';
-import { Dismiss24Regular, Open20Regular } from '@fluentui/react-icons';
+import { Dismiss24Regular, Open20Regular, Sparkle20Filled } from '@fluentui/react-icons';
+import { ai } from '../theme/orionTheme';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { OrionChat } from '../features/orion/OrionChat';
 
 const useStyles = makeStyles({
-  drawer: { width: '420px', flexShrink: 0 },
+  drawer: {
+    width: '420px',
+    maxWidth: '100vw',
+    flexShrink: 0,
+    borderTop: `3px solid ${ai.main}`,
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  header: { backgroundColor: ai.tint },
+  title: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    fontSize: tokens.fontSizeBase400,
+    lineHeight: tokens.lineHeightBase400,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  mark: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '24px',
+    height: '24px',
+    flexShrink: 0,
+    borderRadius: '50%',
+    backgroundColor: ai.main,
+    color: '#FFFFFF',
+  },
   body: { display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' },
 });
 
@@ -67,7 +95,7 @@ export function OrionPanel({ open, onClose }: { open: boolean; onClose: () => vo
       aria-label="Orion assistant"
       {...extra}
     >
-      <DrawerHeader>
+      <DrawerHeader className={s.header}>
         <DrawerHeaderTitle
           action={
             <>
@@ -87,7 +115,12 @@ export function OrionPanel({ open, onClose }: { open: boolean; onClose: () => vo
             </>
           }
         >
-          Orion – Operate Readiness Agent
+          <span className={s.title}>
+            <span className={s.mark} aria-hidden>
+              <Sparkle20Filled />
+            </span>
+            Orion – Operate Readiness Agent
+          </span>
         </DrawerHeaderTitle>
       </DrawerHeader>
       <DrawerBody className={s.body}>

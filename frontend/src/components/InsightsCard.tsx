@@ -38,7 +38,7 @@ const useStyles = makeStyles({
 
 const SEVERITY = {
   critical: { Icon: ErrorCircle20Filled, color: ragColors.Red.border, label: 'Critical' },
-  warning: { Icon: Warning20Filled, color: ragColors.Amber.border, label: 'Warning' },
+  warning: { Icon: Warning20Filled, color: '#C46A00', label: 'Warning' },
   info: { Icon: Info20Filled, color: lensColors.Technical.border, label: 'Info' },
   success: { Icon: CheckmarkCircle20Filled, color: ragColors.Green.border, label: 'Good news' },
 } as const;
@@ -99,6 +99,7 @@ export function InsightsCard({ title, data, isLoading, error, onRetry, noTransit
   const s = useStyles();
   return (
     <SectionCard
+      tone="ai"
       title={title}
       actions={
         <span className={s.agent}>

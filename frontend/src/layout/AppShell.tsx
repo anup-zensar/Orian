@@ -20,7 +20,7 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     height: '100vh',
-    backgroundColor: tokens.colorNeutralBackground1,
+    backgroundColor: tokens.colorNeutralBackground3,
   },
   body: { display: 'flex', flexGrow: 1, minHeight: 0 },
   skip: {
@@ -33,12 +33,40 @@ const useStyles = makeStyles({
     color: tokens.colorBrandForeground1,
     ':focus': { left: tokens.spacingHorizontalS, outline: `2px solid ${tokens.colorStrokeFocus2}` },
   },
-  main: { flexGrow: 1, minWidth: 0, overflow: 'auto', padding: tokens.spacingHorizontalXXL },
+  main: {
+    flexGrow: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    padding: '24px',
+    '@media (max-width: 700px)': { padding: '16px' },
+    // Every direct child of the page may shrink: no content pushes the page wider than the area.
+    '> *': { minWidth: 0 },
+  },
 });
+
+/** True while the media query matches (used for layout decisions that depend on the viewport). */
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(
+    () => typeof window !== 'undefined' && !!window.matchMedia?.(query).matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia?.(query);
+    if (!mq) return;
+    const on = () => setMatches(mq.matches);
+    on();
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, [query]);
+  return matches;
+}
 
 /** Global layout (FR-002): left nav + top bar + page outlet + right-side Orion panel. */
 export function AppShell() {
   const s = useStyles();
+  const inlinePanelRange = useMediaQuery('(min-width: 1200px) and (max-width: 1599px)');
+  const railWidth = useMediaQuery('(max-width: 899px)');
   const me = useMe();
   const [orionOpen, setOrionOpen] = useState(false);
   const [orionTarget, setOrionTarget] = useState<OrionPanelTarget>({});
@@ -68,7 +96,10 @@ export function AppShell() {
         </a>
         <TopBar orionOpen={orionOpen} onToggleOrion={() => setOrionOpen((o) => !o)} />
         <div className={s.body}>
-          <SideNav isAdmin={isAdmin} />
+          <SideNav
+            isAdmin={isAdmin}
+            collapsed={railWidth || (inlinePanelRange && orionOpen && !onOrionPage)}
+          />
           <main id="main" tabIndex={-1} className={s.main}>
             <Suspense fallback={<LoadingState />}>
               <Outlet />
