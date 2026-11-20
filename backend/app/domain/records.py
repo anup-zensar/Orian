@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
-from app.access import ensure_open, ensure_transition_role
+from app.access import ensure_transition_role
 from app.domain import audit, cfg
 from app.domain.conditions import create_condition
 from app.domain.ids import next_id
@@ -72,9 +72,6 @@ def get_transition(db: Session, transition_id: str) -> Transition:
     if transition is None:
         raise NotFound(f"Transition {transition_id} not found")
     return transition
-
-
-ensure_not_closed = ensure_open  # closure freezes the record (BE#7); kept for older callers
 
 
 def users_by_id(db: Session) -> dict[str, User]:

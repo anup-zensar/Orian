@@ -40,14 +40,6 @@ def allowed_statuses(lens: str) -> tuple[str, ...]:
     return STATUSES_BY_LENS.get(lens, ())
 
 
-def is_na_status(status: str) -> bool:
-    return status in NA_STATUSES
-
-
-def is_gap_status(status: str) -> bool:
-    return status in GAP_STATUSES
-
-
 def _or_list(values: Sequence[str]) -> str:
     """'Critical, Major or Minor'."""
     return " or ".join([", ".join(values[:-1]), values[-1]]) if len(values) > 1 else "".join(values)

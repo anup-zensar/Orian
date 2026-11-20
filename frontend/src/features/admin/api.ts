@@ -4,7 +4,7 @@ import type { components } from '../../api/schema';
 
 type S = components['schemas'];
 export type PlaybookItem = S['PlaybookItemAdminOut'];
-export type PlaybookItemUpdate = S['PlaybookItemUpdateIn'];
+type PlaybookItemUpdate = S['PlaybookItemUpdateIn'];
 export type FlavourRule = S['FlavourRuleOut'];
 export type FlavourRulesIn = S['FlavourRulesIn'];
 export type GoldenSet = S['GoldenSetOut'];

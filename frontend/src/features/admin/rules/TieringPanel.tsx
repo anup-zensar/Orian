@@ -27,7 +27,6 @@ const useStyles = makeStyles({
     gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
     gap: tokens.spacingHorizontalM,
   },
-  code: { color: tokens.colorNeutralForeground3, fontWeight: tokens.fontWeightRegular },
 });
 
 function Editor({ data }: { data: TieringConfig }) {

@@ -1112,7 +1112,6 @@ _REFUSALS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ),
 )
 _CONFIG_VERB = r"add|create|new|change|rename|edit|configure|delete|remove|set\s+up|enable|disable"
-_CHANGE_ROLES_RE = re.compile(r"\b(?:make|set|assign|change|replace|swap)\b", re.IGNORECASE)
 
 
 def split_clauses(message: str, verbs: Sequence[str] = ()) -> list[str]:

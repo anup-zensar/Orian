@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import html
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy import select
@@ -34,9 +34,6 @@ from app.models import (
 from app.permissions import DENIAL_REASONS, Perm, has_perm
 from app.rules.constants import DECISION_GATES, DONE_STATUSES, GATE_SHORT, NA_STATUSES
 from app.services.factory import get_ai_service, get_mail_service, get_notification_service
-
-SendAction = Callable[[Session, OrionDraft, User], dict[str, Any]]
-_SEND_ACTIONS: dict[str, SendAction] = {}
 
 _EMAIL = re.compile(r"^[^@\s<>,;]+@[^@\s<>,;]+\.[^@\s<>,;]+$")
 _HREF = re.compile(r'href="([^"]+)"')
@@ -90,12 +87,6 @@ def mark_sent_via_approval(
         note=f"Draft sent via approval request {request_id}",
     )
     return draft
-
-
-def register_send_action(type: str, fn: SendAction) -> None:
-    """Owner modules register what happens on Send for ``draft.action["type"]`` (e.g.
-    ``mark_inputs_requested``). ``fn(db, draft, user)`` returns extra result fields."""
-    _SEND_ACTIONS[type] = fn
 
 
 def _snap(draft: OrionDraft) -> dict[str, Any]:
@@ -296,8 +287,6 @@ def send_draft(
         finally:
             _SENDING.discard(draft.id)
         result["approval_request_id"] = request.id
-    elif kind in _SEND_ACTIONS:
-        result.update(_SEND_ACTIONS[kind](db, draft, user) or {})
 
     mailbox = get_settings().orion_mailbox
     related = list(draft.related_ids or [])

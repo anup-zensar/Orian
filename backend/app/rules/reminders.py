@@ -24,20 +24,9 @@ _GATE_LABEL = {"SG4_ATD": "Agreement to Deploy", "SG6_ATO": "Agreement to Operat
 ReminderKind = Literal["Reminder", "Chaser", "Approval request", "Input request"]
 
 RULE_IDS: tuple[str, ...] = ("R1", "R2", "R3", "R4", "R5", "R6", "R7")
-# Rules that may be sent autonomously on autonomous transitions (spec 4 / 7.8).
-AUTONOMOUS_RULES: frozenset[str] = frozenset({"R1", "R2", "R3", "R5"})
 # R6 monitoring requirement items (once per transition): the item ids and/or the checklist category
 # the Admin sets on the rule (Rules & thresholds). The default is FW-048..FW-054.
 R6_ITEM_IDS: tuple[str, ...] = tuple(f"FW-{n:03d}" for n in range(48, 55))
-DEFAULT_PARAMS: dict[str, dict[str, Any]] = {
-    "R1": {"days_before_decision": 14},
-    "R2": {},
-    "R3": {"reminder_after_days": 2, "escalate_after_days": 5},
-    "R4": {},
-    "R5": {"requested_for_days": 5},
-    "R6": {"item_ids": list(R6_ITEM_IDS), "category": ""},
-    "R7": {},
-}
 
 
 @dataclass(frozen=True)

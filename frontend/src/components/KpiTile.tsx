@@ -43,7 +43,7 @@ const TONES = {
   neutral: ragColors.Grey,
 } as const;
 
-export interface KpiTileProps {
+interface KpiTileProps {
   label: string;
   value: number | string;
   tone?: string;

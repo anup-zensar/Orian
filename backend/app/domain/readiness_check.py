@@ -59,7 +59,6 @@ from app.schemas.gates import (
 from app.services.factory import get_ai_service
 
 DECISION_CHAIN_TYPE = {"SG4_ATD": "AtD", "SG6_ATO": "AtO"}
-_NARRATIVE_TOP = 3
 
 
 @dataclass

@@ -33,9 +33,3 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
-
-# --- Local duplicates of the spec pack (canonical copies live in docs/ and reference/) ---
-/REQUIREMENTS.md
-/KICKOFF_PROMPT.md
-/OR_Agent_Prototype_V4_4_Scope_Requirements 1.html
-/orion_spec.zip

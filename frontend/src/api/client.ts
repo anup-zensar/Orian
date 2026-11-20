@@ -1,7 +1,7 @@
 // Single HTTP entry point (PLAN.md section 4). Adds X-Demo-User (FR-001), parses the backend error
 // body {detail, reasons} into ApiError, and offers an iframe-safe download helper (A-17, 5.5).
 
-export const DEMO_USER_KEY = 'orion.demoUser';
+const DEMO_USER_KEY = 'orion.demoUser';
 const BASE = '/api/v1';
 
 // The in-memory id is the source of truth; localStorage is a best-effort mirror so login still
@@ -46,7 +46,7 @@ export class ApiError extends Error {
 
 export type QueryParams = Record<string, string | number | boolean | null | undefined>;
 
-export interface ApiOptions {
+interface ApiOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   query?: QueryParams;
   body?: unknown;
