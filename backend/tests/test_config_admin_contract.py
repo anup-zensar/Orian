@@ -229,7 +229,9 @@ def test_get_shapes(client, headers) -> None:
 
     roles = get("roles")
     assert [r["code"] for r in roles][:3] == ["OR_FOCAL", "PM", "ARCHITECT"]
-    assert next(r for r in roles if r["code"] == "OR_FOCAL")["user_count"] == 9
+    assert (
+        next(r for r in roles if r["code"] == "OR_FOCAL")["user_count"] == 2
+    )  # U01 + the test-only U02
 
 
 def test_usage_endpoint(client, headers) -> None:

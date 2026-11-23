@@ -51,8 +51,8 @@ def seed_json(name: str):
 def test_row_counts(db):
     portfolios = seed_json("portfolios.json")
     golden = sum(len(p["golden_set"]) for p in portfolios["portfolios"])
-    assert count(db, User) == 16
-    assert count(db, Transition) == 18
+    assert count(db, User) == 9  # 8 seed users + the test-only U02
+    assert count(db, Transition) == 6
     assert count(db, PlaybookItem, PlaybookItem.source == "FRAMEWORK") == 72
     assert count(db, PlaybookItem, PlaybookItem.source == "AI_PLAYBOOK") == 216
     assert count(db, PlaybookItem, PlaybookItem.source == "PORTFOLIO") == golden == 39
@@ -62,7 +62,7 @@ def test_row_counts(db):
     assert count(db, FlavourRule) == 4
     assert count(db, ReminderRule) == 7
     ai_transitions = count(db, Transition, Transition.project_type.in_(["Agentic AI", "Combined"]))
-    assert count(db, TierAssessment) == ai_transitions == 5
+    assert count(db, TierAssessment) == ai_transitions == 2
     assert count(db, AIProfile) == ai_transitions
 
 
@@ -107,7 +107,7 @@ def test_transitions_dates_and_roles(db):
     assert flagship.investment_type == "Change" and flagship.delivery_method == "AI / Agentic"
     assert flagship.description.startswith("Internal RAG agent")
     assert flagship.blocker_note == "IRM: data-classification control open"
-    assert db.get(Transition, "TR-0002").blocker_note is None
+    assert db.get(Transition, "TR-0005").blocker_note is None
     assert all(t.irm_user_id == "U14" for t in db.scalars(select(Transition)))
     assert count(db, Transition, Transition.is_flagship.is_(True)) == 1
 
@@ -120,9 +120,9 @@ def test_tier_assessments(db):
     assert flagship.confirmed_by_or_focal == "U01" and flagship.confirmed_by_irm == "U14"
     assert flagship.answers["TQ4"] is True
     other = db.scalars(
-        select(TierAssessment).where(TierAssessment.transition_id == "TR-0010")
+        select(TierAssessment).where(TierAssessment.transition_id == "TR-0003")
     ).one()
-    assert other.proposed_tier == other.confirmed_tier == 3  # A-06
+    assert other.proposed_tier == other.confirmed_tier == 2  # A-06
     assert other.confirmed_by_irm == "U14" and other.answers == {}
 
 
@@ -134,8 +134,8 @@ def test_item_counts_per_flavour(db):
     assert n("TR-0001") == 72 + 216 + 5 + 2
     assert n("TR-0001", TransitionItem.excluded_by == "tier") == 8
     # Normal (Fleets): framework + golden set + common only
-    assert n("TR-0004") == 72 + 5 + 2
-    assert n("TR-0004", TransitionItem.excluded_by.is_not(None)) == 0
+    assert n("TR-0005") == 72 + 5 + 2
+    assert n("TR-0005", TransitionItem.excluded_by.is_not(None)) == 0
     # A-29: nothing is left "To confirm" on seeded transitions
     assert count(db, TransitionItem, TransitionItem.applicability == "To confirm") == 0
     assert count(db, TransitionItem, TransitionItem.last_updated_source != "System") == 0
@@ -145,7 +145,7 @@ def test_seed_if_empty_is_idempotent(db):
     before = count(db, TransitionItem)
     assert seed_if_empty(db) is False
     assert count(db, TransitionItem) == before
-    assert count(db, User) == 16
+    assert count(db, User) == 9
 
 
 def test_reset_and_seed_fast_and_seed_if_empty_on_empty_db(fresh_seed):
@@ -158,7 +158,7 @@ def test_reset_and_seed_fast_and_seed_if_empty_on_empty_db(fresh_seed):
     with database.SessionLocal() as session:
         assert seed_if_empty(session) is True
         assert seed_if_empty(session) is False
-        assert count(session, Transition) == 18
+        assert count(session, Transition) == 6
     clock.set_today_override(None)
 
 
@@ -293,10 +293,12 @@ def test_flagship_ocet(db):
 
 def test_audit_events_seeded(db):
     seeded = db.scalars(select(AuditEvent).where(AuditEvent.action == "seeded")).all()
-    assert len(seeded) == 19
+    assert len(seeded) == 7
     per_transition = [e for e in seeded if e.entity == "Transition"]
-    assert len(per_transition) == 18
-    assert {e.transition_id for e in per_transition} == {f"TR-{n:04d}" for n in range(1, 19)}
+    assert len(per_transition) == 6
+    assert {e.transition_id for e in per_transition} == {
+        f"TR-{n:04d}" for n in (1, 3, 5, 8, 11, 14)
+    }
     assert all(e.actor_type == "System" and e.note == "Seeded" for e in per_transition)
     assert Counter(e.entity for e in seeded)["System"] == 1
 
@@ -313,7 +315,7 @@ def test_config_seed_matches_the_simplified_admin(db):
         "cfg.tiers",
         "cfg.tier_dimensions",
     }
-    assert count(db, User, User.active.is_(True)) == count(db, User) == 16
+    assert count(db, User, User.active.is_(True)) == count(db, User) == 9
     conf = seed_json("config.json")
     assert "tier_rules" not in conf and not {"cfg.gates", "cfg.labels", "cfg.lenses"} & set(
         conf["settings"]

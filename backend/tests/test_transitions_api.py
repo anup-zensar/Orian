@@ -25,10 +25,10 @@ def test_requires_header(client):
     assert client.get(f"{API}/transitions").status_code == 401
 
 
-def test_eighteen_transitions_visible_ac01(client, headers):
+def test_six_transitions_visible_ac01(client, headers):
     rows = _get(client, headers)
-    assert len(rows) == 18
-    assert len(set(_ids(rows))) == 18
+    assert len(rows) == 6
+    assert len(set(_ids(rows))) == 6
 
 
 def test_sorted_by_days_then_name(client, headers):
@@ -46,7 +46,7 @@ def test_sorted_by_days_then_name(client, headers):
 
 def test_retail_portfolio_storyline_step_2(client, headers):
     rows = _get(client, headers, portfolio="Retail Site Systems")
-    assert sorted(_ids(rows)) == [f"TR-{n:04d}" for n in range(7, 12)]
+    assert sorted(_ids(rows)) == ["TR-0008", "TR-0011"]
     pos = next(r for r in rows if r["id"] == "TR-0008")
     assert pos["name"] == "Forecourt POS refresh"
     assert pos["rag"] == "Red"
@@ -78,7 +78,7 @@ def test_exact_filters(client, headers):
     assert all(r["region"] == "Global" for r in _get(client, headers, region="Global"))
     ai = _get(client, headers, type="Agentic AI")
     assert ai and all(r["project_type"] == "Agentic AI" for r in ai)
-    assert len(_get(client, headers, status="Active")) == 18
+    assert len(_get(client, headers, status="Active")) == 6
     assert _get(client, headers, status="Closed") == []
     reds = _get(client, headers, rag="Red")
     assert reds and all(r["rag"] == "Red" for r in reds)
@@ -86,7 +86,7 @@ def test_exact_filters(client, headers):
 
 def test_filters_are_anded(client, headers):
     rows = _get(client, headers, portfolio="Retail Site Systems", rag="Red")
-    assert sorted(_ids(rows)) == ["TR-0008", "TR-0010"]
+    assert sorted(_ids(rows)) == ["TR-0008"]
 
 
 def test_q_matches_name_market_and_focal(client, headers):
@@ -114,7 +114,7 @@ def test_computed_filters(client, headers):
     crit = _get(client, headers, has_critical="true")
     assert _ids(crit) == _ids([r for r in allrows if r["critical_gaps"] > 0])
     none = _get(client, headers, has_critical="false")
-    assert len(crit) + len(none) == 18
+    assert len(crit) + len(none) == 6
     low = _get(client, headers, compliance_below=70)
     assert _ids(low) == _ids([r for r in allrows if r["lens_readiness"]["Compliance"] < 70])
 
@@ -130,10 +130,20 @@ def test_overdue_decisions_included_in_decision_within_days(client, headers):
 
 
 def test_mine_by_role(client, headers):
-    assert sorted(_ids(_get(client, headers, user="U01", mine="true"))) == ["TR-0001", "TR-0003"]
+    # U01 is the OR focal of every seeded transition (A-102)
+    assert sorted(_ids(_get(client, headers, user="U01", mine="true"))) == [
+        "TR-0001",
+        "TR-0003",
+        "TR-0005",
+        "TR-0008",
+        "TR-0011",
+        "TR-0014",
+    ]
+    # another OR focal who owns no transition sees none
+    assert _get(client, headers, user="U02", mine="true") == []
     # IRM is on every seeded transition (A-05); Planner / Leadership / Admin see everything (A-51)
     for user in ("U14", "U13", "U15", "U16"):
-        assert len(_get(client, headers, user=user, mine="true")) == 18
+        assert len(_get(client, headers, user=user, mine="true")) == 6
     assert "TR-0001" in _ids(_get(client, headers, user="U10", mine="true"))
 
 
@@ -175,7 +185,7 @@ def test_to_confirm_and_not_applicable_items_are_out_of_scope(client, headers, d
     from app.models import PlaybookItem, TransitionItem
 
     def pct(lens="Business"):
-        return next(r for r in _get(client, headers) if r["id"] == "TR-0004")["lens_readiness"][
+        return next(r for r in _get(client, headers) if r["id"] == "TR-0001")["lens_readiness"][
             lens
         ]
 
@@ -184,7 +194,7 @@ def test_to_confirm_and_not_applicable_items_are_out_of_scope(client, headers, d
             select(TransitionItem)
             .join(PlaybookItem, PlaybookItem.id == TransitionItem.playbook_item_id)
             .where(
-                TransitionItem.transition_id == "TR-0004",
+                TransitionItem.transition_id == "TR-0001",
                 TransitionItem.applicability == "Applies",
                 PlaybookItem.lens == "Business",
                 TransitionItem.status.in_(["Gap", "Non-compliant"]),
@@ -194,7 +204,7 @@ def test_to_confirm_and_not_applicable_items_are_out_of_scope(client, headers, d
         .all()
     )
     gap = next(iter(rows), None)
-    assert gap is not None, "seed has a Business gap on TR-0004"
+    assert gap is not None, "seed has a Business gap on TR-0001"
     before = pct()
     gap.applicability = "To confirm"  # outside readiness scope until confirmed (A-22)
     db.commit()

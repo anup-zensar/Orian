@@ -41,9 +41,13 @@ def test_request_inputs_submit_and_new_version_denied_to_other_focal(client, hea
     assert ok.status_code == 200
 
 
-def test_create_estimate_denied_to_other_focal(client, headers, fresh_seed):
+def test_create_estimate_denied_to_other_focal(client, headers, db, fresh_seed):
+    from app.models import Transition
+
+    db.get(Transition, "TR-0014").or_focal_user_id = "U02"  # the seed has one focal only
+    db.commit()
     assert client.post(f"{API}/transitions/TR-0014/ocet", headers=headers("U01")).status_code == 403
-    assert client.post(f"{API}/transitions/TR-0014/ocet", headers=headers("U08")).status_code == 201
+    assert client.post(f"{API}/transitions/TR-0014/ocet", headers=headers("U02")).status_code == 201
 
 
 def test_can_edit_and_tooltip_follow_assignment(client, headers, fresh_seed):

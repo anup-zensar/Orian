@@ -1,7 +1,7 @@
 """Per-transition access for gates and drafts (BE#1, BE#6, BE#8, BE#12 - access package B).
 
-Seed facts: U01 Asha Menon is the OR focal of TR-0001 and TR-0003; U02 is the OR focal of TR-0002;
-U04 owns TR-0018 (SG3). U12 is the OLM and U14 the IRM of every seeded transition.
+Seed facts: U01 Asha Menon is the OR focal of every seeded transition (TR-0005 is at SG2); U02 is a
+test-only OR focal who owns none. U12 is the OLM and U14 the IRM of every seeded transition.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ def _post(client, headers, url, body, user):
     return client.post(f"{API}{url}", json=body, headers=headers(user))
 
 
-def _ready_for_atd(db, tid="TR-0018"):
+def _ready_for_atd(db, tid="TR-0005"):
     transition = db.get(Transition, tid)
     transition.current_gate = "SG4_ATD"
     for row in db.scalars(select(TransitionItem).where(TransitionItem.transition_id == tid)).all():
@@ -39,7 +39,7 @@ def _ready_for_atd(db, tid="TR-0018"):
     return transition
 
 
-def _approval_draft(db, tid="TR-0018", gate="SG4_ATD", kind="Approval request", to=None):
+def _approval_draft(db, tid="TR-0005", gate="SG4_ATD", kind="Approval request", to=None):
     transition = db.get(Transition, tid)
     olm = db.get(User, transition.olm_user_id)
     draft = drafts.create_draft(
@@ -144,13 +144,13 @@ def test_approval_request_draft_needs_the_focal(client, headers, fresh_seed):
 
 def test_request_approval_rejects_foreign_chaser_and_sent_drafts(client, headers, db, fresh_seed):
     _ready_for_atd(db)
-    url = "/transitions/TR-0018/gates/SG4_ATD/request-approval"
+    url = "/transitions/TR-0005/gates/SG4_ATD/request-approval"
     foreign = _approval_draft(db, tid="TR-0003")
-    assert _post(client, headers, url, {"draft_id": foreign.id}, "U04").status_code == 409
+    assert _post(client, headers, url, {"draft_id": foreign.id}, "U01").status_code == 409
     chaser = drafts.create_draft(
         db,
         kind="Chaser",
-        transition=db.get(Transition, "TR-0018"),
+        transition=db.get(Transition, "TR-0005"),
         to=["a@example.com"],
         cc=[],
         subject="c",
@@ -159,12 +159,12 @@ def test_request_approval_rejects_foreign_chaser_and_sent_drafts(client, headers
     )
     wrong_gate = _approval_draft(db, gate="SG6_ATO")
     db.commit()
-    assert _post(client, headers, url, {"draft_id": chaser.id}, "U04").status_code == 409
-    assert _post(client, headers, url, {"draft_id": wrong_gate.id}, "U04").status_code == 409
+    assert _post(client, headers, url, {"draft_id": chaser.id}, "U01").status_code == 409
+    assert _post(client, headers, url, {"draft_id": wrong_gate.id}, "U01").status_code == 409
     sent = _approval_draft(db)
     sent.status = "Sent"
     db.commit()
-    assert _post(client, headers, url, {"draft_id": sent.id}, "U04").status_code == 409
+    assert _post(client, headers, url, {"draft_id": sent.id}, "U01").status_code == 409
 
 
 def test_request_approval_with_draft_marks_sent_once_and_mails_approver_once(
@@ -177,9 +177,9 @@ def test_request_approval_with_draft_marks_sent_once_and_mails_approver_once(
     res = _post(
         client,
         headers,
-        "/transitions/TR-0018/gates/SG4_ATD/request-approval",
+        "/transitions/TR-0005/gates/SG4_ATD/request-approval",
         {"draft_id": draft.id},
-        "U04",
+        "U01",
     )
     assert res.status_code == 200, res.text
     db.expire_all()
@@ -202,7 +202,7 @@ def test_send_of_an_approval_draft_mails_the_approver_once(client, headers, db, 
     olm = db.get(User, transition.olm_user_id)
     draft = _approval_draft(db)
     before = len(db.scalars(select(OutboxMessage)).all())
-    res = _post(client, headers, f"/orion/drafts/{draft.id}/send", {}, "U04")
+    res = _post(client, headers, f"/orion/drafts/{draft.id}/send", {}, "U01")
     assert res.status_code == 200, res.text
     assert res.json()["result"]["approval_request_id"]
     db.expire_all()
@@ -223,7 +223,7 @@ def test_reminder_kind_draft_with_request_approval_action_can_be_sent(
 ):
     _ready_for_atd(db)
     draft = _approval_draft(db, kind="Reminder")
-    res = _post(client, headers, f"/orion/drafts/{draft.id}/send", {}, "U04")
+    res = _post(client, headers, f"/orion/drafts/{draft.id}/send", {}, "U01")
     assert res.status_code == 200, res.text
 
 

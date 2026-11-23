@@ -147,10 +147,10 @@ def test_can_edit_by_lens(client, headers):
 
 
 def test_not_launched_returns_empty(client, headers, db, fresh_seed):
-    t = db.get(Transition, "TR-0002")
+    t = db.get(Transition, "TR-0005")
     t.assessment_launched_at = None
     db.commit()
-    data = client.get(f"{API}/transitions/TR-0002/items", headers=headers()).json()
+    data = client.get(f"{API}/transitions/TR-0005/items", headers=headers()).json()
     assert data["items"] == []
     assert all(s["scope"] == 0 and s["done"] == 0 for s in data["summary"])
     assert data["excluded_count"] == 0

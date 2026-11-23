@@ -21,7 +21,7 @@ import {
 import { Sparkle20Filled, Sparkle20Regular } from '@fluentui/react-icons';
 import { useAuth } from '../auth/useAuth';
 import { NotificationsBell } from '../features/notifications/NotificationsBell';
-import { splitUsers, useMe, useUsers } from '../features/users/api';
+import { useMe, useUsers } from '../features/users/api';
 import { ai, palette } from '../theme/orionTheme';
 import { chipStyle, roleBadgeColors } from '../theme/tokens';
 
@@ -170,10 +170,7 @@ export function TopBar(props: { orionOpen: boolean; onToggleOrion: () => void })
                   <MenuList>
                     {users.isLoading && <MenuItem disabled>Loading users...</MenuItem>}
                     {users.isError && <MenuItem disabled>Could not load users</MenuItem>}
-                    {[
-                      ...splitUsers(users.data ?? []).main,
-                      ...splitUsers(users.data ?? []).otherFocals,
-                    ].map((u) => (
+                    {(users.data ?? []).map((u) => (
                       <MenuItemRadio
                         key={u.id}
                         name="user"

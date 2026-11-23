@@ -10,7 +10,7 @@ from app.seed.loader import eval_passes
 API = "/api/v1"
 T = "TR-0001"
 OTHER_AI = "TR-0003"  # Agentic AI, Tier 2
-NON_AI = "TR-0004"  # Normal
+NON_AI = "TR-0005"  # Normal
 
 
 def _table(client, headers, tid=T, user="U01"):
@@ -57,16 +57,16 @@ def test_requires_header_and_404(client, headers):
 
 
 def test_non_ai_is_409(client, headers, fresh_seed):
-    res = client.get(f"{API}/transitions/{NON_AI}/eval-metrics", headers=headers("U03"))
+    res = client.get(f"{API}/transitions/{NON_AI}/eval-metrics", headers=headers("U01"))
     assert res.status_code == 409
     assert res.json()["detail"] == "Eval metrics apply to AI flavours only"
     put = client.put(
         f"{API}/transitions/{NON_AI}/eval-results",
         json=[{"metric_id": "EV-01", "value_number": 95}],
-        headers=headers("U03"),
+        headers=headers("U01"),
     )
     assert put.status_code == 409
-    imp = client.post(f"{API}/transitions/{NON_AI}/eval-results/import", headers=headers("U03"))
+    imp = client.post(f"{API}/transitions/{NON_AI}/eval-results/import", headers=headers("U01"))
     assert imp.status_code == 409
 
 

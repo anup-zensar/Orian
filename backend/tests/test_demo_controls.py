@@ -38,7 +38,7 @@ def test_reset_is_idempotent_and_fast(client, headers, fresh_seed):
     second = client.post(f"{API}/admin/demo/reset", headers=h).json()
     for out in (first.json(), second):
         assert out["seconds"] < 10
-        assert out["transitions"] >= 14 and out["items"] > 100
+        assert out["transitions"] == 6 and out["items"] > 100
     assert second["transitions"] == first.json()["transitions"]
     assert second["items"] == first.json()["items"]
     # still usable afterwards

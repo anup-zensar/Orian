@@ -272,33 +272,6 @@
       }
     },
     {
-      "id": "TR-0002",
-      "name": "Nucleus Mobility CAPs",
-      "servicenow_project_id": "PRJ0041074",
-      "portfolio": "GCC",
-      "region": "Central Apps",
-      "market": "Multi-market",
-      "project_type": "Combined",
-      "current_gate": "SG4_ATD",
-      "or_focal_user_id": "U02",
-      "pm_user_id": "U10",
-      "architect_user_id": "U11",
-      "olm_user_id": "U12",
-      "snapshot": {
-        "readiness_pct": {
-          "Business": 90,
-          "Technical": 86,
-          "Compliance": 88
-        },
-        "open_gaps": 4,
-        "critical_gaps": 0,
-        "days_to_next_decision": 12,
-        "blocker": ""
-      },
-      "risk_tier": 2,
-      "tier_status": "Confirmed"
-    },
-    {
       "id": "TR-0003",
       "name": "Virtual SME",
       "servicenow_project_id": "PRJ0041111",
@@ -326,33 +299,6 @@
       "tier_status": "Confirmed"
     },
     {
-      "id": "TR-0004",
-      "name": "France & Belgium e-invoicing",
-      "servicenow_project_id": "PRJ0041148",
-      "portfolio": "Fleets",
-      "region": "Europe & South Africa",
-      "market": "France / Belgium",
-      "project_type": "Normal",
-      "current_gate": "SG5_HYPERCARE",
-      "or_focal_user_id": "U03",
-      "pm_user_id": "U10",
-      "architect_user_id": "U11",
-      "olm_user_id": "U12",
-      "snapshot": {
-        "readiness_pct": {
-          "Business": 88,
-          "Technical": 80,
-          "Compliance": 72
-        },
-        "open_gaps": 6,
-        "critical_gaps": 1,
-        "days_to_next_decision": 6,
-        "blocker": "Reconciliation runbook evidence pending"
-      },
-      "risk_tier": null,
-      "tier_status": null
-    },
-    {
       "id": "TR-0005",
       "name": "Fleet card portal upgrade",
       "servicenow_project_id": "PRJ0041185",
@@ -361,7 +307,7 @@
       "market": "Philippines",
       "project_type": "Normal",
       "current_gate": "SG2",
-      "or_focal_user_id": "U04",
+      "or_focal_user_id": "U01",
       "pm_user_id": "U10",
       "architect_user_id": "U11",
       "olm_user_id": "U12",
@@ -380,60 +326,6 @@
       "tier_status": null
     },
     {
-      "id": "TR-0006",
-      "name": "Fleet telematics integration",
-      "servicenow_project_id": "PRJ0041222",
-      "portfolio": "Fleets",
-      "region": "Americas",
-      "market": "USA",
-      "project_type": "Normal",
-      "current_gate": "SG4_ATD",
-      "or_focal_user_id": "U03",
-      "pm_user_id": "U10",
-      "architect_user_id": "U11",
-      "olm_user_id": "U12",
-      "snapshot": {
-        "readiness_pct": {
-          "Business": 76,
-          "Technical": 69,
-          "Compliance": 80
-        },
-        "open_gaps": 7,
-        "critical_gaps": 1,
-        "days_to_next_decision": 17,
-        "blocker": "Vendor SLA not signed"
-      },
-      "risk_tier": null,
-      "tier_status": null
-    },
-    {
-      "id": "TR-0007",
-      "name": "Shell Café digital ordering",
-      "servicenow_project_id": "PRJ0041259",
-      "portfolio": "Retail Site Systems",
-      "region": "Europe & South Africa",
-      "market": "UK",
-      "project_type": "Normal",
-      "current_gate": "SG5_HYPERCARE",
-      "or_focal_user_id": "U05",
-      "pm_user_id": "U10",
-      "architect_user_id": "U11",
-      "olm_user_id": "U12",
-      "snapshot": {
-        "readiness_pct": {
-          "Business": 84,
-          "Technical": 77,
-          "Compliance": 90
-        },
-        "open_gaps": 5,
-        "critical_gaps": 0,
-        "days_to_next_decision": 9,
-        "blocker": ""
-      },
-      "risk_tier": null,
-      "tier_status": null
-    },
-    {
       "id": "TR-0008",
       "name": "Forecourt POS refresh",
       "servicenow_project_id": "PRJ0041296",
@@ -442,7 +334,7 @@
       "market": "India",
       "project_type": "Infrastructure",
       "current_gate": "SG4_ATD",
-      "or_focal_user_id": "U06",
+      "or_focal_user_id": "U01",
       "pm_user_id": "U10",
       "architect_user_id": "U11",
       "olm_user_id": "U12",
@@ -461,60 +353,6 @@
       "tier_status": null
     },
     {
-      "id": "TR-0009",
-      "name": "Wet stock reconciliation tool",
-      "servicenow_project_id": "PRJ0041333",
-      "portfolio": "Retail Site Systems",
-      "region": "Central Apps",
-      "market": "Multi-market",
-      "project_type": "Normal",
-      "current_gate": "SG3",
-      "or_focal_user_id": "U06",
-      "pm_user_id": "U10",
-      "architect_user_id": "U11",
-      "olm_user_id": "U12",
-      "snapshot": {
-        "readiness_pct": {
-          "Business": 72,
-          "Technical": 66,
-          "Compliance": 58
-        },
-        "open_gaps": 10,
-        "critical_gaps": 1,
-        "days_to_next_decision": 25,
-        "blocker": "Market process for variance approval not defined"
-      },
-      "risk_tier": null,
-      "tier_status": null
-    },
-    {
-      "id": "TR-0010",
-      "name": "Fuel pricing engine migration",
-      "servicenow_project_id": "PRJ0041370",
-      "portfolio": "Retail Site Systems",
-      "region": "Americas",
-      "market": "Brazil",
-      "project_type": "Combined",
-      "current_gate": "SG4_ATD",
-      "or_focal_user_id": "U05",
-      "pm_user_id": "U10",
-      "architect_user_id": "U11",
-      "olm_user_id": "U12",
-      "snapshot": {
-        "readiness_pct": {
-          "Business": 68,
-          "Technical": 61,
-          "Compliance": 55
-        },
-        "open_gaps": 12,
-        "critical_gaps": 2,
-        "days_to_next_decision": 14,
-        "blocker": "Price-change rollback not tested"
-      },
-      "risk_tier": 3,
-      "tier_status": "Confirmed"
-    },
-    {
       "id": "TR-0011",
       "name": "Card authorisation switch",
       "servicenow_project_id": "PRJ0041407",
@@ -523,7 +361,7 @@
       "market": "Germany",
       "project_type": "Infrastructure",
       "current_gate": "SG6_ATO",
-      "or_focal_user_id": "U02",
+      "or_focal_user_id": "U01",
       "pm_user_id": "U10",
       "architect_user_id": "U11",
       "olm_user_id": "U12",
@@ -542,60 +380,6 @@
       "tier_status": null
     },
     {
-      "id": "TR-0012",
-      "name": "EV charging roaming hub",
-      "servicenow_project_id": "PRJ0041444",
-      "portfolio": "eMobility",
-      "region": "Europe & South Africa",
-      "market": "Multi-market",
-      "project_type": "Normal",
-      "current_gate": "SG4_ATD",
-      "or_focal_user_id": "U07",
-      "pm_user_id": "U10",
-      "architect_user_id": "U11",
-      "olm_user_id": "U12",
-      "snapshot": {
-        "readiness_pct": {
-          "Business": 80,
-          "Technical": 71,
-          "Compliance": 66
-        },
-        "open_gaps": 9,
-        "critical_gaps": 1,
-        "days_to_next_decision": 19,
-        "blocker": "Roaming partner escalation matrix incomplete"
-      },
-      "risk_tier": null,
-      "tier_status": null
-    },
-    {
-      "id": "TR-0013",
-      "name": "Charger monitoring platform",
-      "servicenow_project_id": "PRJ0041481",
-      "portfolio": "eMobility",
-      "region": "Asia Pacific",
-      "market": "Singapore",
-      "project_type": "Combined",
-      "current_gate": "SG5_HYPERCARE",
-      "or_focal_user_id": "U07",
-      "pm_user_id": "U10",
-      "architect_user_id": "U11",
-      "olm_user_id": "U12",
-      "snapshot": {
-        "readiness_pct": {
-          "Business": 86,
-          "Technical": 83,
-          "Compliance": 79
-        },
-        "open_gaps": 4,
-        "critical_gaps": 0,
-        "days_to_next_decision": 7,
-        "blocker": ""
-      },
-      "risk_tier": 2,
-      "tier_status": "Confirmed"
-    },
-    {
       "id": "TR-0014",
       "name": "Medallia VOC",
       "servicenow_project_id": "PRJ0041518",
@@ -604,7 +388,7 @@
       "market": "Multi-market",
       "project_type": "Normal",
       "current_gate": "SG5_HYPERCARE",
-      "or_focal_user_id": "U08",
+      "or_focal_user_id": "U01",
       "pm_user_id": "U10",
       "architect_user_id": "U11",
       "olm_user_id": "U12",
@@ -618,114 +402,6 @@
         "critical_gaps": 1,
         "days_to_next_decision": 11,
         "blocker": "Consent & privacy evidence for IRM pending"
-      },
-      "risk_tier": null,
-      "tier_status": null
-    },
-    {
-      "id": "TR-0015",
-      "name": "Loyalty campaign platform",
-      "servicenow_project_id": "PRJ0041555",
-      "portfolio": "Global Marketing",
-      "region": "Americas",
-      "market": "Multi-market",
-      "project_type": "Normal",
-      "current_gate": "SG2",
-      "or_focal_user_id": "U08",
-      "pm_user_id": "U10",
-      "architect_user_id": "U11",
-      "olm_user_id": "U12",
-      "snapshot": {
-        "readiness_pct": {
-          "Business": 66,
-          "Technical": 60,
-          "Compliance": 62
-        },
-        "open_gaps": 6,
-        "critical_gaps": 0,
-        "days_to_next_decision": 35,
-        "blocker": ""
-      },
-      "risk_tier": null,
-      "tier_status": null
-    },
-    {
-      "id": "TR-0016",
-      "name": "SD-WAN site connectivity",
-      "servicenow_project_id": "PRJ0041592",
-      "portfolio": "Telecoms",
-      "region": "Asia Pacific",
-      "market": "Malaysia",
-      "project_type": "Infrastructure",
-      "current_gate": "SG4_ATD",
-      "or_focal_user_id": "U09",
-      "pm_user_id": "U10",
-      "architect_user_id": "U11",
-      "olm_user_id": "U12",
-      "snapshot": {
-        "readiness_pct": {
-          "Business": 83,
-          "Technical": 64,
-          "Compliance": 75
-        },
-        "open_gaps": 8,
-        "critical_gaps": 1,
-        "days_to_next_decision": 16,
-        "blocker": "Carrier restoration runbook not tested"
-      },
-      "risk_tier": null,
-      "tier_status": null
-    },
-    {
-      "id": "TR-0017",
-      "name": "Retail site circuit migration",
-      "servicenow_project_id": "PRJ0041629",
-      "portfolio": "Telecoms",
-      "region": "Europe & South Africa",
-      "market": "Multi-market",
-      "project_type": "Infrastructure",
-      "current_gate": "CLOSURE",
-      "or_focal_user_id": "U09",
-      "pm_user_id": "U10",
-      "architect_user_id": "U11",
-      "olm_user_id": "U12",
-      "snapshot": {
-        "readiness_pct": {
-          "Business": 98,
-          "Technical": 97,
-          "Compliance": 100
-        },
-        "open_gaps": 0,
-        "critical_gaps": 0,
-        "days_to_next_decision": 3,
-        "blocker": ""
-      },
-      "risk_tier": null,
-      "tier_status": null
-    },
-    {
-      "id": "TR-0018",
-      "name": "Contact-centre telephony",
-      "servicenow_project_id": "PRJ0041666",
-      "portfolio": "Telecoms",
-      "region": "Europe & South Africa",
-      "market": "South Africa",
-      "project_type": "Normal",
-      "current_gate": "SG3",
-      "or_focal_user_id": "U04",
-      "pm_user_id": "U10",
-      "architect_user_id": "U11",
-      "olm_user_id": "U12",
-      "snapshot": {
-        "readiness_pct": {
-          "Business": 74,
-          "Technical": 70,
-          "Compliance": 64
-        },
-        "open_gaps": 7,
-        "critical_gaps": 0,
-        "days_to_next_decision": 28,
-        "blocker": ""
       },
       "risk_tier": null,
       "tier_status": null

@@ -5,64 +5,7 @@
       "id": "U01",
       "name": "Asha Menon",
       "role": "OR_FOCAL",
-      "focal_label": "OR focal A",
       "email": "asha.menon@example.com"
-    },
-    {
-      "id": "U02",
-      "name": "Rahul Iyer",
-      "role": "OR_FOCAL",
-      "focal_label": "OR focal B",
-      "email": "rahul.iyer@example.com"
-    },
-    {
-      "id": "U03",
-      "name": "Neha Kulkarni",
-      "role": "OR_FOCAL",
-      "focal_label": "OR focal C",
-      "email": "neha.kulkarni@example.com"
-    },
-    {
-      "id": "U04",
-      "name": "Vikram Shah",
-      "role": "OR_FOCAL",
-      "focal_label": "OR focal D",
-      "email": "vikram.shah@example.com"
-    },
-    {
-      "id": "U05",
-      "name": "Priya Nair",
-      "role": "OR_FOCAL",
-      "focal_label": "OR focal E",
-      "email": "priya.nair@example.com"
-    },
-    {
-      "id": "U06",
-      "name": "Arjun Rao",
-      "role": "OR_FOCAL",
-      "focal_label": "OR focal F",
-      "email": "arjun.rao@example.com"
-    },
-    {
-      "id": "U07",
-      "name": "Kavya Reddy",
-      "role": "OR_FOCAL",
-      "focal_label": "OR focal G",
-      "email": "kavya.reddy@example.com"
-    },
-    {
-      "id": "U08",
-      "name": "Sanjay Pillai",
-      "role": "OR_FOCAL",
-      "focal_label": "OR focal H",
-      "email": "sanjay.pillai@example.com"
-    },
-    {
-      "id": "U09",
-      "name": "Divya Joshi",
-      "role": "OR_FOCAL",
-      "focal_label": "OR focal I",
-      "email": "divya.joshi@example.com"
     },
     {
       "id": "U10",

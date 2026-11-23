@@ -14,12 +14,16 @@ Fixtures other test modules can rely on:
   CR-01). Use it in every test that writes data; plain read tests share the seeded database and must
   not write.
 
-Demo users: U01-U09 OR focals, U10 PM, U11 Architect, U12 OLM, U13 Planner, U14 IRM,
-U15 Leadership, U16 Admin. The flagship transition is ``TR-0001`` (Mobility Knowledge Agent).
+Demo users (A-102: one per role): U01 Asha Menon OR focal, U10 PM, U11 Architect, U12 OLM,
+U13 Planner, U14 IRM, U15 Leadership, U16 Admin. Tests add ONE extra OR focal, ``U02`` (Rahul Iyer,
+owns no transition), so the per-transition rules (A-75: only the transition's own OR focal may act)
+can be checked; the demo itself has one OR focal. Transitions: TR-0001 (flagship, Mobility Knowledge
+Agent), TR-0003, TR-0005, TR-0008, TR-0011, TR-0014 - all owned by U01.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import tempfile
@@ -32,12 +36,24 @@ _TMP_ROOT = Path(tempfile.mkdtemp(prefix="orion-tests-"))
 _STORAGE = _TMP_ROOT / "storage"
 _STORAGE.mkdir()
 
+# Test seed = the demo seed (repo ``seed/``) + the test-only OR focal U02 (see the docstring).
+_SEED = _TMP_ROOT / "seed"
+shutil.copytree(Path(__file__).resolve().parents[2] / "seed", _SEED)
+_users_file = _SEED / "demo_users.json"
+_users = json.loads(_users_file.read_text(encoding="utf-8"))
+_users["users"].insert(
+    1,
+    {"id": "U02", "name": "Rahul Iyer", "role": "OR_FOCAL", "email": "rahul.iyer@example.com"},
+)
+_users_file.write_text(json.dumps(_users, ensure_ascii=False, indent=2), encoding="utf-8")
+
 # Must happen before app.config.get_settings() is first called (it is cached).
 os.environ["DATABASE_URL"] = f"sqlite:///{(_TMP_ROOT / 'orion_test.db').as_posix()}"
 os.environ["MOCK_DELAY_MS"] = "0"
 os.environ["SEED_DATE"] = "2026-11-16"
 os.environ["DEMO_MODE"] = "true"
 os.environ["STORAGE_DIR"] = str(_STORAGE)
+os.environ["SEED_DIR"] = str(_SEED)
 
 from app.config import get_settings  # noqa: E402
 

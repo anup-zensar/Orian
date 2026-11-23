@@ -26,7 +26,7 @@ def test_register_matches_transitions_endpoint(client, headers):
     listing = client.get(f"{API}/transitions", headers=headers()).json()
     assert ct["transitions"] == listing
     assert ct["today"] == "2026-11-16"
-    assert len(ct["transitions"]) == 18
+    assert len(ct["transitions"]) == 6
 
 
 def test_kpi_tiles_shape_and_filter_consistency(client, headers):
@@ -50,8 +50,8 @@ def test_kpi_tiles_shape_and_filter_consistency(client, headers):
 def test_kpis_follow_the_filters(client, headers):
     ct = _ct(client, headers, portfolio="Retail Site Systems")
     kpis = {k["key"]: k["value"] for k in ct["kpis"]}
-    assert kpis["active"] == 5
-    assert kpis["red"] == 2
+    assert kpis["active"] == 2  # TR-0008, TR-0011
+    assert kpis["red"] == 1  # TR-0008
     assert ct["filters"]["portfolio"] == "Retail Site Systems"
 
 
@@ -77,7 +77,7 @@ def test_heatmap(client, headers):
         assert len(filtered["heatmap"]["cells"]) == 42
     # ... but follows every other filter
     region = _ct(client, headers, region="Global")
-    assert sum(c["count"] for c in region["heatmap"]["cells"]) == len(region["transitions"]) < 18
+    assert sum(c["count"] for c in region["heatmap"]["cells"]) == len(region["transitions"]) < 6
 
 
 def test_readiness_by_region(client, headers):
@@ -90,7 +90,7 @@ def test_readiness_by_region(client, headers):
         "Americas",
         "Central Apps",
     ]
-    assert sum(r["transitions"] for r in regions) == 18
+    assert sum(r["transitions"] for r in regions) == 6
     for r in regions:
         scores = [t["overall_readiness"] for t in ct["transitions"] if t["region"] == r["region"]]
         expected = round_half_up(Fraction(sum(scores), len(scores))) if scores else None
@@ -158,11 +158,11 @@ def test_kpis_ignore_tile_filters_but_follow_the_rest(client, headers):
     ):
         ct = _ct(client, headers, **params)
         assert {k["key"]: k["value"] for k in ct["kpis"]} == base, params
-        assert len(ct["transitions"]) < 18 or params == {"status": "Active"}
+        assert len(ct["transitions"]) < 6 or params == {"status": "Active"}
     gcc = _ct(client, headers, portfolio="GCC", rag="Red")
     only_gcc = _ct(client, headers, portfolio="GCC")
     assert gcc["kpis"] == only_gcc["kpis"]
-    assert {k["key"]: k["value"] for k in only_gcc["kpis"]}["active"] == 3
+    assert {k["key"]: k["value"] for k in only_gcc["kpis"]}["active"] == 2  # TR-0001, TR-0003
 
 
 def test_not_launched_has_zero_readiness_and_is_not_averaged(client, headers, db, fresh_seed):
@@ -171,14 +171,14 @@ def test_not_launched_has_zero_readiness_and_is_not_averaged(client, headers, db
     from app.models import Transition, TransitionItem
 
     before = {r["region"]: r for r in _ct(client, headers)["readiness_by_region"]}
-    t = db.get(Transition, "TR-0002")
+    t = db.get(Transition, "TR-0003")
     region = t.region
-    db.execute(delete(TransitionItem).where(TransitionItem.transition_id == "TR-0002"))
+    db.execute(delete(TransitionItem).where(TransitionItem.transition_id == "TR-0003"))
     t.assessment_launched_at = None
     db.commit()
 
     ct = _ct(client, headers)
-    row = next(r for r in ct["transitions"] if r["id"] == "TR-0002")
+    row = next(r for r in ct["transitions"] if r["id"] == "TR-0003")
     assert row["rag"] == "Grey" and row["assessment_launched"] is False
     assert row["lens_readiness"] == {"Business": 0, "Technical": 0, "Compliance": 0}
     assert row["overall_readiness"] == 0
@@ -194,6 +194,6 @@ def test_not_launched_has_zero_readiness_and_is_not_averaged(client, headers, db
     )
     comp = next(k for k in ct["kpis"] if k["key"] == "compliance_below_70")
     listed = _ct(client, headers, compliance_below=70)["transitions"]
-    assert "TR-0002" not in {r["id"] for r in listed} and len(listed) == comp["value"]
+    assert "TR-0003" not in {r["id"] for r in listed} and len(listed) == comp["value"]
     esc = {e["transition_id"]: e for e in ct["escalations"]}
-    assert "TR-0002" not in esc or "readiness" not in esc["TR-0002"]["reason"]
+    assert "TR-0003" not in esc or "readiness" not in esc["TR-0003"]["reason"]

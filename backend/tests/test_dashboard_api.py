@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 API = "/api/v1"
+OWNED = {"TR-0001", "TR-0003", "TR-0005", "TR-0008", "TR-0011", "TR-0014"}
 
 
 def _dash(client, headers, user):
@@ -29,18 +30,18 @@ def test_or_focal_dashboard(client, headers):
         "decisions_14d",
         "critical_gaps",
     ]
-    assert kpis["transitions_i_own"]["value"] == 2
+    assert kpis["transitions_i_own"]["value"] == 6  # U01 owns every seeded transition (A-102)
     assert kpis["transitions_i_own"]["link"] == "/transitions?mine=true"
     assert kpis["my_pending_approvals"]["link"] == "/approvals"
     assert kpis["my_open_items"]["link"] is None
-    # TR-0001 (1 critical) + TR-0003 (2 critical)
-    assert kpis["critical_gaps"]["value"] == 3
+    # critical gaps over the six owned transitions: 1 + 2 + 0 + 3 + 0 + 1
+    assert kpis["critical_gaps"]["value"] == 7
     assert kpis["critical_gaps"]["tone"] == "danger"
     assert kpis["critical_gaps"]["link"] == "/transitions?mine=true&has_critical=true"
     assert d["portfolio_tiles"] == []
     assert d["my_work_total"] >= len(d["my_work"]) > 0
-    assert len(d["my_work"]) <= 25
-    assert all(w["transition_id"] in {"TR-0001", "TR-0003"} for w in d["my_work"])
+    assert len(d["my_work"]) == min(d["my_work_total"], 200)  # my_work_limit (was 25)
+    assert all(w["transition_id"] in OWNED for w in d["my_work"])
 
 
 def test_non_or_focal_has_no_owner_tile(client, headers):
@@ -78,10 +79,10 @@ def test_leadership_dashboard(client, headers):
         "Telecoms",
         "Retail Site Systems",
     ]
-    assert sum(t["transitions"] for t in tiles) == 18
-    retail = tiles[-1]
-    assert retail["red"] == 2 and retail["transitions"] == 5
-    assert retail["red"] + retail["amber"] + retail["green"] + retail["grey"] == 5
+    assert sum(t["transitions"] for t in tiles) == 6
+    retail = tiles[-1]  # TR-0008 (Red) and TR-0011 (Green)
+    assert retail["red"] == 1 and retail["transitions"] == 2
+    assert retail["red"] + retail["amber"] + retail["green"] + retail["grey"] == 2
     kpis = _kpis(d)
     assert list(kpis) == ["active", "red", "decisions_14d", "critical"]
     assert kpis["red"]["link"] == "/control-tower?rag=Red"
@@ -102,7 +103,7 @@ def test_recent_activity(client, headers, db):
             if e["transition_id"]:
                 assert e["transition_name"]
     d = _dash(client, headers, "U01")
-    mine = {"TR-0001", "TR-0003"}
+    mine = OWNED
     assert d["recent_activity"] and all(e["transition_id"] in mine for e in d["recent_activity"])
     expected = db.scalars(
         select(AuditEvent.id)
@@ -149,9 +150,9 @@ def test_dashboard_excludes_not_launched_from_portfolio_averages(client, headers
 
     from app.models import Transition, TransitionItem
 
-    t = db.get(Transition, "TR-0002")
+    t = db.get(Transition, "TR-0003")
     portfolio = t.portfolio
-    db.execute(delete(TransitionItem).where(TransitionItem.transition_id == "TR-0002"))
+    db.execute(delete(TransitionItem).where(TransitionItem.transition_id == "TR-0003"))
     t.assessment_launched_at = None
     db.commit()
     tiles = {x["portfolio"]: x for x in _dash(client, headers, "U15")["portfolio_tiles"]}

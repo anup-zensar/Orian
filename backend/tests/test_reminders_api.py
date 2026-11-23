@@ -168,7 +168,7 @@ def test_r4_ready_for_atd_draft_is_a_proposal_only(client, headers, db, fresh_se
 
 
 def test_r4_send_starts_the_chain_once_and_mails_the_olm_once(client, headers, db, fresh_seed):
-    tid = "TR-0018"  # OR focal U04
+    tid = "TR-0005"  # OR focal U01
     db.get(Transition, tid).current_gate = "SG4_ATD"
     _complete_items_for_atd(db, tid)
     for row in db.scalars(select(TransitionItem).where(TransitionItem.transition_id == tid)).all():
@@ -274,6 +274,8 @@ def test_autonomous_requires_rule_flag(client, headers, db, fresh_seed):
 
 def test_or_focal_scope(client, headers, db, fresh_seed):
     # U02 is not the focal of TR-0001: explicit transition -> 403; an all-run is limited to own ones
+    db.get(Transition, "TR-0005").or_focal_user_id = "U02"  # the seed has one focal only
+    db.commit()
     assert _run(client, headers, "U02", transition_id="TR-0001").status_code == 403
     own = {t.id for t in db.scalars(select(Transition).where(Transition.or_focal_user_id == "U02"))}
     body = _run(client, headers, "U02").json()

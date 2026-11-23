@@ -424,7 +424,7 @@ def test_commands_missing_owner_or_date_asks_in_text(client, db, headers):
 
 
 def test_commands_by_transition_name_and_unknown(client, headers):
-    msgs = _chat(client, headers, "move next decision date of Medallia to 5 Dec", user="U08")
+    msgs = _chat(client, headers, "move next decision date of Medallia to 5 Dec", user="U01")
     (proposal,) = _proposals(msgs)
     assert proposal["kind"] == "update_transition" and proposal["transition_id"] == "TR-0014"
     assert proposal["payload"]["changes"] == {"next_decision_date": "2026-12-05"}
@@ -474,7 +474,7 @@ def test_commands_other_kinds(client, db, headers, fresh_seed):
     assert owner["payload"]["current"] == {"owner_user_id": "U10"}
     db.get(Transition, "TR-0005").architect_user_id = None
     db.commit()
-    (role,) = _proposals(_chat(client, headers, "make Mei the architect on TR-0005", user="U04"))
+    (role,) = _proposals(_chat(client, headers, "make Mei the architect on TR-0005", user="U01"))
     assert role["payload"]["changes"] == {"architect_user_id": "U11"}
     assert role["kind"] == "update_transition"
     (region,) = _proposals(_chat(client, headers, "change the region of TR-0001 to Americas"))

@@ -33,8 +33,10 @@ def test_dashboard_insights_deterministic_and_flagship(client, headers):
     assert first["generated_by"] == "Orion agent"
     assert first["scope"] == "dashboard"
     assert 1 <= len(first["insights"]) <= 5
-    top = first["insights"][0]
-    assert top["id"] == "TR-0001:critical-gap"
+    # critical-gap insights come first, soonest decision first (TR-0008 4d, TR-0014 11d, TR-0001 21d)
+    crit = [i["id"] for i in first["insights"] if i["id"].endswith(":critical-gap")]
+    assert crit == ["TR-0008:critical-gap", "TR-0014:critical-gap", "TR-0001:critical-gap"]
+    top = next(i for i in first["insights"] if i["id"] == "TR-0001:critical-gap")
     assert top["text"] == (
         "Mobility Knowledge Agent: AtD in 21 days, blocked by 1 critical gap "
         "(S45-014 Agent / Use Case has undergone red-teaming exercise). Draft a chaser?"
@@ -154,19 +156,20 @@ def test_not_launched_transition_insight_claims_no_readiness(client, headers, db
 
     from app.models import Transition, TransitionItem
 
-    t = db.get(Transition, "TR-0002")
-    db.execute(delete(TransitionItem).where(TransitionItem.transition_id == "TR-0002"))
+    t = db.get(Transition, "TR-0005")
+    db.execute(delete(TransitionItem).where(TransitionItem.transition_id == "TR-0005"))
     t.assessment_launched_at = None
     db.commit()
-    body = _ins(client, headers, scope="transition", id="TR-0002")
+    body = _ins(client, headers, scope="transition", id="TR-0005")
     text = " ".join(i["text"] for i in body["insights"])
     assert "has not been launched yet" in text and "%" not in text
     hrefs = [a["href"] for i in body["insights"] for a in i["actions"]]
-    assert "/transitions/TR-0002/scope" in hrefs
+    assert "/transitions/TR-0005/scope" in hrefs
 
 
 def test_chaser_insight_carries_a_typed_action(client, headers):
-    top = _ins(client, headers, scope="dashboard")["insights"][0]
+    insights = _ins(client, headers, scope="dashboard")["insights"]
+    top = next(i for i in insights if i["id"] == "TR-0001:critical-gap")
     link, chaser = top["actions"]
     assert link["kind"] == "link" and link["item_id"] is None
     assert chaser["kind"] == "draft_chaser" and chaser["label"] == "Draft a chaser"

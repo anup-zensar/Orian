@@ -160,7 +160,7 @@ def test_free_text_intents(client, headers):
     assert fallback["type"] == "text" and "Assess Gate Readiness" in fallback["text"]
     many = _msgs(_post(client, headers, {"message": "status of nonexistentthing"}))[0]
     assert "could not find" in many["text"]
-    ambiguous = _msgs(_post(client, headers, {"message": "status of platform"}))[0]
+    ambiguous = _msgs(_post(client, headers, {"message": "status of card"}))[0]
     assert "Several transitions match" in ambiguous["text"]
 
 

@@ -332,7 +332,7 @@ def test_reminder_rules_round_trip(client, headers, fresh_seed, db):
 
 def test_admin_users(client, headers):
     users = client.get(f"{API}/admin/users", headers=headers(ADMIN)).json()
-    assert len(users) == 16 and all(u["role_label"] for u in users)
+    assert len(users) == 9 and all(u["role_label"] for u in users)
 
 
 def test_admin_validation_hardening(client, headers, fresh_seed):

@@ -123,10 +123,10 @@ def test_focal_can_close_a_technical_condition(client, headers, fresh_seed):
 
 
 def test_closed_transition_freezes_records(client, headers, db, fresh_seed):
-    transition = db.get(Transition, "TR-0017")
+    transition = db.get(Transition, "TR-0011")
     transition.status = "Closed"
     db.commit()
-    tid = "TR-0017"
+    tid = "TR-0011"
     h = headers(transition.or_focal_user_id)
     calls = [
         (

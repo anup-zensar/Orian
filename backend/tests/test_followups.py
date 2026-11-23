@@ -52,24 +52,24 @@ def test_r4_draft_not_created_for_a_transition_that_is_not_launched(client, head
 
 
 def test_admin_cannot_change_sites(client, headers, db, fresh_seed):
-    t = db.get(Transition, "TR-0007")
+    t = db.get(Transition, "TR-0008")
     assert t.portfolio == "Retail Site Systems"
     before = list(t.sites or [])
     res = client.patch(
-        f"{API}/transitions/TR-0007",
+        f"{API}/transitions/TR-0008",
         json={"sites": [{"site_id": "HACK1", "site_key": "HK"}]},
         headers=headers("U16"),
     )
     assert res.status_code == 403, res.text
     db.expire_all()
-    assert list(db.get(Transition, "TR-0007").sites or []) == before
+    assert list(db.get(Transition, "TR-0008").sites or []) == before
 
 
 def test_focal_can_still_change_sites(client, headers, fresh_seed):
     res = client.patch(
-        f"{API}/transitions/TR-0007",
+        f"{API}/transitions/TR-0008",
         json={"sites": [{"site_id": "SITE9", "site_key": "S9"}]},
-        headers=headers("U05"),
+        headers=headers("U01"),
     )
     assert res.status_code == 200, res.text
 
@@ -112,29 +112,29 @@ def test_create_transition_prefill_is_private_to_its_creator(client, headers, db
 def test_unassigned_user_cannot_put_a_proposal_in_another_focals_list(
     client, headers, db, fresh_seed
 ):
-    # U04 is the OR focal of another transition, not of TR-0002 (U02's).
+    # U02 is an OR focal, but not the one of TR-0001 (U01's).
     row = create_proposal(
         db,
         kind="draft_chaser",
         title="Chase FW-016",
         payload={"item_ids": ["FW-016"]},
-        transition_id="TR-0002",
-        created_by="U04",
+        transition_id="TR-0001",
+        created_by="U02",
     )
     own = create_proposal(
         db,
         kind="draft_chaser",
         title="Chase FW-017",
         payload={"item_ids": ["FW-017"]},
-        transition_id="TR-0002",
-        created_by="U02",
+        transition_id="TR-0001",
+        created_by="U01",
     )
     db.commit()
-    victim = client.get(f"{API}/orion/proposals?transition_id=TR-0002", headers=headers("U02"))
+    victim = client.get(f"{API}/orion/proposals?transition_id=TR-0001", headers=headers("U01"))
     ids = {p["id"] for p in victim.json()}
     assert own.id in ids and row.id not in ids
-    assert client.get(f"{API}/orion/proposals/{row.id}", headers=headers("U02")).status_code == 404
-    mine = client.get(f"{API}/orion/proposals/{row.id}", headers=headers("U04"))
+    assert client.get(f"{API}/orion/proposals/{row.id}", headers=headers("U01")).status_code == 404
+    mine = client.get(f"{API}/orion/proposals/{row.id}", headers=headers("U02"))
     assert mine.status_code == 200 and mine.json()["can_accept"] is False
 
 

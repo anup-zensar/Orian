@@ -23,7 +23,7 @@ Presenter's script for the storyline in `docs/REQUIREMENTS.md` section 13. About
 2. If `backend/.env` exists (copy of `backend/.env.example`), check `DEMO_MODE=true`, `AI_MODE=mock`, `MAIL_MODE=mock`; with no file the defaults are the same. Optional: `MOCK_DELAY_MS=0` for a snappier demo.
 3. **Reset to a clean seed:** sign in as **Playbook Admin**, click **Admin** in the left navigation, section **Demo controls** (menu inside Admin), card **Reset demo data**: click **Reset demo data**, then confirm **Reset demo data**. (Or stop the API, run `scripts\reset.ps1`, restart.) Reset again before every run.
 4. Two small files on the desktop for step 7: `walkthrough.txt` (a few lines of text) and, optional, `landscape.png` (any image).
-5. Sign in as **Asha Menon**. Switch user any time: top-right **user menu -> Switch user -> name**. Users: Asha Menon (OR focal), Fatima Khan (IRM), Mei Lin (Architect), Tom Becker (Planner), Sofia Garcia (OLM), Playbook Admin (Admin). Standby: Daniel Brooks (PM), Laura Evans (Leadership). On the login page the eight other OR focals (U02-U09) sit under a collapsed **Other OR focals** heading.
+5. Sign in as **Asha Menon**. Switch user any time: top-right **user menu -> Switch user -> name**. Users: Asha Menon (OR focal), Fatima Khan (IRM), Mei Lin (Architect), Tom Becker (Planner), Sofia Garcia (OLM), Playbook Admin (Admin). Standby: Daniel Brooks (PM), Laura Evans (Leadership). The login page lists these eight people, one per role.
 6. Left navigation: Dashboard, Control tower, Transitions, Approvals, Audit trail, and, only when the signed-in role has the permission, Orion drafts, Outbox, Leadership updates and Admin (Admin only). Roles without the permission do not see those items. There is no separate "New transition" or "Support models" item: start a transition with the button on the **Transitions** page (or from Orion), and open the support model from the transition's **Support model** tab. The **Orion** button in the top bar opens the Orion panel on the right. Leave the **Autonomous mode** switch in a transition header off.
 
 Say early and repeat at the end:
@@ -51,7 +51,7 @@ Fallback: if no insight shows, skip the chaser; step 5 drafts one anyway.
 **Signed in:** Asha Menon. **Page:** `/control-tower`.
 
 1. Click **Control tower**. Show the KPI tiles, **Heatmap: portfolio by gate**, **Readiness by region**. The page no longer holds the full register: tiles and heatmap cells open **Transitions** with the same filters in the URL.
-2. In the heatmap click the red **2 Red** cell in the **Retail Site Systems** row under **AtD**. **Transitions** opens filtered to that portfolio and current gate. (**More filters** on that page holds Region, Status and Project type.) Click **Clear filters** or use the browser Back button to return.
+2. In the heatmap click the red **1 Red** cell in the **Retail Site Systems** row under **AtD**. **Transitions** opens filtered to that portfolio and current gate. (**More filters** on that page holds Region, Status and Project type.) Click **Clear filters** or use the browser Back button to return.
 3. In the filtered list: **Forecourt POS refresh** is **Red**, 3 critical gaps, decision in 4 days.
 4. Back on **Control tower**, scroll to **Escalation queue**, **Decision calendar (next 45 days)** and **Orion: control tower insights**.
 

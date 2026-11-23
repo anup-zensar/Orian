@@ -23,9 +23,13 @@ def test_only_assigned_people_edit(client, headers, fresh_seed):
     assert pptx.status_code == 200
 
 
-def test_other_focal_owns_own_transition_only(client, headers, fresh_seed):
+def test_other_focal_owns_own_transition_only(client, headers, db, fresh_seed):
+    from app.models import Transition
+
+    db.get(Transition, "TR-0014").or_focal_user_id = "U02"  # the seed has one focal only
+    db.commit()
     assert _inputs(client, headers, "TR-0014", "U01", files=TXT).status_code == 403
-    assert _inputs(client, headers, "TR-0014", "U08", files=TXT).status_code == 200
+    assert _inputs(client, headers, "TR-0014", "U02", files=TXT).status_code == 200
 
 
 def test_view_stays_open_and_can_edit_follows_assignment(client, headers, fresh_seed):

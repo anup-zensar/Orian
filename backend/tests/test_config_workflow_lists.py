@@ -247,7 +247,7 @@ def test_a_retired_category_stays_valid_on_the_line_that_has_it(client, headers,
 def test_new_estimate_uses_the_first_active_currency_and_horizon(client, headers, db, fresh_seed):
     _edit_option(db, "ocet_currencies", "USD", active=False)
     _set_thresholds(db, default_horizon_years=3)
-    res = client.post(f"{API}/transitions/TR-0014/ocet", headers=headers("U08"))
+    res = client.post(f"{API}/transitions/TR-0014/ocet", headers=headers("U01"))
     assert res.status_code == 201, res.text
     assert res.json()["estimate"]["currency"] == "EUR"
     assert res.json()["estimate"]["horizon_years"] == 3

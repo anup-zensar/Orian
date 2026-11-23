@@ -25,10 +25,3 @@ export function useMe() {
     enabled: !!userId,
   });
 }
-
-/** Storyline users first (the first OR focal and every other role); the extra OR focals last. */
-export function splitUsers(users: User[]): { main: User[]; otherFocals: User[] } {
-  const firstFocal = users.find((u) => u.role === 'OR_FOCAL');
-  const isExtra = (u: User) => u.role === 'OR_FOCAL' && u.id !== firstFocal?.id;
-  return { main: users.filter((u) => !isExtra(u)), otherFocals: users.filter(isExtra) };
-}

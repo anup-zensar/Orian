@@ -52,7 +52,7 @@ def readiness_from_db(db, transition: Transition):
     )
 
 
-@pytest.mark.parametrize("tid", [f"TR-{n:04d}" for n in range(1, 19)])
+@pytest.mark.parametrize("tid", [f"TR-{n:04d}" for n in (1, 3, 5, 8, 11, 14)])
 def test_seeded_readiness_matches_snapshot(db, tid):
     transition = db.get(Transition, tid)
     snapshot = seed_transitions()[tid]["snapshot"]
@@ -81,7 +81,13 @@ def test_most_transitions_hit_open_gaps_exactly(db):
         readiness_from_db(db, db.get(Transition, tid)).open_gaps == s["snapshot"]["open_gaps"]
         for tid, s in snapshots.items()
     )
-    assert exact >= 15  # TR-0005 and TR-0009 (tiny scopes) are the known capped cases
+    capped = [
+        tid
+        for tid, s in snapshots.items()
+        if readiness_from_db(db, db.get(Transition, tid)).open_gaps != s["snapshot"]["open_gaps"]
+    ]
+    # Only TR-0005 (tiny scope: 7 of the snapshot's 8 gaps fit) is a known capped case.
+    assert exact >= 5 and set(capped) <= {"TR-0005"}, capped
 
 
 def test_flagship_overrides_applied_exactly(db):

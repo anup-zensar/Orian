@@ -36,7 +36,7 @@ def test_create_returns_full_detail(client, headers, fresh_seed):
     res = _post(client, headers, name="  My agent  ", servicenow_project_id="prj0052210")
     assert res.status_code == 201, res.text
     d = res.json()
-    assert d["id"] == "TR-0019"
+    assert d["id"] == "TR-0015"
     assert d["name"] == "My agent" and d["servicenow_project_id"] == "PRJ0052210"
     assert d["current_gate"] == "SG0" and d["status"] == "Active"
     assert d["autonomous_mode"] is False and d["assessment_launched"] is False
@@ -51,7 +51,7 @@ def test_create_returns_full_detail(client, headers, fresh_seed):
     assert [g["state"] for g in d["gates"]][:2] == ["current", "upcoming"]
     assert [lens["lens"] for lens in d["lenses"]] == ["Business", "Technical", "Compliance"]
     # next id continues the sequence
-    assert _post(client, headers, name="Second").json()["id"] == "TR-0020"
+    assert _post(client, headers, name="Second").json()["id"] == "TR-0016"
 
 
 def test_create_permissions(client, headers, fresh_seed):
@@ -274,9 +274,9 @@ def test_patch_closed_transition_is_409(client, headers, db, fresh_seed):
 
 def test_patch_on_seeded_row_without_intake_answers_is_not_blocked(client, headers, fresh_seed):
     res = client.patch(
-        f"{API}/transitions/TR-0002",
+        f"{API}/transitions/TR-0005",
         json={"blocker_note": "Waiting for vendor"},
-        headers=headers("U02"),
+        headers=headers("U01"),
     )
     assert res.status_code == 200, res.text
 

@@ -895,8 +895,10 @@ def test_usage_counts(client, headers, fresh_seed) -> None:
         return client.get(f"{API}/admin/usage", params={"kind": kind, "key": key}, headers=h).json()
 
     assert usage("portfolio", "GCC")["count"] >= 1
-    assert usage("role", "OR_FOCAL")["count"] == 9
-    assert usage("checklist", "AI_PLAYBOOK")["count"] == 2  # Agentic AI and Combined
+    assert usage("role", "OR_FOCAL")["count"] == 2  # U01 + the test-only U02
+    assert (
+        usage("checklist", "AI_PLAYBOOK")["count"] == 2
+    )  # the two Agentic AI transitions (TR-0001, TR-0003)
     assert usage("option", "regions:Nowhere")["count"] == 0
     assert usage("option", "severities:Critical")["count"] >= 1
 

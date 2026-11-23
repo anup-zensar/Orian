@@ -1,10 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import {
-  Accordion,
-  AccordionHeader,
-  AccordionItem,
-  AccordionPanel,
   Avatar,
   Body1,
   Button,
@@ -26,7 +22,7 @@ import {
 } from '@fluentui/react-icons';
 import { safeNext } from '../auth/safeNext';
 import { useAuth } from '../auth/useAuth';
-import { splitUsers, useUsers } from '../features/users/api';
+import { useUsers } from '../features/users/api';
 import { ErrorState } from '../components/ErrorState';
 import { LoadingState } from '../components/LoadingState';
 import type { User } from '../api/types';
@@ -199,7 +195,6 @@ export function LoginPage() {
   const [ssoNote, setSsoNote] = useState(false);
 
   if (userId) return <Navigate to={next} replace />;
-  const { main, otherFocals } = splitUsers(users.data ?? []);
 
   const pick = (id: string) => {
     login(id);
@@ -286,17 +281,7 @@ export function LoginPage() {
           </Body1>
           {users.isLoading && <LoadingState rows={3} />}
           {users.isError && <ErrorState error={users.error} />}
-          <div className={s.grid}>{main.map(renderCard)}</div>
-          {otherFocals.length > 0 && (
-            <Accordion collapsible>
-              <AccordionItem value="focals">
-                <AccordionHeader>Other OR focals ({otherFocals.length})</AccordionHeader>
-                <AccordionPanel>
-                  <div className={s.grid}>{otherFocals.map(renderCard)}</div>
-                </AccordionPanel>
-              </AccordionItem>
-            </Accordion>
-          )}
+          <div className={s.grid}>{(users.data ?? []).map(renderCard)}</div>
         </div>
       </main>
     </div>

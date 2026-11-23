@@ -33,7 +33,7 @@ scripts\dev.ps1                    # API on :8000 and web app on :5173, each in 
 ```
 
 Open `http://127.0.0.1:5173`. If port 5173 is taken by another app, use `scripts\dev.ps1 -WebPort 5174` and open that port instead.
-API docs: `http://127.0.0.1:8000/docs`. The database is created and seeded on first start (18 transitions).
+API docs: `http://127.0.0.1:8000/docs`. The database is created and seeded on first start (6 sample transitions, 8 demo users).
 Pick a user on the login page: there is no password.
 If you use a web port other than 5173, set `APP_BASE_URL=http://127.0.0.1:<port>` in `backend/.env`, otherwise links in e-mails and cards point at 5173.
 
@@ -105,12 +105,11 @@ After changing a backend response model run `make openapi` or `scripts\gen-api.p
 
 ## 2. Demo users
 
-All fictional. On the login page click a name (the eight extra OR focals U02-U09 are under a collapsed **Other OR focals** heading). To change user at any time: top-right **user menu -> Switch user -> name**.
+All fictional: one person per role, so each role is easy to try. On the login page click a name. To change user at any time: top-right **user menu -> Switch user -> name**.
 
 | Id | Name | Role | What they show in the demo |
 |---|---|---|---|
-| U01 | Asha Menon | OR focal (labelled A) | Main presenter, owner of the flagship. Starts transitions, launches the assessment, sends drafts, submits OCET and support model, records gate decisions. |
-| U02-U09 | Rahul Iyer, Neha Kulkarni, Vikram Shah, Priya Nair, Arjun Rao, Kavya Reddy, Sanjay Pillai, Divya Joshi | OR focal (labelled B to I) | Own other seeded transitions. Same rights as Asha, on their own transitions only. |
+| U01 | Asha Menon | OR focal | Main presenter, owner of every sample transition. Starts transitions, launches the assessment, sends drafts, submits OCET and support model, records gate decisions. |
 | U10 | Daniel Brooks | Project manager | Project manager on the flagship TR-0001 (and on a new transition if chosen at intake). Standby user. |
 | U11 | Mei Lin | Architect | Enters the missing OCET cost. First approver of the support model. |
 | U12 | Sofia Garcia | OLM | Approves OCET (step 2), the support model (step 2) and AtD (step 1). Receives the "Ready for AtD" request. |
@@ -118,6 +117,17 @@ All fictional. On the login page click a name (the eight extra OR focals U02-U09
 | U14 | Fatima Khan | IRM | Confirms the AI tier. Approves exception EX-01 and the second AtD step. The only IRM. |
 | U15 | Laura Evans | Leadership | Read-only portfolio view. |
 | U16 | Playbook Admin | Admin | Admin page and Demo controls (reset, fast-forward, set today; a link to the reminder engine on Orion drafts). |
+
+Sample transitions (one per stage, all owned by Asha; RAG and readiness are computed):
+
+| Id | Name | Type · portfolio | Stage | What it shows |
+|---|---|---|---|---|
+| TR-0001 | Mobility Knowledge Agent | Agentic AI · GCC | AtD | The flagship: full story (assessment, gaps, evidence, OCET, support model, AI playbook, approvals). |
+| TR-0005 | Fleet card portal upgrade | Normal · Fleets | SG0-SG2 | Early stage: scope and design. |
+| TR-0003 | Virtual SME | Agentic AI · GCC | SG3 | Build and test of a second AI solution (Red: 2 critical gaps; AI playbook, eval import). |
+| TR-0008 | Forecourt POS refresh | Infrastructure · Retail Site Systems | AtD | At risk: Red, 3 critical gaps, decision in 4 days. |
+| TR-0014 | Medallia VOC | Normal · Global Marketing | Hypercare | Live, in hypercare. |
+| TR-0011 | Card authorisation switch | Infrastructure · Retail Site Systems | AtO | Almost done: Green, ready to hand over to operations. |
 
 A role is not enough: a person must also be assigned to that role **on that transition** (`backend/app/access.py`, A-75).
 A disabled button always says why in its tooltip. Navigation is permission-aware: Orion drafts, Outbox, Leadership updates and Admin are hidden for roles without the permission. New transitions start from the button on the **Transitions** page (`/transitions/new`); when an OR focal creates one, the OR focal field is fixed to that user.

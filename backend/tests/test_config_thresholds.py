@@ -99,7 +99,7 @@ def test_changing_the_numbers_recolours_every_transition_live(client, headers, d
 def test_detail_and_register_use_the_same_thresholds(client, headers, db, fresh_seed):
     _put_thresholds(client, headers, db, red_lens_below=100, amber_lens_below=100)
     register = _rags(client, headers)
-    for tid in ("TR-0001", "TR-0002"):
+    for tid in ("TR-0001", "TR-0003"):
         detail = client.get(f"{API}/transitions/{tid}", headers=headers("U15")).json()
         assert detail["rag"] == register[tid]
 

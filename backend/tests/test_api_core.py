@@ -23,11 +23,11 @@ def test_reference_is_complete_for_a_signed_in_user(client):
     assert "EXCEPTION" in body["approval_chains"]
 
 
-def test_users_public_and_sixteen(client):
+def test_users_public_and_nine(client):
     res = client.get(f"{API}/users")
     assert res.status_code == 200
     users = res.json()
-    assert len(users) == 16
+    assert len(users) == 9  # 8 seed users + the test-only U02
     assert {u["id"] for u in users} >= {"U01", "U14", "U16"}
     assert next(u for u in users if u["id"] == "U14")["role"] == "IRM"
 
