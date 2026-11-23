@@ -235,7 +235,7 @@
           "item_id": "FW-006",
           "title": "Solution & architecture walkthrough – recording",
           "type": "Recording",
-          "url": "https://sharepoint.example/sites/orion/MKA/walkthrough.mp4",
+          "file": "files/walkthrough.wav",
           "status": "Accepted"
         },
         {
@@ -243,7 +243,7 @@
           "item_id": "FW-012",
           "title": "IAQ assessment (BIA, LRA)",
           "type": "Document",
-          "url": "https://sharepoint.example/sites/orion/MKA/IAQ.pdf",
+          "file": "files/IAQ.pdf",
           "status": "Accepted"
         },
         {
@@ -251,7 +251,7 @@
           "item_id": "S45-015",
           "title": "Prompt-injection controls design",
           "type": "Document",
-          "url": "https://sharepoint.example/sites/orion/MKA/pi-controls.docx",
+          "file": "files/pi-controls.docx",
           "status": "Submitted"
         }
       ],

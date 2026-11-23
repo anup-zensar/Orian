@@ -90,6 +90,7 @@ from app.rules.constants import (
     TO_CONFIRM,
 )
 from app.rules.synthesis import Pin, Snapshot, SynthItem, synthesize
+from app.services.mock.document_store import SHAREPOINT_BASE
 
 # The four project types of the first demo. A library item that lists all of them means "every
 # project type" and is stored as [] (so a type an Admin adds later gets it too).
@@ -685,6 +686,17 @@ def _first_critical_item_id(rows: list[TransitionItem]) -> str | None:
 # --- flagship records --------------------------------------------------------------------------
 
 
+def _seed_file(tid: str, rel: str) -> tuple[str, str]:
+    """Copy a sample evidence file (``seed/files/...``) into storage so it can be downloaded.
+    Overwrites, so re-seeding is idempotent. Returns (fake SharePoint url, storage path)."""
+    settings = get_settings()
+    name = Path(rel).name
+    target = settings.storage_dir / tid / name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes((Path(settings.seed_dir) / rel).read_bytes())
+    return f"{SHAREPOINT_BASE}/{tid}/{name}", f"{tid}/{name}"
+
+
 def _flagship_records(
     src: dict[str, Any],
     item_pk: dict[str, int],
@@ -807,6 +819,7 @@ def _flagship_records(
         reviewer = (
             IRM_USER_ID if lens_by_id[evd["item_id"]] == "Compliance" else src["or_focal_user_id"]
         )
+        url, file_path = _seed_file(tid, evd["file"])
         rows.append(
             Evidence(
                 id=evd["id"],
@@ -814,7 +827,8 @@ def _flagship_records(
                 transition_item_id=item_pk[evd["item_id"]],
                 title=evd["title"],
                 type=evd["type"],
-                url=evd["url"],
+                url=url,
+                file_path=file_path,
                 submitted_by=item.owner_user_id,
                 status=evd["status"],
                 reviewed_by=reviewer if accepted else None,

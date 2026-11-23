@@ -262,6 +262,20 @@ def test_flagship_gate_history_actions_evidence(db):
     assert evidence["EVD-003"].status == "Submitted"
 
 
+def test_seeded_evidence_files_download(client, headers):
+    """The sample files in seed/files are copied to storage, so each seeded document opens."""
+    for eid, name, magic in [
+        ("EVD-001", "walkthrough.wav", b"RIFF"),
+        ("EVD-002", "IAQ.pdf", b"%PDF"),
+        ("EVD-003", "pi-controls.docx", b"PK"),
+    ]:
+        res = client.get(f"/api/v1/evidence/{eid}/download", headers=headers())
+        assert res.status_code == 200, (eid, res.text)
+        assert res.content.startswith(magic)
+        assert res.content == (Path(get_settings().seed_dir) / "files" / name).read_bytes()
+        assert name in res.headers["content-disposition"]
+
+
 def test_flagship_eval_results_exactly_two_fail(db):
     results = {r.metric_id: r for r in db.scalars(select(EvalResult))}
     assert len(results) == 13

@@ -1,0 +1,52 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 1439 >>
+stream
+BT /F2 18 Tf 56 790 Td (IAQ assessment \(BIA, LRA\)) Tj ET
+BT /F1 11 Tf 56 758 Td (Mobility Knowledge Agent \(TR-0001\) - Agentic AI, Tier 2, GCC) Tj ET
+BT /F1 11 Tf 56 740 Td (SAMPLE - synthetic document for the Orion demo. Not a real assessment.) Tj ET
+BT /F2 13 Tf 56 714 Td (1. Business Impact Assessment \(BIA\)) Tj ET
+BT /F1 11 Tf 56 696 Td (Confidentiality: High - answers may quote internal procedures.) Tj ET
+BT /F1 11 Tf 56 678 Td (Integrity: Medium - wrong answers could mislead staff; a human checks actions.) Tj ET
+BT /F1 11 Tf 56 660 Td (Availability: Medium - staff can fall back to the knowledge base search.) Tj ET
+BT /F1 11 Tf 56 642 Td (Recovery time objective \(RTO\): 8 hours. Recovery point objective \(RPO\): 24 hours.) Tj ET
+BT /F2 13 Tf 56 616 Td (2. Legal & Regulatory Assessment \(LRA\)) Tj ET
+BT /F1 11 Tf 56 598 Td (Personal data: limited \(employee names and e-mail addresses in prompts\).) Tj ET
+BT /F1 11 Tf 56 580 Td (GDPR: privacy notice updated; prompts kept 30 days, then deleted.) Tj ET
+BT /F1 11 Tf 56 562 Td (No payment card, SOX or customer data in scope.) Tj ET
+BT /F2 13 Tf 56 536 Td (3. Data classification) Tj ET
+BT /F1 11 Tf 56 518 Td (Overall classification: Confidential. Most Confidential data is out of scope.) Tj ET
+BT /F2 13 Tf 56 492 Td (4. Outcome) Tj ET
+BT /F1 11 Tf 56 474 Td (Result: Accepted, no open findings.) Tj ET
+BT /F1 11 Tf 56 456 Td (Reviewed by: Fatima Khan \(IRM\).) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000251 00000 n 
+0000001742 00000 n 
+0000001839 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+1941
+%%EOF
