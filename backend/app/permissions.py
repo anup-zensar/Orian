@@ -41,6 +41,7 @@ class Perm(StrEnum):
     CONFIRM_TIER = "confirm_tier"
     CONFIRM_SCOPE = "confirm_scope"  # confirm scope / applicability, mark B/T items N/A
     UPDATE_BT_STATUS = "update_bt_status"
+    UPDATE_T_STATUS = "update_t_status"  # Technical items only (Architect); B/T holders also pass
     UPDATE_C_STATUS = "update_c_status"  # compliance status + design effectiveness (+ N/A for C)
     MANAGE_EVIDENCE = "manage_evidence"  # upload / link evidence
     REVIEW_EVIDENCE_BT = "review_evidence_bt"
@@ -78,8 +79,9 @@ MATRIX: dict[Perm, frozenset[Role]] = {
     Perm.PROPOSE_TIER: frozenset({R.OR_FOCAL}),
     Perm.CONFIRM_TIER: frozenset({R.IRM}),
     Perm.CONFIRM_SCOPE: frozenset({R.OR_FOCAL}),
-    Perm.UPDATE_BT_STATUS: frozenset({R.OR_FOCAL, R.PM, R.ARCHITECT, R.OLM}),
-    Perm.UPDATE_C_STATUS: frozenset({R.IRM}),
+    Perm.UPDATE_BT_STATUS: frozenset({R.OR_FOCAL, R.PM, R.OLM}),
+    Perm.UPDATE_T_STATUS: frozenset({R.ARCHITECT}),
+    Perm.UPDATE_C_STATUS: frozenset({R.IRM, R.OLM, R.OR_FOCAL}),
     Perm.MANAGE_EVIDENCE: frozenset({R.OR_FOCAL, R.PM, R.ARCHITECT, R.OLM, R.IRM}),
     Perm.REVIEW_EVIDENCE_BT: frozenset({R.OR_FOCAL}),
     Perm.REVIEW_EVIDENCE_C: frozenset({R.IRM}),
@@ -112,8 +114,9 @@ DEFAULT_DENIAL_REASONS: dict[Perm, str] = {
     Perm.PROPOSE_TIER: "Only the OR focal can propose the tier",
     Perm.CONFIRM_TIER: "Only IRM can confirm the tier",
     Perm.CONFIRM_SCOPE: "Only the OR focal can confirm scope and applicability",
-    Perm.UPDATE_BT_STATUS: "Only the OR focal, PM, Architect or OLM can update Business/Technical items",
-    Perm.UPDATE_C_STATUS: "Only IRM can set compliance status",
+    Perm.UPDATE_BT_STATUS: "Only the OR focal, PM or OLM can update Business items",
+    Perm.UPDATE_T_STATUS: "Only the Architect, PM, OLM or OR focal can update Technical items",
+    Perm.UPDATE_C_STATUS: "Only IRM, OLM or the OR focal can set compliance status",
     Perm.MANAGE_EVIDENCE: "Your role cannot upload or link evidence",
     Perm.REVIEW_EVIDENCE_BT: "Only the OR focal can accept or reject Business/Technical evidence",
     Perm.REVIEW_EVIDENCE_C: "Only IRM can accept or reject Compliance evidence",

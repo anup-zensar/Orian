@@ -173,7 +173,7 @@ def test_update_deactivate_and_delete_project_types(client, headers, fresh_seed,
     )
     assert cfg.project_type_label(db, "Normal") == "Standard" and normal["code"] == "Normal"
     before = _audit_last(db, "config:project_types").before
-    assert before["label"] == "Normal" and before["has_ai_profile"] is False
+    assert before["label"] == "Standard Transition" and before["has_ai_profile"] is False
     # a used type is deactivated, never deleted
     r = client.delete(f"{API}/admin/project-types/Normal", headers=h)
     assert r.status_code == 409 and "deactivate instead" in r.json()["detail"]
@@ -214,21 +214,21 @@ def test_update_deactivate_and_delete_project_types(client, headers, fresh_seed,
 
 def test_the_last_active_project_type_stays(client, headers, fresh_seed) -> None:
     h = _h(headers)
-    for code in ("Normal", "Infrastructure", "Agentic AI"):
+    for code in ("Normal", "Infrastructure"):
         assert (
             client.patch(
                 f"{API}/admin/project-types/{code}", json={"active": False}, headers=h
             ).status_code
             == 200
         )
-    r = client.patch(f"{API}/admin/project-types/Combined", json={"active": False}, headers=h)
+    r = client.patch(f"{API}/admin/project-types/Agentic AI", json={"active": False}, headers=h)
     assert r.status_code == 422 and "At least one project type" in r.json()["reasons"][0]
 
 
 def test_required_fields_are_one_truth_on_both_sides(client, headers, fresh_seed) -> None:
     h = _h(headers)
     assert "audience" in _type(client, headers, "Agentic AI")["required_intake_fields"]
-    # edit the FIELD side: Combined is no longer required to give an audience
+    # edit the FIELD side: refused, built-in fields follow their project types
     r = client.patch(
         f"{API}/admin/intake-fields/audience",
         json={"required_mode": "by_project_type", "required_for_project_types": ["Agentic AI"]},
@@ -237,15 +237,15 @@ def test_required_fields_are_one_truth_on_both_sides(client, headers, fresh_seed
     assert r.status_code == 422  # built-in fields are changed through their project types
     # edit the TYPE side
     r = client.patch(
-        f"{API}/admin/project-types/Combined",
+        f"{API}/admin/project-types/Infrastructure",
         json={"required_intake_fields": ["write_actions"]},
         headers=h,
     )
     assert r.status_code == 200
     fields = {f["key"]: f for f in client.get(f"{API}/admin/intake-fields", headers=h).json()}
-    assert "Combined" not in fields["audience"]["required_for_project_types"]
-    assert "Combined" in fields["write_actions"]["required_for_project_types"]
-    assert _type(client, headers, "Combined")["required_intake_fields"] == ["write_actions"]
+    assert "Infrastructure" not in fields["audience"]["required_for_project_types"]
+    assert "Infrastructure" in fields["write_actions"]["required_for_project_types"]
+    assert _type(client, headers, "Infrastructure")["required_intake_fields"] == ["write_actions"]
     assert "Agentic AI" in fields["audience"]["required_for_project_types"]
 
 
@@ -897,8 +897,8 @@ def test_usage_counts(client, headers, fresh_seed) -> None:
     assert usage("portfolio", "GCC")["count"] >= 1
     assert usage("role", "OR_FOCAL")["count"] == 2  # U01 + the test-only U02
     assert (
-        usage("checklist", "AI_PLAYBOOK")["count"] == 2
-    )  # the two Agentic AI transitions (TR-0001, TR-0003)
+        usage("checklist", "AI_PLAYBOOK")["count"] == 1
+    )  # the one project type that includes it (Agentic AI)
     assert usage("option", "regions:Nowhere")["count"] == 0
     assert usage("option", "severities:Critical")["count"] >= 1
 

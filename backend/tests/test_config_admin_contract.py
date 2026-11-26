@@ -183,7 +183,7 @@ def test_get_shapes(client, headers) -> None:
         return client.get("/api/v1/admin/" + path, headers=headers(ADMIN)).json()
 
     types = get("project-types")
-    assert [t["code"] for t in types] == ["Normal", "Infrastructure", "Agentic AI", "Combined"]
+    assert [t["code"] for t in types] == ["Normal", "Agentic AI", "Infrastructure"]
     assert sum(t["used_by"] for t in types) == 17 or all(t["used_by"] >= 0 for t in types)
 
     lists = {x["key"]: x for x in get("option-lists")}

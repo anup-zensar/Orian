@@ -36,7 +36,7 @@ def test_kpi_tiles_shape_and_filter_consistency(client, headers):
         "Active transitions",
         "Red",
         "Decisions ≤ 14 days",
-        "With critical gaps",
+        "With critical gaps/risks",
         "Compliance readiness < 70%",
     ]
     assert [k["tone"] for k in ct["kpis"]] == ["neutral", "danger", "warning", "danger", "warning"]
@@ -50,7 +50,7 @@ def test_kpi_tiles_shape_and_filter_consistency(client, headers):
 def test_kpis_follow_the_filters(client, headers):
     ct = _ct(client, headers, portfolio="Retail Site Systems")
     kpis = {k["key"]: k["value"] for k in ct["kpis"]}
-    assert kpis["active"] == 2  # TR-0008, TR-0011
+    assert kpis["active"] == 1  # TR-0008
     assert kpis["red"] == 1  # TR-0008
     assert ct["filters"]["portfolio"] == "Retail Site Systems"
 
@@ -109,7 +109,10 @@ def test_escalations_contain_every_red(client, headers):
     assert red_days == sorted(red_days)
     pos = next(e for e in esc if e["transition_id"] == "TR-0008")
     # the lowest lens is named whenever it is below 70, even with critical gaps
-    assert pos["reason"] == "3 critical gaps · Technical readiness 49% · AtD decision in 4 days"
+    assert (
+        pos["reason"]
+        == "3 critical gaps/risks · Technical readiness 49% · SG4 (AtD) decision in 4 days"
+    )
     assert pos["owner"]["id"]
     blockers = {t["id"] for t in ct["transitions"] if t["blocker_note"]}
     assert blockers <= {e["transition_id"] for e in esc}
@@ -120,7 +123,11 @@ def test_calendar(client, headers):
     cal = ct["calendar"]
     assert cal
     assert [c["date"] for c in cal] == sorted(c["date"] for c in cal)
-    labels = {"SG4_ATD": "AtD decision", "SG6_ATO": "AtO decision", "CLOSURE": "Closure"}
+    labels = {
+        "SG4_ATD": "SG4 (AtD) decision",
+        "SG6_ATO": "SG6 (AtO) decision",
+        "CLOSURE": "Closure",
+    }
     for entry in cal:
         assert entry["days"] <= 45
         assert entry["decision"] == labels[entry["gate"]]
@@ -162,7 +169,7 @@ def test_kpis_ignore_tile_filters_but_follow_the_rest(client, headers):
     gcc = _ct(client, headers, portfolio="GCC", rag="Red")
     only_gcc = _ct(client, headers, portfolio="GCC")
     assert gcc["kpis"] == only_gcc["kpis"]
-    assert {k["key"]: k["value"] for k in only_gcc["kpis"]}["active"] == 2  # TR-0001, TR-0003
+    assert {k["key"]: k["value"] for k in only_gcc["kpis"]}["active"] == 1  # TR-0001
 
 
 def test_not_launched_has_zero_readiness_and_is_not_averaged(client, headers, db, fresh_seed):

@@ -120,7 +120,7 @@ def test_required_field_cannot_be_hidden_and_retiring_drops_the_requirement(
         f"{API}/admin/intake-fields/audience", json={"visible": False}, headers=_admin(headers)
     )
     assert res.status_code == 422, res.text
-    assert "Agentic AI" in " ".join(res.json()["reasons"])
+    assert "AI Transition" in " ".join(res.json()["reasons"])
     checklist = client.get(f"{API}/admin/checklists", headers=_admin(headers)).json()[0]["code"]
     made = client.post(
         f"{API}/admin/project-types",

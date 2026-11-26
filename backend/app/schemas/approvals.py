@@ -35,7 +35,7 @@ class ApprovalRequestOut(BaseModel):
     transition_id: str
     transition_name: str
     gate: str | None  # SG4_ATD ... for AtD/AtO
-    gate_short: str | None  # "ATD" | "ATO" label for chips
+    gate_short: str | None  # e.g. "SG4 (AtD)" label for chips
     subject_id: str | None
     subject_label: str
     status: ApprovalStatus

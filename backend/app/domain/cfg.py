@@ -132,6 +132,7 @@ class IntakeFieldCfg:
     section: str
     sort_order: int
     show_on_overview: bool
+    show_in_list: bool
     filterable: bool
     form: str  # intake | ai_profile
     min: float | None
@@ -738,6 +739,7 @@ def _intake_fields(db: Session) -> list[IntakeFieldCfg]:
                     section=d.get("section", ""),
                     sort_order=int(d.get("sort_order", 0)),
                     show_on_overview=bool(d.get("show_on_overview", False)),
+                    show_in_list=bool(d.get("show_in_list", False)),
                     filterable=bool(d.get("filterable", False)),
                     form=d.get("form", "intake"),
                     min=d.get("min"),

@@ -67,7 +67,8 @@ def test_assess_readiness_card(client, headers):
     }
     msgs = _msgs(_post(client, headers, body))
     assert (
-        msgs[0]["type"] == "readiness" and msgs[0]["check"]["verdict_label"] == "Not ready for AtD"
+        msgs[0]["type"] == "readiness"
+        and msgs[0]["check"]["verdict_label"] == "Not ready for SG4 (AtD)"
     )
     bad = {
         "quick_action": "assess_gate_readiness",
@@ -160,7 +161,8 @@ def test_free_text_intents(client, headers):
     assert fallback["type"] == "text" and "Assess Gate Readiness" in fallback["text"]
     many = _msgs(_post(client, headers, {"message": "status of nonexistentthing"}))[0]
     assert "could not find" in many["text"]
-    ambiguous = _msgs(_post(client, headers, {"message": "status of card"}))[0]
+    # "tion" is in two names: Fleet telematics integration and Retail site circuit migration
+    ambiguous = _msgs(_post(client, headers, {"message": "status of tion"}))[0]
     assert "Several transitions match" in ambiguous["text"]
 
 

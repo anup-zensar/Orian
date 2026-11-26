@@ -47,8 +47,10 @@ def list_items(
       (all gates) so the UI can show "N items excluded by tier".
     * Sort: due gate order, lens order (Business, Technical, Compliance), playbook ``sort_order``.
     * Per-row ``can_edit`` / ``edit_denied_reason`` are computed for the current user: Compliance items
-      need ``Perm.UPDATE_C_STATUS`` (IRM), Business/Technical need ``Perm.UPDATE_BT_STATUS``
-      (OR focal, PM, Architect, OLM); the reason is ``DENIAL_REASONS`` of the missing permission.
+      need ``Perm.UPDATE_C_STATUS`` (IRM, OLM, OR focal), Business need ``Perm.UPDATE_BT_STATUS`` (OR focal,
+      PM, OLM), Technical need that or ``Perm.UPDATE_T_STATUS`` (Architect); the reason is
+      ``DENIAL_REASONS`` of the missing permission, or "Checklist is locked after Agreement to Operate"
+      (items of any gate stay editable until AtO is approved; ``rules.item_edit``).
     """
     from app.domain import items
 
@@ -70,7 +72,7 @@ def patch_item(
     Errors:
     * 404 item not found.
     * 403 (reason from ``DENIAL_REASONS``): status change on a Compliance item without
-      ``Perm.UPDATE_C_STATUS``; status change on a B/T item without ``Perm.UPDATE_BT_STATUS``;
+      ``Perm.UPDATE_C_STATUS``; status change on a B/T item without the lens permission above;
       ``design_effectiveness`` without ``Perm.UPDATE_C_STATUS``; ``applicability`` / N/A on a B/T item
       without ``Perm.CONFIRM_SCOPE`` (OR focal); N/A on a Compliance item without
       ``Perm.UPDATE_C_STATUS`` (IRM). Owner and note changes: ``Perm.UPDATE_BT_STATUS`` for B/T items,

@@ -128,7 +128,7 @@ async def lifespan(app_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="Orion – Operate Readiness Agent API",
+    title="Orion – Operate Readiness Intelligence & Orchestration Navigator API",
     version="0.1.0",
     description="Demo API. Every external system and AI capability is a mock behind an interface.",
     lifespan=lifespan,

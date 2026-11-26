@@ -260,7 +260,7 @@ def test_new_condition_closes_the_older_open_one_of_the_same_item(db, fresh_seed
     assert closed == ["CON-001"]
     db.expire_all()
     assert db.get(Condition, "CON-001").status == "Closed"
-    assert db.get(Condition, "CON-001").close_note == f"Re-conditioned at AtD as {new.id}"
+    assert db.get(Condition, "CON-001").close_note == f"Re-conditioned at SG4 (AtD) as {new.id}"
     events = db.scalars(
         select(AuditEvent).where(
             AuditEvent.entity == "Condition", AuditEvent.entity_id == "CON-001"

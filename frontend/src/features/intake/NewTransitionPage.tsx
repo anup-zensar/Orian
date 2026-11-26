@@ -801,10 +801,19 @@ function IntakeForm(props: {
                   </Field>
                 </div>
                 <div className={`${s.row} ${s.full}`}>
-                  <Field label="ServiceNow project ID" className={s.grow}>
+                  <Field
+                    label={
+                      <>
+                        {label('servicenow_project_id', 'Project ID')}
+                        {decor('servicenow_project_id').marker}
+                      </>
+                    }
+                    hint={hintOf(decor('servicenow_project_id').hint)}
+                    className={s.grow}
+                  >
                     <Input
                       {...bind('servicenow_project_id')}
-                      placeholder="e.g. PRJ0052210"
+                      placeholder="e.g. PRJ0041037"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();

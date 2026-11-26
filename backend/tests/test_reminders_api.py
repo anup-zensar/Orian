@@ -154,7 +154,7 @@ def test_r4_ready_for_atd_draft_is_a_proposal_only(client, headers, db, fresh_se
     (draft,) = _drafts(db, rule_id="R4")
     assert draft.status == "Draft" and draft.kind == "Approval request"
     assert draft.action == {"type": "request_approval", "gate": "SG4_ATD"}
-    assert draft.subject == "Ready for AtD - request OLM approval"
+    assert draft.subject == "Ready for SG4 (AtD) - request OLM approval"
     # The message IS the approval request: To = the OLM (first chain step), Cc = the OR focal.
     olm, focal = db.get(User, "U12"), db.get(User, "U01")
     assert draft.to == [olm.email] and draft.cc == [focal.email]

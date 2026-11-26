@@ -108,9 +108,9 @@ def test_project_types_keep_old_fields_and_gain_flags(ref) -> None:
         assert got["checklists"] == want["checklists"]
         assert got["requires_tiering"] == want.get("requires_tiering", False)
         assert got["note"] == want.get("note")
-        assert got["label"] == want["code"] and got["active"] is True
+        assert got["label"] == want["label"] and got["active"] is True
     by_code = {p["code"]: p for p in ref["project_types"]}
-    for code in ("Agentic AI", "Combined"):
+    for code in ("Agentic AI",):
         assert by_code[code]["has_ai_profile"] and by_code[code]["has_eval_metrics"]
         assert by_code[code]["required_intake_fields"] == [
             "audience",
@@ -227,7 +227,7 @@ def test_new_additive_keys(ref) -> None:
         {"value", "label", "description", "meta", "active"} <= set(o) for o in lists["regions"]
     )
     keys = [f["key"] for f in ref["intake_fields"]]
-    assert keys[:4] == ["name", "project_type", "portfolio", "region"]
+    assert keys[:4] == ["name", "servicenow_project_id", "project_type", "portfolio"]
     assert {f["key"] for f in ref["intake_fields"] if f["structural"]} == {
         "name",
         "project_type",

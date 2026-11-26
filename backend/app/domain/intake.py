@@ -381,7 +381,7 @@ def create_transition(db: Session, user: User, body: TransitionCreateIn) -> Tran
         action="Transition created",
         transition_id=t.id,
         after=audit.snapshot(t, AUDIT_FIELDS),
-        note=f"{t.project_type} / {t.portfolio} / {t.region}",
+        note=f"{cfg.project_type_label(db, t.project_type)} / {t.portfolio} / {t.region}",
     )
     return t
 
@@ -570,7 +570,10 @@ def update_transition(db: Session, user: User, t: Transition, body: TransitionUp
             t,
             user,
             action="Checklist re-assembled",
-            note=(f"{old_flavour[0]} / {old_flavour[1]} -> {t.project_type} / {t.portfolio}"),
+            note=(
+                f"{cfg.project_type_label(db, old_flavour[0])} / {old_flavour[1]} -> "
+                f"{cfg.project_type_label(db, t.project_type)} / {t.portfolio}"
+            ),
         )
 
 

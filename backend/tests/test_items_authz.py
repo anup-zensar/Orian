@@ -16,6 +16,7 @@ API = "/api/v1"
 T = "TR-0001"
 FW_068 = 68  # Business, Not started, SG6_ATO
 FW_069 = 69  # Business, Not started, SG6_ATO
+S3_019 = 141  # Technical, In progress
 S45_035 = 175  # Compliance, Not started, SG4_ATD
 
 
@@ -42,9 +43,71 @@ def test_other_focal_cannot_update_items_of_the_transition(client, headers, fres
     assert _patch(client, headers, FW_068, {"status": "In progress"}).status_code == 200
 
 
-def test_assigned_pm_and_architect_may_update_business_technical_items(client, headers, fresh_seed):
+def test_pm_edits_business_and_technical_not_compliance(client, headers, fresh_seed):
     assert _patch(client, headers, FW_068, {"note": "pm"}, user="U10").status_code == 200
-    assert _patch(client, headers, FW_068, {"note": "arch"}, user="U11").status_code == 200
+    assert _patch(client, headers, S3_019, {"note": "pm"}, user="U10").status_code == 200
+    assert _patch(client, headers, S45_035, {"status": "In review"}, user="U10").status_code == 403
+
+
+def test_architect_edits_technical_only(client, headers, fresh_seed):
+    assert _patch(client, headers, S3_019, {"note": "arch"}, user="U11").status_code == 200
+    res = _patch(client, headers, FW_068, {"note": "arch"}, user="U11")
+    assert res.status_code == 403
+    assert _patch(client, headers, S45_035, {"status": "In review"}, user="U11").status_code == 403
+
+
+def test_irm_edits_compliance_only(client, headers, fresh_seed):
+    assert _patch(client, headers, S45_035, {"status": "In review"}, user="U14").status_code == 200
+    assert _patch(client, headers, FW_068, {"note": "irm"}, user="U14").status_code == 403
+    assert _patch(client, headers, S3_019, {"note": "irm"}, user="U14").status_code == 403
+
+
+def test_olm_and_or_focal_edit_all_lenses(client, headers, fresh_seed):
+    for user in ("U12", "U01"):
+        for item in (FW_068, S3_019):
+            assert _patch(client, headers, item, {"note": user}, user=user).status_code == 200
+    assert _patch(client, headers, S45_035, {"status": "In review"}, user="U12").status_code == 200
+    assert _patch(client, headers, S45_035, {"note": "again"}, user="U01").status_code == 200
+
+
+def test_can_edit_flags_follow_the_lens_matrix(client, headers, fresh_seed):
+    def flags(user):
+        res = client.get(
+            f"{API}/transitions/{T}/items", params={"all_gates": True}, headers=headers(user)
+        )
+        rows = {r["id"]: r["can_edit"] for r in res.json()["items"]}
+        return rows[FW_068], rows[S3_019], rows[S45_035]
+
+    assert flags("U10") == (True, True, False)
+    assert flags("U11") == (False, True, False)
+    assert flags("U14") == (False, False, True)
+    assert flags("U12") == (True, True, True)
+
+
+# --- edit window (CR-03): any gate until AtO is approved, then locked ----------------------------
+def test_future_gate_items_editable_then_locked_after_ato(client, headers, db, fresh_seed):
+    # FW-068 is due at SG6_ATO while TR-0001 sits at SG4_ATD: editable now
+    assert _patch(client, headers, FW_068, {"status": "In progress"}).status_code == 200
+    db.get(Transition, T).current_gate = "CLOSURE"
+    db.commit()
+    res = _patch(client, headers, FW_068, {"status": "Complete"})
+    assert res.status_code == 409
+    assert "locked after Agreement to Operate" in res.json()["reasons"][0]
+    row = client.get(
+        f"{API}/transitions/{T}/items", params={"all_gates": True}, headers=headers()
+    ).json()["items"]
+    row = next(r for r in row if r["id"] == FW_068)
+    assert row["can_edit"] is False and "locked" in row["edit_denied_reason"]
+
+
+def test_scope_can_be_changed_after_launch_and_restored(client, headers, db, fresh_seed):
+    na = {"applicability": "Not applicable", "na_reason": "Out of scope"}
+    assert _patch(client, headers, FW_069, na).status_code == 200
+    res = _patch(client, headers, FW_069, {"applicability": "Applies"})
+    assert res.status_code == 200 and res.json()["status"] == "Not started"
+    # lens editors change applicability of their lens: the PM yes, the Architect (Technical only) no
+    assert _patch(client, headers, FW_069, na, user="U11").status_code == 403
+    assert _patch(client, headers, FW_069, na, user="U10").status_code == 200
 
 
 def test_compliance_status_only_by_the_assigned_irm(client, headers, db, fresh_seed):

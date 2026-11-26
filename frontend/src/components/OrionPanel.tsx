@@ -110,7 +110,7 @@ export function OrionPanel({ open, onClose }: { open: boolean; onClose: () => vo
             <span className={s.mark} aria-hidden>
               <Sparkle20Filled />
             </span>
-            Orion – Operate Readiness Agent
+            Orion – Operate Readiness Intelligence &amp; Orchestration Navigator
           </span>
         </DrawerHeaderTitle>
       </DrawerHeader>

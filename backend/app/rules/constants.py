@@ -20,9 +20,9 @@ GATE_SHORT: dict[str, str] = {
     "SG0": "SG0",
     "SG2": "SG0–SG2",
     "SG3": "SG3",
-    "SG4_ATD": "AtD",
+    "SG4_ATD": "SG4 (AtD)",
     "SG5_HYPERCARE": "Hypercare",
-    "SG6_ATO": "AtO",
+    "SG6_ATO": "SG6 (AtO)",
     "CLOSURE": "Closure",
 }
 DECISION_GATES: frozenset[str] = frozenset({"SG4_ATD", "SG6_ATO"})

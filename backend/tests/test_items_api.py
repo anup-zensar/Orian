@@ -138,7 +138,7 @@ def test_row_fields_conditions_and_exception(client, headers):
 def test_can_edit_by_lens(client, headers):
     pm = _row(client, headers, S45_035, user="U10")
     assert pm["can_edit"] is False
-    assert pm["edit_denied_reason"] == "Only IRM can set compliance status"
+    assert pm["edit_denied_reason"] == "Only IRM, OLM or the OR focal can set compliance status"
     assert _row(client, headers, S3_019, user="U10")["can_edit"] is True
     irm = _row(client, headers, S3_019, user="U14")
     assert irm["can_edit"] is False
@@ -193,11 +193,10 @@ def test_na_needs_reason_and_or_focal(client, headers, db, fresh_seed):
     res = _patch(client, headers, FW_068, {"status": "N/A"})
     assert res.status_code == 409
     assert any("reason" in r for r in res.json()["reasons"])
-    # PM may update B/T statuses but not mark N/A
+    # the Architect edits Technical items only: a Business item stays untouchable for them
     body = {"status": "N/A", "na_reason": "Not needed"}
-    res = _patch(client, headers, FW_068, body, user="U10")
+    res = _patch(client, headers, FW_068, body, user="U11")
     assert res.status_code == 403
-    assert res.json()["detail"] == "Only the OR focal can confirm scope and applicability"
     res = _patch(client, headers, FW_068, body)
     assert res.status_code == 200, res.text
     out = res.json()
@@ -215,10 +214,12 @@ def test_na_via_applicability_and_compliance_na_is_irm(client, headers, fresh_se
     res = _patch(client, headers, FW_069, {"applicability": "Not applicable", "na_reason": "Dup"})
     assert res.status_code == 200
     assert res.json()["status"] == "N/A"
-    # the OR focal cannot mark a Compliance item N/A
-    res = _patch(client, headers, SM_257, {"applicability": "Not applicable", "na_reason": "x"})
+    # the PM cannot mark a Compliance item N/A
+    res = _patch(
+        client, headers, SM_257, {"applicability": "Not applicable", "na_reason": "x"}, user="U10"
+    )
     assert res.status_code == 403
-    assert res.json()["detail"] == "Only IRM can set compliance status"
+    assert res.json()["detail"] == "Only IRM, OLM or the OR focal can set compliance status"
     res = _patch(client, headers, SM_257, {"status": "Not applicable"}, user="U14")
     assert res.status_code == 409
     body = {"status": "Not applicable", "na_reason": "No PII"}
@@ -255,9 +256,11 @@ def test_status_change_on_excluded_item_needs_restore(client, headers, fresh_see
 def test_compliance_is_irm_only_and_needs_design_effectiveness(client, headers, fresh_seed):
     res = _patch(client, headers, S45_035, {"status": "In review"}, user="U10")
     assert res.status_code == 403
-    assert res.json()["detail"] == "Only IRM can set compliance status"
-    assert res.json()["reasons"] == ["Only IRM can set compliance status"]
-    assert _patch(client, headers, S45_035, {"status": "In review"}).status_code == 403
+    assert res.json()["detail"] == "Only IRM, OLM or the OR focal can set compliance status"
+    assert res.json()["reasons"] == ["Only IRM, OLM or the OR focal can set compliance status"]
+    # the architect holds no compliance permission; the OR focal does (CR-03)
+    assert _patch(client, headers, S45_035, {"status": "In review"}, user="U11").status_code == 403
+    assert _patch(client, headers, S45_035, {"status": "In review"}).status_code == 200
     res = _patch(client, headers, S45_035, {"status": "Compliant"}, user="U14")
     assert res.status_code == 409
     assert any("design effectiveness" in r for r in res.json()["reasons"])
@@ -366,9 +369,10 @@ def test_bulk_owner_and_na(client, headers, db, fresh_seed):
 
     body = {"item_ids": [FW_068, SM_257, 999999, FW_069], "mark_na": {"reason": "Out of scope"}}
     data = _bulk(client, headers, body).json()
-    assert data["updated"] == [FW_068, FW_069]
+    # the OR focal also holds update_c_status, so the Compliance item can be marked N/A in bulk
+    assert data["updated"] == [FW_068, SM_257, FW_069]
     skipped = {s["id"]: s["reason"] for s in data["skipped"]}
-    assert "IRM" in skipped[SM_257] and skipped[999999] == "Item not found"
+    assert skipped == {999999: "Item not found"}
     row = _row(client, headers, FW_068)
     assert row["status"] == "N/A" and row["na_reason"] == "Out of scope"
     assert row["applicability"] == "Not applicable"

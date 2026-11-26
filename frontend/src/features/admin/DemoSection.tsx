@@ -166,7 +166,7 @@ export function DemoSection() {
               {ffResult.readiness ? ` Readiness: ${ffResult.readiness}.` : ''}
               {ffResult.r4_drafts > 0 && (
                 <div>
-                  Orion (rule R4) drafted &quot;Ready for AtD - request OLM approval&quot;.{' '}
+                  Orion (rule R4) drafted &quot;Ready for SG4 (AtD) - request OLM approval&quot;.{' '}
                   <Link to="/drafts">Open Orion drafts</Link>
                 </div>
               )}

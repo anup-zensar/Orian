@@ -19,7 +19,6 @@ from app.domain.metrics import (
     TransitionMetrics,
     compute_metrics,
     decision_phrase,
-    plural,
     reference_lists,
     to_summary,
 )
@@ -41,7 +40,11 @@ from app.schemas.control_tower import (
 )
 from app.schemas.transitions import TransitionFilters
 
-CALENDAR_GATES = {"SG4_ATD": "AtD decision", "SG6_ATO": "AtO decision", "CLOSURE": "Closure"}
+CALENDAR_GATES = {
+    "SG4_ATD": f"{GATE_SHORT['SG4_ATD']} decision",
+    "SG6_ATO": f"{GATE_SHORT['SG6_ATO']} decision",
+    "CLOSURE": "Closure",
+}
 _RAG_SEVERITY = {RED: 3, AMBER: 2, GREEN: 1, GREY: 0}
 
 TILE_FILTER_KEYS = ("status", "rag", "decision_within_days", "has_critical", "compliance_below")
@@ -86,10 +89,10 @@ def build_kpis(rows: list[TransitionMetrics]) -> list[KpiTileOut]:
         ),
         KpiTileOut(
             key="critical",
-            label="With critical gaps",
+            label="With critical gaps/risks",
             value=sum(1 for m in rows if m.critical_gaps > 0),
             tone="danger",
-            hint="At least one open critical gap",
+            hint="At least one open critical gap/risk",
             filter={"has_critical": "true"},
         ),
         KpiTileOut(
@@ -142,11 +145,12 @@ def build_regions(rows: list[TransitionMetrics], ref: dict) -> list[RegionReadin
 
 
 def escalation_reason(m: TransitionMetrics) -> str:
-    """e.g. ``3 critical gaps · AtD decision in 4 days`` or ``Compliance readiness 45%``."""
+    """e.g. ``3 critical gaps/risks · SG4 (AtD) decision in 4 days`` or ``Compliance readiness 45%``."""
     parts: list[str] = []
     lens, pct = m.lowest_lens()
     if m.critical_gaps > 0:
-        parts.append(plural(m.critical_gaps, "critical gap"))
+        n = m.critical_gaps
+        parts.append(f"{n} critical gap/risk" if n == 1 else f"{n} critical gaps/risks")
     if not m.launched:
         parts.append("Assessment not launched")
     elif pct < 70:

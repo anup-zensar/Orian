@@ -282,7 +282,7 @@ export function ReadinessCard(props: {
 
       {r.critical_gaps.length > 0 && (
         <div className={s.group}>
-          <Subtitle2 as="h4">Critical gaps</Subtitle2>
+          <Subtitle2 as="h4">Critical gaps/risks</Subtitle2>
           <ul className={s.list}>
             {r.critical_gaps.map((i) => (
               <li key={i.item_id}>

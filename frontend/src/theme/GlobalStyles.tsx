@@ -26,29 +26,37 @@ const controls = [
 /** Site-wide static CSS. Fluent v9 Field is a one-column grid and its controls keep
  * min-width:auto, so a long option made them overflow into the next column. Every control inside
  * a Field now shrinks (min-width:0) and never exceeds its cell. */
-const useStaticStyles = makeStaticStyles({
-  '*, *::before, *::after': { boxSizing: 'border-box' },
-  'html, body, #root': { margin: 0, padding: 0 },
-  body: { backgroundColor: palette.canvas, overflowX: 'hidden' },
-  'img, video': { maxWidth: '100%' },
-  [f]: { minWidth: 0, gridTemplateColumns: 'minmax(0, 1fr)' },
-  [controls]: { minWidth: 0, maxWidth: '100%' },
-  [`${f} .${selectClassNames.select}`]: { minWidth: 0, textOverflow: 'ellipsis' },
-  [`${f} .${inputClassNames.input}, ${f} .${comboboxClassNames.input}`]: { minWidth: 0 },
-  [`${f} .${dropdownClassNames.button}`]: { minWidth: 0, overflow: 'hidden' },
-  [`${f} .${textareaClassNames.textarea}`]: { minWidth: 0 },
-  // Selected tab: strong text + a 3 px yellow indicator (the state is also shown by weight).
-  [`.${tabClassNames.root}[aria-selected='true']::after`]: {
-    backgroundColor: `${palette.yellow} !important`,
+const useStaticStyles = makeStaticStyles([
+  {
+    '*, *::before, *::after': { boxSizing: 'border-box' },
+    'html, body, #root': { margin: 0, padding: 0 },
+    body: { backgroundColor: palette.canvas, overflowX: 'hidden' },
+    'img, video': { maxWidth: '100%' },
+    [f]: { minWidth: 0, gridTemplateColumns: 'minmax(0, 1fr)' },
+    [controls]: { minWidth: 0, maxWidth: '100%' },
+    [`${f} .${selectClassNames.select}`]: { minWidth: 0, textOverflow: 'ellipsis' },
+    [`${f} .${inputClassNames.input}, ${f} .${comboboxClassNames.input}`]: { minWidth: 0 },
+    [`${f} .${dropdownClassNames.button}`]: { minWidth: 0, overflow: 'hidden' },
+    [`${f} .${textareaClassNames.textarea}`]: { minWidth: 0 },
+    // Selected tab: strong text + a 3 px yellow indicator (the state is also shown by weight).
+    [`.${tabClassNames.root}[aria-selected='true']::after`]: {
+      backgroundColor: `${palette.yellow} !important`,
+    },
+    [`[aria-orientation='horizontal'] > .${tabClassNames.root}[aria-selected='true']::after`]: {
+      height: '3px !important',
+    },
+    [`[aria-orientation='vertical'] > .${tabClassNames.root}[aria-selected='true']::after`]: {
+      width: '3px !important',
+    },
+    [`.${tabClassNames.root}[aria-selected='true']`]: { fontWeight: 600 },
   },
-  [`[aria-orientation='horizontal'] > .${tabClassNames.root}[aria-selected='true']::after`]: {
-    height: '3px !important',
-  },
-  [`[aria-orientation='vertical'] > .${tabClassNames.root}[aria-selected='true']::after`]: {
-    width: '3px !important',
-  },
-  [`.${tabClassNames.root}[aria-selected='true']`]: { fontWeight: 600 },
-});
+  // Print / "Save as PDF" of the register: page content only, no navigation, top bar or filters.
+  // A plain CSS string: makeStaticStyles objects cannot nest @media.
+  `@media print {
+    nav, header, aside, [role=search], [role=complementary], .no-print { display: none !important; }
+    html, body, #root, #root div { height: auto !important; overflow: visible !important; }
+  }`,
+]);
 
 /** Renders nothing; mounts the static styles once, inside the FluentProvider. */
 export function GlobalStyles() {

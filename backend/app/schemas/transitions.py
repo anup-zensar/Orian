@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -17,6 +18,10 @@ class TransitionSummaryOut(BaseModel):
     portfolio: str
     region: str
     market: str
+    servicenow_project_id: str | None = None  # ServiceNow project number, e.g. PRJ0041037
+    custom_fields: dict[str, Any] = (
+        {}
+    )  # "Additional details" values; the list shows those flagged show_in_list
     project_type: str
     current_gate: str  # gate code, e.g. SG4_ATD
     current_gate_short: str  # e.g. AtD
@@ -49,7 +54,7 @@ class TransitionFilters(BaseModel):
     type: str | None = Field(default=None, description="Project type, e.g. Agentic AI")
     q: str | None = Field(
         default=None,
-        description="Case-insensitive search in transition id, name, market and OR focal name",
+        description="Case-insensitive search in transition id, name, market, ServiceNow project ID and OR focal name",
     )
     decision_within_days: int | None = Field(
         default=None, ge=0, description="Next decision date between today and today + N days"

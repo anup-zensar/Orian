@@ -320,7 +320,7 @@ _STATUS_RE = re.compile(
 )
 _BLOCKING_RE = re.compile(
     r"^what(?:'s| is| are)?\s+(?:currently\s+)?(?:blocking|stopping|stops|blocks|holding up)\s+"
-    r"(?:(?P<gate>[a-z0-9_ -]{2,14}?)\s+)?(?:for|on|of|in)\s+(?P<q>.+?)\s*[?.!]*$",
+    r"(?:(?P<gate>[a-z0-9_ ()-]{2,20}?)\s+)?(?:for|on|of|in)\s+(?P<q>.+?)\s*[?.!]*$",
     re.IGNORECASE,
 )
 _OWNER_RE = re.compile(
@@ -1235,7 +1235,9 @@ def _find_items(clause: str) -> list[str]:
 def _find_gate(tokens: list[str], vocab: Mapping[str, Any]) -> str | None:
     cands = []
     for g in vocab.get("gates", []):
-        phrases = [g["code"], g.get("short", "")]
+        short = g.get("short", "")
+        # "SG4 (AtD)" is also known as "AtD" (the text inside the brackets)
+        phrases = [g["code"], short, *re.findall(r"\(([^)]+)\)", short)]
         cands.append({"value": g["code"], "label": g["code"], "phrases": [p for p in phrases if p]})
     pick = _pick(list(tokens), cands)
     return pick["value"] if pick["state"] == "found" else None

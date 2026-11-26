@@ -328,6 +328,7 @@ def intake_fields_out(db: Session) -> list[dto.IntakeFieldAdminOut]:
                 section=f.section,
                 sort_order=f.sort_order,
                 show_on_overview=f.show_on_overview,
+                show_in_list=f.show_in_list,
                 filterable=f.filterable,
                 form=f.form,  # type: ignore[arg-type]
                 min=f.min,

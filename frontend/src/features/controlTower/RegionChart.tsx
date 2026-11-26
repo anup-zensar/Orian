@@ -1,5 +1,5 @@
-// Readiness by region: average overall readiness per region (spec 8.2). Regions with no
-// transitions are drawn as 0 and listed in a note.
+// Readiness by region: average overall readiness per region (spec 8.2). Every configured region is
+// listed; one without transitions is labelled "No transitions".
 import { Caption1, tokens } from '@fluentui/react-components';
 import {
   Bar,
@@ -18,6 +18,7 @@ export function RegionChart({ data }: { data: RegionReadiness[] }) {
     region: r.region,
     readiness: r.average_readiness ?? 0,
     transitions: r.transitions,
+    label: r.transitions === 0 ? 'No transitions' : `${r.average_readiness ?? 0}%`,
   }));
   const empty = data.filter((r) => r.transitions === 0).map((r) => r.region);
   const summary = data
@@ -55,19 +56,12 @@ export function RegionChart({ data }: { data: RegionReadiness[] }) {
               radius={[3, 3, 0, 0]}
               isAnimationActive={false}
             >
-              <LabelList
-                dataKey="readiness"
-                position="top"
-                formatter={(v) => `${v}%`}
-                fontSize={12}
-              />
+              <LabelList dataKey="label" position="top" fontSize={11} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
-      {empty.length > 0 && (
-        <Caption1>No transitions in: {empty.join(', ')} (shown as 0%).</Caption1>
-      )}
+      {empty.length > 0 && <Caption1>No transitions in: {empty.join(', ')}.</Caption1>}
     </>
   );
 }

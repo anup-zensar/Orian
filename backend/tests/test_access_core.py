@@ -71,10 +71,11 @@ def test_multi_role_message_lists_the_assigned_people(db):
     reason = transition_denial(db, _user(db, "U02"), _transition(), Perm.UPDATE_BT_STATUS)
     assert reason is not None
     assert reason.startswith("Only the people assigned to TR-9001 (Asha Menon (OR focal)")
-    assert "(project manager)" in reason and "(architect)" in reason and "(OLM)" in reason
+    assert "(project manager)" in reason and "(OLM)" in reason
+    assert "(architect)" not in reason  # CR-03: the Architect holds update_t_status instead
     assert reason.endswith("can update Business/Technical items")
     # every assigned qualifying role passes
-    for uid in ("U01", "U10", "U11", "U12"):
+    for uid in ("U01", "U10", "U12"):
         assert transition_denial(db, _user(db, uid), _transition(), Perm.UPDATE_BT_STATUS) is None
 
 

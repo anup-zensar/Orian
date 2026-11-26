@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app import clock
 from app.access import ensure_transition_role
 from app.config import get_settings
-from app.domain import audit
+from app.domain import audit, cfg
 from app.domain.records import get_transition
 from app.errors import BadRequest, Conflict
 from app.models import EvalResult, EvalTarget, TierAssessment, Transition, User
@@ -45,7 +45,9 @@ def ensure_ai(db: Session, transition: Transition) -> None:
     if not has_eval_metrics(db, transition):
         raise Conflict(
             "Eval metrics apply to AI flavours only",
-            [f"{transition.id} is a {transition.project_type} transition"],
+            [
+                f"{transition.id} is a {cfg.project_type_label(db, transition.project_type)} transition"
+            ],
         )
 
 

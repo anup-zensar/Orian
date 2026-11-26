@@ -45,7 +45,7 @@
   "project_types": [
     {
       "code": "Normal",
-      "label": "Normal",
+      "label": "Standard Transition",
       "checklists": [
         "FRAMEWORK"
       ],
@@ -56,62 +56,57 @@
       "has_ai_profile": false,
       "has_eval_metrics": false,
       "required_intake_fields": [],
-      "synonyms": []
+      "synonyms": [
+        "Standard",
+        "Standard transition",
+        "Normal"
+      ]
+    },
+    {
+      "code": "Agentic AI",
+      "label": "AI Transition",
+      "checklists": [
+        "FRAMEWORK",
+        "AI_PLAYBOOK"
+      ],
+      "requires_tiering": true,
+      "note": null,
+      "description": "",
+      "sort_order": 1,
+      "has_ai_profile": true,
+      "has_eval_metrics": true,
+      "required_intake_fields": [
+        "audience",
+        "write_actions",
+        "sensitive_data"
+      ],
+      "synonyms": [
+        "AI transition",
+        "Agentic AI",
+        "Agentic",
+        "Gen AI",
+        "GenAI",
+        "Generative AI",
+        "Combined"
+      ]
     },
     {
       "code": "Infrastructure",
-      "label": "Infrastructure",
+      "label": "Other",
       "checklists": [
         "FRAMEWORK"
       ],
       "requires_tiering": false,
-      "note": "Appears in client sample data; behaves like Normal – confirm",
-      "description": "",
-      "sort_order": 1,
+      "note": null,
+      "description": "Neither a standard nor an AI transition. Uses the standard checklist until the client confirms its scope.",
+      "sort_order": 2,
       "has_ai_profile": false,
       "has_eval_metrics": false,
       "required_intake_fields": [],
-      "synonyms": []
-    },
-    {
-      "code": "Agentic AI",
-      "label": "Agentic AI",
-      "checklists": [
-        "FRAMEWORK",
-        "AI_PLAYBOOK"
-      ],
-      "requires_tiering": true,
-      "note": null,
-      "description": "",
-      "sort_order": 2,
-      "has_ai_profile": true,
-      "has_eval_metrics": true,
-      "required_intake_fields": [
-        "audience",
-        "write_actions",
-        "sensitive_data"
-      ],
-      "synonyms": []
-    },
-    {
-      "code": "Combined",
-      "label": "Combined",
-      "checklists": [
-        "FRAMEWORK",
-        "AI_PLAYBOOK"
-      ],
-      "requires_tiering": true,
-      "note": null,
-      "description": "",
-      "sort_order": 3,
-      "has_ai_profile": true,
-      "has_eval_metrics": true,
-      "required_intake_fields": [
-        "audience",
-        "write_actions",
-        "sensitive_data"
-      ],
-      "synonyms": []
+      "synonyms": [
+        "Other",
+        "Infrastructure"
+      ]
     }
   ],
   "portfolios": [
@@ -1778,6 +1773,88 @@
         }
       ],
       "is_builtin": true
+    },
+    {
+      "key": "project_statuses",
+      "label": "Project status",
+      "description": "ServiceNow project phases.",
+      "group": "Intake",
+      "structural": false,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "Initiating",
+          "label": "Initiating",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Planning",
+          "label": "Planning",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Executing",
+          "label": "Executing",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Operating",
+          "label": "Operating",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Closing",
+          "label": "Closing",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": false
+    },
+    {
+      "key": "application_tiers",
+      "label": "Application tier",
+      "description": "Service tier of the application.",
+      "group": "Intake",
+      "structural": false,
+      "meta_fields": [],
+      "items": [
+        {
+          "value": "Super Prime",
+          "label": "Super Prime",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Prime",
+          "label": "Prime",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Essential",
+          "label": "Essential",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Maintenance",
+          "label": "Maintenance",
+          "description": "",
+          "meta": {}
+        },
+        {
+          "value": "Consumption",
+          "label": "Consumption",
+          "description": "",
+          "meta": {}
+        }
+      ],
+      "is_builtin": false
     }
   ],
   "intake_fields": [
@@ -1805,6 +1882,29 @@
       "sort_order": 0
     },
     {
+      "key": "servicenow_project_id",
+      "label": "Project ID",
+      "help": "ServiceNow project number, e.g. PRJ0041037",
+      "type": "text",
+      "option_list": null,
+      "visible": true,
+      "required_mode": "never",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": 20,
+      "builtin": true,
+      "structural": false,
+      "active": true,
+      "sort_order": 1
+    },
+    {
       "key": "project_type",
       "label": "Project type",
       "help": "",
@@ -1825,7 +1925,7 @@
       "builtin": true,
       "structural": true,
       "active": true,
-      "sort_order": 1
+      "sort_order": 2
     },
     {
       "key": "portfolio",
@@ -1848,7 +1948,7 @@
       "builtin": true,
       "structural": true,
       "active": true,
-      "sort_order": 2
+      "sort_order": 3
     },
     {
       "key": "region",
@@ -1871,7 +1971,7 @@
       "builtin": true,
       "structural": true,
       "active": true,
-      "sort_order": 3
+      "sort_order": 4
     },
     {
       "key": "market",
@@ -1894,7 +1994,7 @@
       "builtin": true,
       "structural": false,
       "active": true,
-      "sort_order": 4
+      "sort_order": 5
     },
     {
       "key": "audience",
@@ -1905,34 +2005,7 @@
       "visible": true,
       "required_mode": "by_project_type",
       "required_for_project_types": [
-        "Agentic AI",
-        "Combined"
-      ],
-      "applies_to_project_types": [],
-      "applies_to_portfolios": [],
-      "section": "Transition details",
-      "show_on_overview": false,
-      "filterable": false,
-      "form": "intake",
-      "min": null,
-      "max": null,
-      "max_length": null,
-      "builtin": true,
-      "structural": false,
-      "active": true,
-      "sort_order": 5
-    },
-    {
-      "key": "write_actions",
-      "label": "Write actions",
-      "help": "",
-      "type": "select",
-      "option_list": "write_actions",
-      "visible": true,
-      "required_mode": "by_project_type",
-      "required_for_project_types": [
-        "Agentic AI",
-        "Combined"
+        "Agentic AI"
       ],
       "applies_to_project_types": [],
       "applies_to_portfolios": [],
@@ -1949,16 +2022,15 @@
       "sort_order": 6
     },
     {
-      "key": "sensitive_data",
-      "label": "Sensitive data",
+      "key": "write_actions",
+      "label": "Write actions",
       "help": "",
       "type": "select",
-      "option_list": "sensitive_data",
+      "option_list": "write_actions",
       "visible": true,
       "required_mode": "by_project_type",
       "required_for_project_types": [
-        "Agentic AI",
-        "Combined"
+        "Agentic AI"
       ],
       "applies_to_project_types": [],
       "applies_to_portfolios": [],
@@ -1973,6 +2045,31 @@
       "structural": false,
       "active": true,
       "sort_order": 7
+    },
+    {
+      "key": "sensitive_data",
+      "label": "Sensitive data",
+      "help": "",
+      "type": "select",
+      "option_list": "sensitive_data",
+      "visible": true,
+      "required_mode": "by_project_type",
+      "required_for_project_types": [
+        "Agentic AI"
+      ],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": false,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": true,
+      "structural": false,
+      "active": true,
+      "sort_order": 8
     },
     {
       "key": "target_gate",
@@ -1995,7 +2092,7 @@
       "builtin": true,
       "structural": false,
       "active": true,
-      "sort_order": 8
+      "sort_order": 9
     },
     {
       "key": "investment_type",
@@ -2018,7 +2115,7 @@
       "builtin": true,
       "structural": false,
       "active": true,
-      "sort_order": 9
+      "sort_order": 10
     },
     {
       "key": "delivery_method",
@@ -2041,7 +2138,7 @@
       "builtin": true,
       "structural": false,
       "active": true,
-      "sort_order": 10
+      "sort_order": 11
     },
     {
       "key": "description",
@@ -2064,7 +2161,7 @@
       "builtin": true,
       "structural": false,
       "active": true,
-      "sort_order": 11
+      "sort_order": 12
     },
     {
       "key": "or_focal_user_id",
@@ -2087,7 +2184,7 @@
       "builtin": true,
       "structural": true,
       "active": true,
-      "sort_order": 12
+      "sort_order": 13
     },
     {
       "key": "pm_user_id",
@@ -2110,7 +2207,7 @@
       "builtin": true,
       "structural": false,
       "active": true,
-      "sort_order": 13
+      "sort_order": 14
     },
     {
       "key": "architect_user_id",
@@ -2133,7 +2230,7 @@
       "builtin": true,
       "structural": false,
       "active": true,
-      "sort_order": 14
+      "sort_order": 15
     },
     {
       "key": "olm_user_id",
@@ -2156,7 +2253,7 @@
       "builtin": true,
       "structural": false,
       "active": true,
-      "sort_order": 15
+      "sort_order": 16
     },
     {
       "key": "irm_user_id",
@@ -2179,7 +2276,7 @@
       "builtin": true,
       "structural": false,
       "active": true,
-      "sort_order": 16
+      "sort_order": 17
     },
     {
       "key": "next_decision_date",
@@ -2202,7 +2299,103 @@
       "builtin": true,
       "structural": false,
       "active": true,
-      "sort_order": 17
+      "sort_order": 18
+    },
+    {
+      "key": "project_status",
+      "label": "Project status",
+      "help": "ServiceNow project phase",
+      "type": "select",
+      "option_list": "project_statuses",
+      "visible": true,
+      "required_mode": "never",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": true,
+      "filterable": true,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": false,
+      "structural": false,
+      "active": true,
+      "sort_order": 19,
+      "show_in_list": true
+    },
+    {
+      "key": "application_tier",
+      "label": "Application tier",
+      "help": "Service tier of the application",
+      "type": "select",
+      "option_list": "application_tiers",
+      "visible": true,
+      "required_mode": "never",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": true,
+      "filterable": true,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": false,
+      "structural": false,
+      "active": true,
+      "sort_order": 20,
+      "show_in_list": true
+    },
+    {
+      "key": "atd_date",
+      "label": "AtD date (SG4)",
+      "help": "Planned date for Agreement to Deploy",
+      "type": "date",
+      "option_list": null,
+      "visible": true,
+      "required_mode": "never",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": true,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": false,
+      "structural": false,
+      "active": true,
+      "sort_order": 21,
+      "show_in_list": true
+    },
+    {
+      "key": "ato_date",
+      "label": "AtO date (SG6)",
+      "help": "Planned date for Agreement to Operate",
+      "type": "date",
+      "option_list": null,
+      "visible": true,
+      "required_mode": "never",
+      "required_for_project_types": [],
+      "applies_to_project_types": [],
+      "applies_to_portfolios": [],
+      "section": "Transition details",
+      "show_on_overview": true,
+      "filterable": false,
+      "form": "intake",
+      "min": null,
+      "max": null,
+      "max_length": null,
+      "builtin": false,
+      "structural": false,
+      "active": true,
+      "sort_order": 22,
+      "show_in_list": true
     }
   ],
   "roles": [
@@ -2273,7 +2466,7 @@
     },
     {
       "code": "IRM",
-      "label": "IRM (Compliance)",
+      "label": "ERS focal (Compliance)",
       "short_label": "IRM",
       "phrase_label": "IRM",
       "description": "",
@@ -2337,13 +2530,17 @@
       "OR_FOCAL"
     ],
     "update_bt_status": [
-      "ARCHITECT",
       "OLM",
       "OR_FOCAL",
       "PM"
     ],
+    "update_t_status": [
+      "ARCHITECT"
+    ],
     "update_c_status": [
-      "IRM"
+      "IRM",
+      "OLM",
+      "OR_FOCAL"
     ],
     "manage_evidence": [
       "ARCHITECT",
@@ -2476,6 +2673,11 @@
       "description": "",
       "area": "Checklist"
     },
+    "update_t_status": {
+      "label": "Update Technical items only",
+      "description": "For roles that work on Technical items only (Architect).",
+      "area": "Checklist"
+    },
     "update_c_status": {
       "label": "Set compliance status",
       "description": "",
@@ -2596,13 +2798,14 @@
     "view": "You do not have access to Orion",
     "create_transition": "Only an OR focal, PM or Admin can create a transition",
     "propose_tier": "Only the OR focal can propose the tier",
-    "confirm_tier": "Only IRM can confirm the tier",
+    "confirm_tier": "Only the ERS focal can confirm the tier",
     "confirm_scope": "Only the OR focal can confirm scope and applicability",
-    "update_bt_status": "Only the OR focal, PM, Architect or OLM can update Business/Technical items",
-    "update_c_status": "Only IRM can set compliance status",
+    "update_bt_status": "Only the OR focal, PM or OLM can update Business items",
+    "update_t_status": "Only the Architect, PM, OLM or OR focal can update Technical items",
+    "update_c_status": "Only the ERS focal, OLM or the OR focal can set compliance status",
     "manage_evidence": "Your role cannot upload or link evidence",
     "review_evidence_bt": "Only the OR focal can accept or reject Business/Technical evidence",
-    "review_evidence_c": "Only IRM can accept or reject Compliance evidence",
+    "review_evidence_c": "Only the ERS focal can accept or reject Compliance evidence",
     "manage_actions": "Your role cannot create or close actions",
     "record_stage_review": "Only the OR focal can record stage reviews",
     "record_gate_decision": "Only the OR focal can record gate decisions",
@@ -2621,7 +2824,7 @@
     "run_reminders": "Only the OR focal or Admin can run the reminder engine",
     "edit_transition": "Only the OR focal of the transition or an Admin can edit it",
     "view_all_approvals": "Only the OR focal or Admin can see all approvals",
-    "see_mock_approvals": "Only IRM can see the mocked approval steps",
+    "see_mock_approvals": "Only the ERS focal can see the mocked approval steps",
     "see_all_transitions": "Only Leadership sees the whole portfolio on the dashboard"
   },
   "tier_questions": [

@@ -79,10 +79,12 @@ def test_leadership_dashboard(client, headers):
         "Telecoms",
         "Retail Site Systems",
     ]
-    assert sum(t["transitions"] for t in tiles) == 6
-    retail = tiles[-1]  # TR-0008 (Red) and TR-0011 (Green)
-    assert retail["red"] == 1 and retail["transitions"] == 2
-    assert retail["red"] + retail["amber"] + retail["green"] + retail["grey"] == 2
+    assert [t["transitions"] for t in tiles] == [
+        1
+    ] * 6  # one sample transition per portfolio (A-109)
+    retail = tiles[-1]  # TR-0008 (Red)
+    assert retail["red"] == 1 and retail["transitions"] == 1
+    assert retail["red"] + retail["amber"] + retail["green"] + retail["grey"] == 1
     kpis = _kpis(d)
     assert list(kpis) == ["active", "red", "decisions_14d", "critical"]
     assert kpis["red"]["link"] == "/control-tower?rag=Red"
@@ -151,7 +153,7 @@ def test_dashboard_excludes_not_launched_from_portfolio_averages(client, headers
     from app.models import Transition, TransitionItem
 
     t = db.get(Transition, "TR-0003")
-    portfolio = t.portfolio
+    t.portfolio = portfolio = "GCC"  # share a portfolio with the launched TR-0001
     db.execute(delete(TransitionItem).where(TransitionItem.transition_id == "TR-0003"))
     t.assessment_launched_at = None
     db.commit()

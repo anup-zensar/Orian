@@ -6,6 +6,7 @@ from __future__ import annotations
 import io
 import zipfile
 
+import pytest
 from sqlalchemy import func, select
 
 from app.domain import cfg, nl_intake
@@ -731,3 +732,45 @@ def test_live_output_is_validated_by_nl_intake(client, db, headers, monkeypatch,
     monkeypatch.setattr(orion_chat, "get_ai_service", lambda: HostileCommands())
     msgs = _chat(client, headers, "do something")
     assert _proposals(msgs) == []
+
+
+# --- CR-03: project type words ------------------------------------------------------------------
+_AI = (
+    "New transition called EV charging assistant. Portfolio eMobility. {kind}, Europe, External. "
+    "Sensitive data: Personal sensitive. Write actions: Yes. Architect Mei, OLM Sofia, OR focal Asha, "
+    "PM Daniel. Go live 15 April 2027."
+)
+_STD = (
+    "New transition called Fleet driver rewards. Portfolio Fleets. {kind}, Europe, External. "
+    "Architect Mei, OLM Sofia, OR focal Asha, PM Daniel. Go live 1 June 2027."
+)
+
+
+@pytest.mark.parametrize(
+    "template, kind, code, name, portfolio",
+    [
+        (_AI, "Agentic AI", "Agentic AI", "EV charging assistant", "eMobility"),
+        (_AI, "AI Transition", "Agentic AI", "EV charging assistant", "eMobility"),
+        (_AI, "Combined", "Agentic AI", "EV charging assistant", "eMobility"),
+        (_STD, "Standard transition", "Normal", "Fleet driver rewards", "Fleets"),
+        (_STD, "Normal", "Normal", "Fleet driver rewards", "Fleets"),
+        (_STD, "Other", "Infrastructure", "Fleet driver rewards", "Fleets"),
+    ],
+)
+def test_extract_project_type_words(client, headers, template, kind, code, name, portfolio):
+    res = _extract(client, headers, text=template.format(kind=kind))
+    assert res.status_code == 200, res.text
+    (proposal,) = _proposals(res.json()["messages"])
+    prefill = proposal["payload"]["prefill"]
+    assert prefill["project_type"] == code
+    assert prefill["name"] == name and prefill["portfolio"] == portfolio
+    assert prefill["region"].startswith("Europe")
+    assert {
+        prefill[k] for k in ("architect_user_id", "olm_user_id", "or_focal_user_id", "pm_user_id")
+    } == {
+        "U11",
+        "U12",
+        "U01",
+        "U10",
+    }
+    assert prefill["next_decision_date"].startswith("2027-")

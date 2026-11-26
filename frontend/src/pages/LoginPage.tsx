@@ -18,15 +18,15 @@ import {
   PersonKey20Regular,
   ShieldCheckmark20Regular,
   Sparkle20Filled,
-  Sparkle24Filled,
 } from '@fluentui/react-icons';
 import { safeNext } from '../auth/safeNext';
 import { useAuth } from '../auth/useAuth';
+import { OrionLogo } from '../components/OrionLogo';
 import { useUsers } from '../features/users/api';
 import { ErrorState } from '../components/ErrorState';
 import { LoadingState } from '../components/LoadingState';
 import type { User } from '../api/types';
-import { ai, cardRadius, cardShadow, palette } from '../theme/orionTheme';
+import { cardRadius, cardShadow, palette } from '../theme/orionTheme';
 
 const useStyles = makeStyles({
   page: {
@@ -50,15 +50,6 @@ const useStyles = makeStyles({
     backgroundColor: palette.yellow,
     color: palette.onYellow,
     '@media (max-width: 860px)': { flex: '0 0 auto', maxWidth: 'none', padding: '28px 24px' },
-  },
-  mark: {
-    width: '44px',
-    height: '44px',
-    borderRadius: '50%',
-    display: 'grid',
-    placeItems: 'center',
-    backgroundColor: ai.strong,
-    color: tokens.colorNeutralForegroundInverted,
   },
   title: { margin: `${tokens.spacingVerticalL} 0 0`, lineHeight: 1.1 },
   wordmark: { display: 'block', fontSize: '48px', fontWeight: 700, letterSpacing: '-0.5px' },
@@ -224,13 +215,11 @@ export function LoginPage() {
     <div className={s.page}>
       <aside className={s.brand}>
         <div>
-          <div className={s.mark} aria-hidden>
-            <Sparkle24Filled />
-          </div>
+          <OrionLogo size={56} />
           <h1 className={s.title}>
             <span className={s.wordmark}>Orion</span>
             <span className={s.srOnly}> – </span>
-            <span className={s.tagline}>Operate Readiness Agent</span>
+            <span className={s.tagline}>Operate Readiness Intelligence &amp; Orchestration Navigator</span>
           </h1>
           <p className={s.lead}>
             One place to run every transition to operations: readiness, gates, approvals and the

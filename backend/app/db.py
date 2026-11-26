@@ -21,7 +21,7 @@ logger = logging.getLogger("orion.db")
 # Bump on EVERY model change (new table / column). Version 1 = M1-M9 + CR-02; 2 = CR-01 configuration
 # tables and columns; 3 = CR-01 simplification (no custom roles or tier rules). The demo database is
 # rebuilt and re-seeded when it differs (ensure_schema_version).
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 SCHEMA_VERSION_KEY = "schema_version"  # app_settings key, written LAST by the seed loader
 
 

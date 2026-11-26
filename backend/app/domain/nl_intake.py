@@ -475,7 +475,7 @@ FIELD_ORDER = (
     "next_decision_date",
 )
 FIELD_LABEL = {
-    "servicenow_project_id": "ServiceNow project ID",
+    "servicenow_project_id": "Project ID",
     "sites": "Sites",
     **{field: label for field, (_role, label) in ROLE_FIELDS.items()},
 }
@@ -1792,7 +1792,9 @@ def intent_catalog_for(db: Session, user: User) -> IntentCatalogOut:
         allowed, reason = True, None
         if permission:
             perm = Perm(permission)
-            allowed = has_perm(user.role, perm)
+            allowed = has_perm(user.role, perm) or (
+                perm is Perm.UPDATE_BT_STATUS and has_perm(user.role, Perm.UPDATE_T_STATUS)
+            )  # the Architect may propose Technical item updates
             reason = None if allowed else DENIAL_REASONS[perm]
         rows.append(
             IntentSpecOut(

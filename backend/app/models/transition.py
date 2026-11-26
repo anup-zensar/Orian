@@ -34,7 +34,7 @@ class Transition(TimestampMixin, Base):
     market: Mapped[str] = mapped_column(String(120), default="")
     project_type: Mapped[str] = mapped_column(
         String(40)
-    )  # Normal | Infrastructure | Agentic AI | Combined
+    )  # Normal | Infrastructure | Agentic AI (config project_types; labels differ)
     investment_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
     delivery_method: Mapped[str | None] = mapped_column(String(30), nullable=True)
     audience: Mapped[str | None] = mapped_column(String(40), nullable=True)
@@ -91,7 +91,7 @@ class TierAssessment(TimestampMixin, Base):
 
 
 class AIProfile(TimestampMixin, Base):
-    """AI profile questionnaire (Agentic AI / Combined only), spec §6 / §8.5 step 3."""
+    """AI profile questionnaire (AI Transition = Agentic AI only), spec §6 / §8.5 step 3."""
 
     __tablename__ = "ai_profiles"
 

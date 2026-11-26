@@ -79,6 +79,17 @@ export function FormFieldsPanel() {
               { header: 'Type', render: (f) => typeText(f.type) },
               { header: 'Required', render: requiredText },
               {
+                header: 'Shown in',
+                render: (f) =>
+                  [
+                    f.show_on_overview && 'Overview',
+                    f.show_in_list && 'List column',
+                    f.filterable && 'Filter',
+                  ]
+                    .filter(Boolean)
+                    .join(', ') || '-',
+              },
+              {
                 header: 'Status',
                 render: (f) =>
                   !f.active ? (

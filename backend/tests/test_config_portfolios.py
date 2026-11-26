@@ -128,7 +128,7 @@ def test_relabelling_a_portfolio_changes_no_code_or_data(client, headers, db, fr
     detail = client.get(f"{API}/transitions/{tid}", headers=headers("U01")).json()
     assert detail["portfolio"] == PORTFOLIO  # the stored code stays
     assert (
-        detail["flavour_label"] == "Normal · Fuels Europe · Global"
+        detail["flavour_label"] == "Standard Transition · Fuels Europe · Global"
     )  # the label is what people see
     db.expire_all()
     assert db.get(Transition, tid).portfolio == PORTFOLIO

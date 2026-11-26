@@ -72,8 +72,8 @@ def test_gcc_update_mentions_atd_approval_and_risks(client, db, headers, fresh_s
     )
     db.commit()
     md = _generate(client, headers, "portfolio", "GCC").json()["content_md"]
-    assert "AtD approved for Mobility Knowledge Agent on 15 Nov 2026 (by Asha Menon)" in md
-    assert "critical gap" in md  # remaining risks
+    assert "SG4 (AtD) approved for Mobility Knowledge Agent on 15 Nov 2026 (by Asha Menon)" in md
+    assert "critical gap/risk" in md  # remaining risks
     assert "Mobility Knowledge Agent" in md.split("## Top risks and blockers")[1]
 
 

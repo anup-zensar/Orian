@@ -200,6 +200,10 @@ export function AssessmentTab({ transitionId }: TabProps) {
     },
     [doPatch],
   );
+  const onInclude = useCallback(
+    (item: ItemOut) => doPatch(item, { applicability: 'Applies' }),
+    [doPatch],
+  );
   const onDe = useCallback(
     (item: ItemOut, value: string) =>
       doPatch(item, { design_effectiveness: value as ItemPatchIn['design_effectiveness'] }),
@@ -377,7 +381,11 @@ export function AssessmentTab({ transitionId }: TabProps) {
                     >
                       {g.short}
                     </Button>
-                    <Caption1>{plural(g.count, 'item')} due at this gate</Caption1>
+                    <Caption1>
+                      {plural(g.count, 'item')} due at this gate
+                      {(ref.data?.gates.find((x) => x.code === g.gate)?.order ?? 0) > currentOrder &&
+                        ' · Upcoming, not counted in readiness yet'}
+                    </Caption1>
                   </div>
                   {!hidden &&
                     g.lenses.map((l) => (
@@ -401,6 +409,7 @@ export function AssessmentTab({ transitionId }: TabProps) {
                             onSelect={onSelect}
                             onStatus={onStatus}
                             onDesignEffectiveness={onDe}
+                            onInclude={onInclude}
                           />
                         ))}
                       </div>

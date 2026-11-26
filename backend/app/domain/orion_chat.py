@@ -259,7 +259,7 @@ def _readiness_messages(db: Session, user: User, t: Transition, gate: str) -> li
     blockers = sum(len(g.items) for g in check.blocking)
     text = f"{t.name} - {check.verdict_label}."
     if blockers or check.critical_gaps:
-        text += f" {blockers} blocking item(s), {len(check.critical_gaps)} critical gap(s)."
+        text += f" {blockers} blocking item(s), {len(check.critical_gaps)} critical gaps/risks."
     return [ReadinessMessage(check=check), _text(text)]
 
 
@@ -443,7 +443,10 @@ def _gate_code(db: Session, words: str) -> str | None:
 
     wanted = " ".join((words or "").lower().split())
     for g in reference(db).get("gates", []):
-        if wanted and wanted in (g["code"].lower(), g.get("short", "").lower()):
+        short = g.get("short", "").lower()
+        # "SG4 (AtD)" is also known as "AtD" (the text inside the brackets)
+        names = (g["code"].lower(), short, *re.findall(r"\(([^)]+)\)", short))
+        if wanted and wanted in names:
             return str(g["code"])
     return None
 

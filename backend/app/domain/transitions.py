@@ -47,7 +47,8 @@ def _matches_custom(t: Transition, custom: dict[str, str]) -> bool:
     value (multiselect) must contain it."""
     stored = t.custom_fields or {}
     for key, wanted in custom.items():
-        value = stored.get(key)
+        # Admin keys may or may not carry the "cf_" prefix (project_status vs cf_urgent); URL param = cf_ + key.
+        value = stored.get(key, stored.get(key.removeprefix("cf_")))
         if isinstance(value, list):
             if wanted not in [str(v) for v in value]:
                 return False
@@ -66,7 +67,7 @@ def _matches_computed(m: TransitionMetrics, f: TransitionFilters) -> bool:
         return False
     if f.q:
         needle = f.q.strip().lower()
-        haystack = (t.id, t.name, t.market, m.or_focal.name)
+        haystack = (t.id, t.name, t.market, t.servicenow_project_id, m.or_focal.name)
         if needle and not any(needle in (text or "").lower() for text in haystack):
             return False
     if f.decision_within_days is not None:

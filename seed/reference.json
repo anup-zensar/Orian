@@ -25,7 +25,7 @@
       "code": "SG4_ATD",
       "order": 3,
       "label": "SG4 – Agreement to Deploy (AtD)",
-      "short": "AtD",
+      "short": "SG4 (AtD)",
       "type": "decision"
     },
     {
@@ -39,7 +39,7 @@
       "code": "SG6_ATO",
       "order": 5,
       "label": "SG6 – Agreement to Operate (AtO)",
-      "short": "AtO",
+      "short": "SG6 (AtO)",
       "type": "decision"
     },
     {
@@ -145,14 +145,8 @@
       "code": "Normal",
       "checklists": [
         "FRAMEWORK"
-      ]
-    },
-    {
-      "code": "Infrastructure",
-      "checklists": [
-        "FRAMEWORK"
       ],
-      "note": "Appears in client sample data; behaves like Normal – confirm"
+      "label": "Standard Transition"
     },
     {
       "code": "Agentic AI",
@@ -160,18 +154,18 @@
         "FRAMEWORK",
         "AI_PLAYBOOK"
       ],
-      "requires_tiering": true
+      "requires_tiering": true,
+      "label": "AI Transition"
     },
     {
-      "code": "Combined",
+      "code": "Infrastructure",
       "checklists": [
-        "FRAMEWORK",
-        "AI_PLAYBOOK"
+        "FRAMEWORK"
       ],
-      "requires_tiering": true
+      "label": "Other"
     }
   ],
-  "flavour_rule_note": "Default assumption: the 72 Framework activities apply to every transition; the AI Playbook adds items (filtered by tier) for Agentic AI and Combined. Portfolio golden set + common items always added. Configurable in Admin. To be confirmed with the client.",
+  "flavour_rule_note": "Default assumption: the 72 Framework activities apply to every transition; the AI Playbook adds items (filtered by tier) for AI Transition (Agentic AI). Portfolio golden set + common items always added. Configurable in Admin. To be confirmed with the client.",
   "portfolios": [
     "GCC",
     "eMobility",
@@ -436,7 +430,7 @@
     },
     {
       "code": "IRM",
-      "label": "IRM (Compliance)"
+      "label": "ERS focal (Compliance)"
     },
     {
       "code": "LEADERSHIP",

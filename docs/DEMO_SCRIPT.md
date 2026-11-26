@@ -39,7 +39,7 @@ Say early and repeat at the end:
 **Signed in:** Asha Menon. **Page:** `/login`, then `/`.
 
 1. Login page ("Demo login – pick a user, no password", below the **Sign in with Microsoft** button, which is only a placeholder for single sign-on): click **Asha Menon**.
-2. Dashboard: KPI tiles (My open items, My pending approvals, Transitions I own, Decisions due in 14 days, Critical gaps), **My work**, **Orion insights** (AI badge), **Recent activity**.
+2. Dashboard: KPI tiles (My open items, My pending approvals, Transitions I own, Decisions due in 14 days, Critical gaps/risks), **My work**, **Orion insights** (AI badge), **Recent activity**.
 3. In **Orion insights**, on "Mobility Knowledge Agent: AtD in 21 days, blocked by 1 critical gap ..." click **Draft a chaser**. A toast says "Chaser drafted" with **Open drafts**. Do not send it; you will ignore or discard it later.
 4. Optional: switch to **Laura Evans** (Leadership) to show portfolio tiles, then back to Asha.
 
@@ -50,10 +50,10 @@ Fallback: if no insight shows, skip the chaser; step 5 drafts one anyway.
 
 **Signed in:** Asha Menon. **Page:** `/control-tower`.
 
-1. Click **Control tower**. Show the KPI tiles, **Heatmap: portfolio by gate**, **Readiness by region**. The page no longer holds the full register: tiles and heatmap cells open **Transitions** with the same filters in the URL.
-2. In the heatmap click the red **1 Red** cell in the **Retail Site Systems** row under **AtD**. **Transitions** opens filtered to that portfolio and current gate. (**More filters** on that page holds Region, Status and Project type.) Click **Clear filters** or use the browser Back button to return.
-3. In the filtered list: **Forecourt POS refresh** is **Red**, 3 critical gaps, decision in 4 days.
-4. Back on **Control tower**, scroll to **Escalation queue**, **Decision calendar (next 45 days)** and **Orion: control tower insights**.
+1. Click **Control tower**. Show the KPI tiles, **M&C portfolio view – transitions in play** (all six portfolios, all seven gates), **Readiness by region** (all five regions) and the **Transition register** below them. KPI tiles open **Transitions** with the same filters in the URL.
+2. In the heatmap click the red **1 Red** cell in the **Retail Site Systems** row under **SG4 (AtD)**. The **Transition register** on the same page filters to that cell. Click the chip next to the register title ("Retail Site Systems at SG4 (AtD)") to show all rows again.
+3. In the filtered register: **Forecourt POS refresh** is **Red**, 3 critical gaps/risks, decision in 4 days.
+4. Scroll to **Escalation queue**, **Decision calendar (next 45 days)** and **Orion: control tower insights**.
 
 Notice: RAG is computed, nobody types it in. Fallback: open **Transitions** and use the portfolio filter.
 

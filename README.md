@@ -1,4 +1,4 @@
-# Orion – Operate Readiness Agent (demo)
+# Orion – Operate Readiness Intelligence & Orchestration Navigator (demo)
 
 Orion is a working demo for Shell Mobility's Supportability & Transition (S&T) team.
 It has two parts: an **Operate Readiness workspace** (the system of record and workflow for every transition) and an
@@ -94,8 +94,8 @@ After changing a backend response model run `make openapi` or `scripts\gen-api.p
 | OR | Operate Readiness: getting a project ready to be run by operations |
 | OCET | The operating cost estimate (5-year run-and-maintain), approved by Planner then OLM |
 | AtD / AtO | Agreement to Deploy / Agreement to Operate: the two gate decisions |
-| SG0 to SG6 | The one gate model: SG0, SG2, SG3, AtD, Hypercare, AtO, Closure |
-| IRM | Compliance approver (information risk) |
+| SG0 to SG6 | The one gate model: SG0, SG2, SG3, SG4 (AtD), Hypercare, SG6 (AtO), Closure |
+| IRM | Compliance approver (information risk); shown as "ERS focal", the client's name for the role |
 | OLM | Operations lead who approves OCET, support model, AtD and AtO |
 | Lens | Business, Technical or Compliance view of the checklist |
 | Golden set | The expected extra items for a portfolio |
@@ -118,16 +118,16 @@ All fictional: one person per role, so each role is easy to try. On the login pa
 | U15 | Laura Evans | Leadership | Read-only portfolio view. |
 | U16 | Playbook Admin | Admin | Admin page and Demo controls (reset, fast-forward, set today; a link to the reminder engine on Orion drafts). |
 
-Sample transitions (one per stage, all owned by Asha; RAG and readiness are computed):
+Sample transitions (one per stage and one per client portfolio, names from the client prototype; all owned by Asha; RAG and readiness are computed):
 
-| Id | Name | Type · portfolio | Stage | What it shows |
+| Id | Name | Type · portfolio · region | Stage | What it shows |
 |---|---|---|---|---|
-| TR-0001 | Mobility Knowledge Agent | Agentic AI · GCC | AtD | The flagship: full story (assessment, gaps, evidence, OCET, support model, AI playbook, approvals). |
-| TR-0005 | Fleet card portal upgrade | Normal · Fleets | SG0-SG2 | Early stage: scope and design. |
-| TR-0003 | Virtual SME | Agentic AI · GCC | SG3 | Build and test of a second AI solution (Red: 2 critical gaps; AI playbook, eval import). |
-| TR-0008 | Forecourt POS refresh | Infrastructure · Retail Site Systems | AtD | At risk: Red, 3 critical gaps, decision in 4 days. |
-| TR-0014 | Medallia VOC | Normal · Global Marketing | Hypercare | Live, in hypercare. |
-| TR-0011 | Card authorisation switch | Infrastructure · Retail Site Systems | AtO | Almost done: Green, ready to hand over to operations. |
+| TR-0001 | Mobility Knowledge Agent | AI Transition · GCC | SG4 (AtD) | The flagship: full story (assessment, gaps, evidence, OCET, support model, AI playbook, approvals). |
+| TR-0005 | Fleet telematics integration | Standard Transition · Fleets · Americas | SG0-SG2 | Early stage: scope and design. |
+| TR-0003 | Charger monitoring platform | AI Transition · eMobility · Asia Pacific | SG3 | Build and test of a second AI solution (Red: 2 critical gaps; AI playbook, eval import). |
+| TR-0008 | Forecourt POS refresh | Other · Retail Site Systems · Asia Pacific | SG4 (AtD) | At risk: Red, 3 critical gaps, decision in 4 days. |
+| TR-0014 | Medallia VOC | Standard Transition · Global Marketing · Global | Hypercare | Live, in hypercare. |
+| TR-0011 | Retail site circuit migration | Other · Telecoms · Europe & South Africa | SG6 (AtO) | Almost done: Green, ready to hand over to operations. |
 
 A role is not enough: a person must also be assigned to that role **on that transition** (`backend/app/access.py`, A-75).
 A disabled button always says why in its tooltip. Navigation is permission-aware: Orion drafts, Outbox, Leadership updates and Admin are hidden for roles without the permission. New transitions start from the button on the **Transitions** page (`/transitions/new`); when an OR focal creates one, the OR focal field is fixed to that user.

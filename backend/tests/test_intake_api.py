@@ -42,7 +42,7 @@ def test_create_returns_full_detail(client, headers, fresh_seed):
     assert d["autonomous_mode"] is False and d["assessment_launched"] is False
     assert d["item_counts"] is None and d["tier"] is None and d["risk_tier"] is None
     assert d["requires_tiering"] is True
-    assert d["flavour_label"] == "Agentic AI · GCC · Global"
+    assert d["flavour_label"] == "AI Transition · GCC · Global"
     assert d["rag"] == "Grey"
     assert d["roles"]["or_focal"] == {"id": "U01", "name": "Asha Menon"}
     assert d["roles"]["irm"]["id"] == "U14"
@@ -112,7 +112,7 @@ def test_create_validation_reasons(client, headers, fresh_seed):
 
 
 def test_ai_types_require_intake_answers(client, headers, fresh_seed):
-    for project_type in ("Agentic AI", "Combined"):
+    for project_type in ("Agentic AI",):
         res = _post(
             client,
             headers,
@@ -184,9 +184,9 @@ def test_flagship_detail_fields(client, headers):
     assert res.status_code == 200
     d = res.json()
     assert d["name"] == "Mobility Knowledge Agent" and d["is_flagship"] is True
-    assert d["flavour_label"] == "Agentic AI · GCC · Global"
+    assert d["flavour_label"] == "AI Transition · GCC · Global"
     assert d["requires_tiering"] is True and d["assessment_launched"] is True
-    assert d["current_gate"] == "SG4_ATD" and d["current_gate_short"] == "AtD"
+    assert d["current_gate"] == "SG4_ATD" and d["current_gate_short"] == "SG4 (AtD)"
     assert d["risk_tier"] == 2 and d["tier_status"] == "Confirmed"
     assert d["tier"]["confirmed_tier"] == 2 and d["tier"]["status"] == "Confirmed"
     assert d["checklist_banner"] is None

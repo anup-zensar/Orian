@@ -27,6 +27,7 @@ from app.models import (
     User,
 )
 from app.permissions import Perm, has_perm
+from app.rules import item_edit
 from app.rules import status as status_rules
 from app.rules.checklist import EXCLUDED_BY_PROJECT_TYPE, EXCLUDED_BY_TIER
 from app.rules.constants import (
@@ -77,11 +78,11 @@ _AUTO_COMPLETE = {
 }
 
 
-def _exclusion_reason(transition: Transition, item: TransitionItem) -> str:
+def _exclusion_reason(db: Session, transition: Transition, item: TransitionItem) -> str:
     if item.excluded_by == EXCLUDED_BY_TIER:
         return f"Excluded by Tier {transition.risk_tier} - change the tier (IRM) instead of overriding it"
     return (
-        f"Excluded by project type {transition.project_type} - change the project type instead "
+        f"Excluded by project type {cfg.project_type_label(db, transition.project_type)} - change the project type instead "
         "of overriding it"
     )
 
@@ -92,7 +93,7 @@ class _Context:
 
     def __init__(self, db: Session, transition: Transition) -> None:
         self.db = db
-        self._edit_cache: dict[tuple[str, bool], tuple[bool, str | None]] = {}
+        self._edit_cache: dict[tuple[str, bool, str | None], tuple[bool, str | None]] = {}
         self.users = users_by_id(db)
         self.evidence_count: dict[int, int] = dict(
             db.execute(
@@ -138,31 +139,63 @@ class _Context:
         return (cond is not None and cond[0] > gate_order) or item.id in self.approved_exception
 
 
-def _status_perm(lens: str) -> Perm:
-    return Perm.UPDATE_C_STATUS if lens == "Compliance" else Perm.UPDATE_BT_STATUS
+def _lens_perms(lens: str) -> tuple[Perm, ...]:
+    """Permissions that may edit an item of this lens (any one is enough): Business = update_bt_status;
+    Technical = update_bt_status or update_t_status (Architect); Compliance = update_c_status."""
+    if lens == "Compliance":
+        return (Perm.UPDATE_C_STATUS,)
+    if lens == "Technical":
+        return (Perm.UPDATE_BT_STATUS, Perm.UPDATE_T_STATUS)
+    return (Perm.UPDATE_BT_STATUS,)
 
 
-def _also_allowed(item: TransitionItem, lens: str) -> list[str | None]:
-    """The item owner may update a Business/Technical item (when their role holds the permission)."""
-    return [] if lens == "Compliance" else [item.owner_user_id]
+def lens_denial(
+    db: Session,
+    user: User,
+    transition: Transition,
+    lens: str,
+    *,
+    owner_id: str | None = None,
+) -> str | None:
+    """None when ``user`` may edit items of ``lens`` on ``transition`` (assigned to it in a role that
+    holds one of the lens permissions; the item owner passes for B/T), else the reason."""
+    allowed_extra = [] if lens == "Compliance" else [owner_id]
+    perms = _lens_perms(lens)
+    denials = [
+        transition_denial(db, user, transition, p, also_allowed=allowed_extra) for p in perms
+    ]
+    if None in denials:
+        return None
+    # explain with the first permission the user's role holds (wrong assignment), else the last
+    held = [d for p, d in zip(perms, denials, strict=True) if has_perm(user.role, p)]
+    return held[0] if held else denials[-1]
+
+
+def _ensure_lens(
+    db: Session, user: User, transition: Transition, lens: str, owner_id: str | None = None
+) -> None:
+    reason = lens_denial(db, user, transition, lens, owner_id=owner_id)
+    if reason is not None:
+        raise Forbidden(reason)
+
+
+def _lock_reason(transition: Transition, item: TransitionItem) -> str | None:
+    return item_edit.edit_lock_reason(
+        transition_closed=transition.status == "Closed",
+        current_gate=transition.current_gate,
+        item_gate=item.due_gate,
+    )
 
 
 def _edit_state(
     ctx: _Context, transition: Transition, user: User, item: TransitionItem, lens: str
 ) -> tuple[bool, str | None]:
     """(can_edit, reason) of the status control for this user, transition and item (BE#1)."""
-    key = (lens, user.id == item.owner_user_id and lens != "Compliance")
+    lock = _lock_reason(transition, item)
+    key = (lens, user.id == item.owner_user_id and lens != "Compliance", lock)
     if key not in ctx._edit_cache:
-        reason = transition_denial(
-            ctx.db,
-            user,
-            transition,
-            _status_perm(lens),
-            also_allowed=_also_allowed(item, lens),
-        )
-        if reason is None and transition.status == "Closed":
-            reason = "The transition is closed"
-        ctx._edit_cache[key] = (reason is None, reason)
+        reason = lens_denial(ctx.db, user, transition, lens, owner_id=item.owner_user_id)
+        ctx._edit_cache[key] = (reason is None and lock is None, reason or lock)
     return ctx._edit_cache[key]
 
 
@@ -333,38 +366,40 @@ def _check_patch_permissions(
 ) -> None:
     """Dynamic permissions by lens AND assignment on the item's transition (BE#1, spec 3.3).
 
-    Business/Technical status, note and owner: the transition's OR focal / PM / Architect / OLM, or the
-    item's owner. Compliance status / severity / design effectiveness: the transition's IRM (the owner
-    may still edit note and owner). Applicability and N/A: the OR focal (B/T) or IRM (Compliance).
+    Business status, note and owner: the transition's PM / OLM / OR focal, or the item's owner.
+    Technical: the same plus the Architect. Compliance status / severity / design effectiveness: the
+    transition's IRM / OLM / OR focal (the owner may still edit note and owner). Applicability and N/A:
+    whoever may edit the lens (the Compliance editors for Compliance items).
     """
     fields = body.model_fields_set
     compliance = lens == "Compliance"
-    status_perm = _status_perm(lens)
-    scope_perm = Perm.UPDATE_C_STATUS if compliance else Perm.CONFIRM_SCOPE
-    owner_ok = _also_allowed(item, lens)
+    owner = item.owner_user_id
+
+    def ensure_scope() -> None:
+        # applicability / N/A: whoever may edit the lens (not the item owner alone)
+        if compliance:
+            ensure_transition_role(db, user, transition, Perm.UPDATE_C_STATUS)
+        else:
+            _ensure_lens(db, user, transition, lens)
 
     if "status" in fields and body.status is not None and body.status != item.status:
-        ensure_transition_role(db, user, transition, status_perm, also_allowed=owner_ok)
+        _ensure_lens(db, user, transition, lens, owner)
         if body.status in NA_STATUSES:
-            ensure_transition_role(db, user, transition, scope_perm)
+            ensure_scope()
     if "gap_severity" in fields and body.gap_severity is not None:
-        ensure_transition_role(db, user, transition, status_perm, also_allowed=owner_ok)
+        _ensure_lens(db, user, transition, lens, owner)
     if "design_effectiveness" in fields and body.design_effectiveness is not None:
         ensure_transition_role(db, user, transition, Perm.UPDATE_C_STATUS)
     if body.applicability is not None and body.applicability != item.applicability:
-        ensure_transition_role(db, user, transition, scope_perm)
+        ensure_scope()
     if "na_reason" in fields and body.na_reason is not None:
-        ensure_transition_role(db, user, transition, scope_perm)
-    if ("note" in fields and body.note is not None) or (
+        ensure_scope()
+    note_or_owner = ("note" in fields and body.note is not None) or (
         "owner_user_id" in fields and body.owner_user_id is not None
-    ):
-        if compliance:
-            if user.id != item.owner_user_id:
-                ensure_transition_role(db, user, transition, Perm.UPDATE_C_STATUS)
-        else:
-            ensure_transition_role(
-                db, user, transition, Perm.UPDATE_BT_STATUS, also_allowed=owner_ok
-            )
+    )
+    # the owner of a Compliance item may still edit its note and owner
+    if note_or_owner and not (compliance and user.id == item.owner_user_id):
+        _ensure_lens(db, user, transition, lens, owner)
 
 
 def _on_offer(db: Session, list_key: str, current: str | None) -> list[str]:
@@ -419,6 +454,9 @@ def patch_item(db: Session, item_id: int, body: ItemPatchIn, user: User) -> Item
         raise BadRequest("Invalid item update", reasons)
     if transition.status == "Closed":
         raise Conflict("Transition is closed", [f"{transition.id} is closed - items are read-only"])
+    locked = _lock_reason(transition, item)
+    if locked:
+        raise Conflict("Checklist is locked", [locked])
     if transition.assessment_launched_at is None:
         raise Conflict(
             "Assessment not launched", ["Launch the assessment before updating checklist items"]
@@ -448,7 +486,7 @@ def patch_item(db: Session, item_id: int, body: ItemPatchIn, user: User) -> Item
     ):
         raise Conflict(
             "Excluded by the tier" if item.excluded_by == EXCLUDED_BY_TIER else "Excluded by type",
-            [_exclusion_reason(transition, item)],
+            [_exclusion_reason(db, transition, item)],
         )
 
     if status_given:
@@ -625,18 +663,17 @@ def bulk_items(db: Session, body: BulkItemsIn, user: User) -> BulkResultOut:
         if transition is None or denial is not None:
             skipped.append(BulkSkippedOut(id=item_id, reason=denial or "Transition not found"))
             continue
-        if transition.status == "Closed":
-            skipped.append(BulkSkippedOut(id=item_id, reason="The transition is closed"))
+        locked = _lock_reason(transition, item)
+        if locked:
+            skipped.append(BulkSkippedOut(id=item_id, reason=locked))
             continue
         lens = item.playbook_item.lens
         do_na = body.mark_na is not None
         if do_na and lens == "Compliance":
-            skipped.append(
-                BulkSkippedOut(
-                    id=item_id, reason="Only IRM can mark Compliance items not applicable"
-                )
-            )
-            continue
+            c_denial = transition_denial(db, user, transition, Perm.UPDATE_C_STATUS)
+            if c_denial is not None:
+                skipped.append(BulkSkippedOut(id=item_id, reason=c_denial))
+                continue
         if do_na and item.status in NA_STATUSES and body.owner_user_id is None:
             skipped.append(BulkSkippedOut(id=item_id, reason="Item is already N/A"))
             continue

@@ -1,10 +1,12 @@
 // FR-011 Control tower (spec 8.2): KPI tiles, heatmap, readiness by region, escalation queue, decision
 // calendar, Orion insights and the operating rhythm. Everything is computed by the API. The full
-// register lives on the Transitions page: a KPI tile or heatmap cell opens /transitions with the same
-// URL filters. Old deep links (/control-tower?portfolio=X) still show the filtered tower.
-import { Button, Caption1, makeStyles, tokens } from '@fluentui/react-components';
+// register (CR-03) sits on this page: a heatmap cell filters it in place; a KPI tile opens /transitions
+// with the same URL filters. Old deep links (/control-tower?portfolio=X) still show the filtered tower.
+import { useState } from 'react';
+import { Button, Caption1, Tag, makeStyles, tokens } from '@fluentui/react-components';
 import { ArrowRight16Regular } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router';
+import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { InsightsCard } from '../../components/InsightsCard';
 import { KpiTile } from '../../components/KpiTile';
@@ -12,6 +14,7 @@ import { LoadingState } from '../../components/LoadingState';
 import { PageHeader } from '../../components/PageHeader';
 import { SectionCard } from '../../components/SectionCard';
 import { useInsights } from '../orion/api';
+import { TransitionRegisterTable } from '../transitions/TransitionRegisterTable';
 import { useUrlFilters } from '../transitions/useUrlFilters';
 import { useControlTower } from './api';
 import { Heatmap } from './Heatmap';
@@ -39,6 +42,7 @@ const useStyles = makeStyles({
     marginBottom: tokens.spacingVerticalL,
     alignItems: 'start',
   },
+  register: { marginBottom: tokens.spacingVerticalL },
   filtered: {
     display: 'flex',
     flexWrap: 'wrap',
@@ -60,9 +64,22 @@ export function ControlTowerPage() {
   const s = useStyles();
   const navigate = useNavigate();
   const { filters, clear, notice } = useUrlFilters();
+  // Heatmap cell = portfolio + gate, applied to the register below (not to the URL).
+  const [cell, setCell] = useState<{ portfolio: string; gate: string } | null>(null);
   const ct = useControlTower(filters);
   const insights = useInsights('control-tower', filters);
   const d = ct.data;
+  // a selected cell is dropped when the filters change (it may no longer exist)
+  const filterKey = JSON.stringify(filters);
+  const [cellKey, setCellKey] = useState(filterKey);
+  if (cellKey !== filterKey) {
+    setCellKey(filterKey);
+    setCell(null);
+  }
+  const registerRows = (d?.transitions ?? []).filter(
+    (t) => !cell || (t.portfolio === cell.portfolio && t.current_gate === cell.gate),
+  );
+  const gateShort = (code: string) => d?.heatmap.gates.find((g) => g.code === code)?.short ?? code;
   const filterCount = Object.keys(filters).length;
   const filterText = Object.entries(filters)
     .map(([k, v]) => `${k.replace(/_/g, ' ')} ${v}`)
@@ -119,15 +136,49 @@ export function ControlTowerPage() {
           </div>
 
           <div className={s.pair}>
-            <SectionCard title="Heatmap: portfolio by gate">
-              <Caption1>Click a cell to open those transitions in Transitions.</Caption1>
+            <SectionCard title="M&C portfolio view – transitions in play">
+              <Caption1>
+                Portfolio × gate readiness heatmap · count of transitions · colour = worst RAG ·
+                click a cell to filter the register
+              </Caption1>
               <Heatmap
                 data={d.heatmap}
-                onSelect={(portfolio, gate) => navigate(transitionsLink({ portfolio, gate }))}
+                selectedPortfolio={cell?.portfolio}
+                selectedGate={cell?.gate}
+                onSelect={(portfolio, gate) => {
+                  setCell({ portfolio, gate });
+                  document
+                    .getElementById('transition-register')
+                    ?.scrollIntoView?.({ behavior: 'smooth' });
+                }}
               />
             </SectionCard>
             <SectionCard title="Readiness by region">
               <RegionChart data={d.readiness_by_region} />
+            </SectionCard>
+          </div>
+
+          <div className={s.register}>
+            <SectionCard
+              id="transition-register"
+              title="Transition register"
+              actions={
+                cell && (
+                  <Tag
+                    dismissible
+                    dismissIcon={{ 'aria-label': 'Clear heatmap filter' }}
+                    onClick={() => setCell(null)}
+                  >
+                    {cell.portfolio} at {gateShort(cell.gate)}
+                  </Tag>
+                )
+              }
+            >
+              {registerRows.length > 0 ? (
+                <TransitionRegisterTable rows={registerRows} />
+              ) : (
+                <EmptyState message="No transitions in this cell" />
+              )}
             </SectionCard>
           </div>
 

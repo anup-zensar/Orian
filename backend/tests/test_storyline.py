@@ -1,7 +1,7 @@
 """The full demo storyline (spec section 13, steps 1-11) as one API regression test.
 
 One test function walks every step in order on a freshly seeded database, because each step builds on
-the previous one (the flagship TR-0001 moves from "Not ready for AtD" to gate SG5_HYPERCARE). Small
+the previous one (the flagship TR-0001 moves from "Not ready for SG4 (AtD)" to gate SG5_HYPERCARE). Small
 helper functions per step keep it readable. Business data is only changed by a permitted human (or by a
 workflow rule after a human approval); Orion chat and extract change nothing (BR-050).
 
@@ -183,7 +183,7 @@ def blocking_ids(check: dict[str, Any]) -> set[str]:
 
 def step5_readiness_and_chaser(w: Walker) -> None:
     check = w.get(f"/transitions/{TR}/readiness", "U01")
-    assert check["verdict_label"] == "Not ready for AtD"
+    assert check["verdict_label"] == "Not ready for SG4 (AtD)"
     assert check["narrative_by"] == "Orion agent"
     assert {"S45-014", "FW-008", "FW-035"} <= blocking_ids(check)
     assert [g["item_id"] for g in check["critical_gaps"]] == ["S45-014"]
@@ -376,14 +376,14 @@ def step9_atd(w: Walker) -> None:
     w.forbidden("POST", "/admin/demo/fast-forward", "U01", {"transition_id": TR})
     w.post("/admin/demo/fast-forward", "U16", {"transition_id": TR})
     check = w.get(f"/transitions/{TR}/readiness", "U01")
-    assert check["verdict_label"] == "Ready for AtD", check["verdict_label"]
+    assert check["verdict_label"] == "Ready for SG4 (AtD)", check["verdict_label"]
 
     # Workflow rule R4 drafts the approval request in the OR focal's queue.
     w.post("/reminders/run", "U01", {})
     drafts = w.get("/orion/drafts?status=Draft", "U01")
     r4 = [
         d for d in drafts
-        if d["transition_id"] == TR and d["subject"] == "Ready for AtD - request OLM approval"
+        if d["transition_id"] == TR and d["subject"] == "Ready for SG4 (AtD) - request OLM approval"
     ]  # fmt: skip
     assert len(r4) == 1, [(d["transition_id"], d["subject"]) for d in drafts]
     draft = r4[0]

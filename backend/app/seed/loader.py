@@ -92,9 +92,9 @@ from app.rules.constants import (
 from app.rules.synthesis import Pin, Snapshot, SynthItem, synthesize
 from app.services.mock.document_store import SHAREPOINT_BASE
 
-# The four project types of the first demo. A library item that lists all of them means "every
+# The three project types of the demo. A library item that lists all of them means "every
 # project type" and is stored as [] (so a type an Admin adds later gets it too).
-_LEGACY_ALL_TYPES = frozenset({"Agentic AI", "Normal", "Combined", "Infrastructure"})
+_LEGACY_ALL_TYPES = frozenset({"Agentic AI", "Normal", "Infrastructure"})
 IRM_USER_ID = "U14"  # A-05: the only IRM
 ORION_SOURCE_LABEL = "Portfolio golden set (client prototype, approximate)"
 FW_SHEET = "Operate Readiness Framework"
@@ -504,6 +504,14 @@ def eval_passes(operator: str | None, target: float | None, value: float) -> boo
 # --- transitions -------------------------------------------------------------------------------
 
 
+def _custom_fields(src: dict[str, Any], today: date) -> dict[str, Any] | None:
+    """Sample custom intake values; ``custom_dates_days`` (days from demo today) become ISO dates."""
+    values = dict(src.get("custom_fields") or {})
+    for key, days in (src.get("custom_dates_days") or {}).items():
+        values[key] = (today + timedelta(days=days)).isoformat()
+    return values or None
+
+
 def _transition_row(src: dict[str, Any], today: date, now: datetime) -> Transition:
     intake = src.get("intake") or {}
     snapshot = src["snapshot"]
@@ -536,6 +544,7 @@ def _transition_row(src: dict[str, Any], today: date, now: datetime) -> Transiti
         sites=[],
         blocker_note=snapshot.get("blocker") or None,
         is_flagship=bool(src.get("is_flagship", False)),
+        custom_fields=_custom_fields(src, today),
         assessment_launched_at=now,
         hypercare_no_defects_confirmed=False,
     )

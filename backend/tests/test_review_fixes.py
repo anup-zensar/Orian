@@ -104,12 +104,12 @@ def _existing(planned):
 
 
 def test_reassemble_project_type_change_excludes_dropped_ai_items(library):
-    combined = _assemble(library, "Combined", tier=2, checklists=WITH_AI)
+    ai = _assemble(library, "Agentic AI", tier=2, checklists=WITH_AI)
     normal = _assemble(library, "Normal")
-    result = reassemble(_existing(combined), normal, library)
+    result = reassemble(_existing(ai), normal, library)
     ai_applicable = {
         p.playbook_item_id
-        for p in combined
+        for p in ai
         if p.source == "AI_PLAYBOOK" and p.applicability != "Not applicable"
     }
     assert len(ai_applicable) == 208

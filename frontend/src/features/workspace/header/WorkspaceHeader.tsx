@@ -23,6 +23,7 @@ import { RagChip } from '../../../components/RagChip';
 import { cardRadius, cardShadow } from '../../../theme/orionTheme';
 import { useApiErrorToast } from '../../../hooks/useApiErrorToast';
 import { useRoleLabel } from '../../reference/options';
+import { useReference } from '../../reference/api';
 import { daysLabel, formatDate, toRag } from '../../../lib/format';
 import { useTransitionAccess, type TransitionDetail } from '../../transition/api';
 import { useOrionPanel } from '../../orion/panelContext';
@@ -128,6 +129,7 @@ function SetDecisionDate({ transitionId }: { transitionId: string }) {
 export function WorkspaceHeader({ detail }: { detail: TransitionDetail }) {
   const s = useStyles();
   const roleLabel = useRoleLabel();
+  const { data: reference } = useReference();
   const orion = useOrionPanel();
   const showError = useApiErrorToast();
   const setAutonomous = useSetAutonomous(detail.id);
@@ -156,7 +158,8 @@ export function WorkspaceHeader({ detail }: { detail: TransitionDetail }) {
           <Subtitle1 as="h1">{detail.name}</Subtitle1>
           <div className={s.chips}>
             <Badge appearance="tint" color="informative">
-              {detail.project_type}
+              {reference?.project_types.find((p) => p.code === detail.project_type)?.label ||
+                detail.project_type}
             </Badge>
             <Badge appearance="outline">{detail.portfolio}</Badge>
             <Badge appearance="outline">
@@ -175,7 +178,10 @@ export function WorkspaceHeader({ detail }: { detail: TransitionDetail }) {
                 Closed
               </Badge>
             )}
-            <Caption1>{detail.id}</Caption1>
+            <Caption1>
+              {detail.id}
+              {detail.servicenow_project_id && ` · Project ID ${detail.servicenow_project_id}`}
+            </Caption1>
           </div>
         </div>
         <div className={s.actions}>

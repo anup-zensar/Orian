@@ -99,6 +99,7 @@ export interface ItemRowProps {
   onSelect: (id: number, checked: boolean) => void;
   onStatus: (item: ItemOut, status: string) => void;
   onDesignEffectiveness: (item: ItemOut, value: string) => void;
+  onInclude: (item: ItemOut) => void;
 }
 
 function ItemRowImpl(p: ItemRowProps) {
@@ -123,6 +124,16 @@ function ItemRowImpl(p: ItemRowProps) {
       {label}
     </MenuItem>
   );
+
+  // Bring back an item a person marked not applicable; tier / project-type exclusions follow the tier.
+  const scopePerms =
+    item.lens === 'Compliance'
+      ? ['update_c_status']
+      : item.lens === 'Technical'
+        ? ['update_bt_status', 'update_t_status']
+        : ['update_bt_status'];
+  const canInclude = item.can_edit && scopePerms.some(can);
+  const includeAgain = excluded && item.excluded_by !== 'tier' && item.excluded_by !== 'project_type';
 
   const statusSelect = (
     <Select
@@ -241,6 +252,19 @@ function ItemRowImpl(p: ItemRowProps) {
                   'Request exception',
                   `conditions?exception=1&item=${pid}`,
                 )}
+              {includeAgain && (
+                <MenuItem
+                  disabled={!canInclude}
+                  secondaryContent={
+                    canInclude
+                      ? undefined
+                      : (item.edit_denied_reason ?? p.perms.denied[scopePerms[0]] ?? 'Not permitted')
+                  }
+                  onClick={() => p.onInclude(item)}
+                >
+                  Include again
+                </MenuItem>
+              )}
               <MenuItem onClick={() => go(`activity?entity=TransitionItem&entityId=${item.id}`)}>
                 View audit
               </MenuItem>
@@ -260,12 +284,6 @@ function ItemRowImpl(p: ItemRowProps) {
               <span>{item.detail}</span>
             </>
           )}
-          <span className={s.label}>Source</span>
-          <span>
-            {item.source_label}
-            {item.source_sheet ? ` · sheet ${item.source_sheet}` : ''}
-            {item.source_cell ? ` · cell ${item.source_cell}` : ''}
-          </span>
           {item.lens === 'Compliance' && (
             <>
               <span className={s.label}>Design effectiveness</span>

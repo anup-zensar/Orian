@@ -31,7 +31,12 @@ import {
 } from '../reference/options';
 import { plural } from '../../lib/format';
 import { cardRadius, cardShadow } from '../../theme/orionTheme';
-import type { CustomFilterKey, FilterKey, UrlFilters } from './useUrlFilters';
+import {
+  customFilterKey,
+  type CustomFilterKey,
+  type FilterKey,
+  type UrlFilters,
+} from './useUrlFilters';
 
 const useStyles = makeStyles({
   // Auto-fill grid: controls share one baseline and wrap with the width of the content.
@@ -87,7 +92,8 @@ function tileFilterTags(f: UrlFilters): { key: FilterKey; label: string }[] {
       key: 'decision_within_days',
       label: `Decision within ${plural(Number(f.decision_within_days), 'day')}`,
     });
-  if (f.has_critical === 'true') tags.push({ key: 'has_critical', label: 'Has critical gaps' });
+  if (f.has_critical === 'true')
+    tags.push({ key: 'has_critical', label: 'Has critical gaps/risks' });
   if (f.compliance_below)
     tags.push({
       key: 'compliance_below',
@@ -105,7 +111,7 @@ type Dropdown = (
 /** The filter dropdown of one custom field: its option list, or Yes / No. */
 function CustomFilter(props: { field: IntakeFieldRef; filters: UrlFilters; dropdown: Dropdown }) {
   const { field, filters, dropdown } = props;
-  const key = field.key as CustomFilterKey;
+  const key = customFilterKey(field.key);
   // A value in the URL stays selectable even if it has since been switched off.
   const options = useOptions(field.option_list ?? '', { include: filters[key] ?? null });
   const choices: readonly (readonly [string, string])[] =
@@ -164,7 +170,7 @@ export function FilterBar({ filters, update, clear, showMine, notice }: Props) {
           <Input
             type="search"
             contentBefore={<Search20Regular />}
-            placeholder="Search transitions"
+            placeholder="Name, ID, project ID, focal"
             value={filters.q ?? ''}
             onChange={(_, d) => update({ q: d.value || undefined }, { replace: true })}
           />

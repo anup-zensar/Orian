@@ -35,9 +35,9 @@ def _blocking_ids(data):
 
 def test_flagship_not_ready_for_atd_with_scripted_blockers(client, headers):
     data = _readiness(client, headers, FLAGSHIP)
-    assert data["gate"] == "SG4_ATD" and data["gate_short"] == "AtD"
+    assert data["gate"] == "SG4_ATD" and data["gate_short"] == "SG4 (AtD)"
     assert data["verdict"] == "Not ready"
-    assert data["verdict_label"] == "Not ready for AtD"
+    assert data["verdict_label"] == "Not ready for SG4 (AtD)"
     blocking = _blocking_ids(data)
     # S45-014: red-team evidence non-compliant, critical, EX-01 pending
     assert blocking["S45-014"]["reason"] == "Non-compliant (Critical); exception EX-01 pending"
@@ -68,7 +68,7 @@ def test_flagship_narrative_and_actions_are_orion_text(client, headers):
     data = _readiness(client, headers, FLAGSHIP)
     assert data["narrative_by"] == "Orion agent"
     narrative = data["narrative"]
-    assert "Mobility Knowledge Agent is not ready for AtD." in narrative
+    assert "Mobility Knowledge Agent is not ready for SG4 (AtD)." in narrative
     assert "block approval" in narrative and "S45-014" in narrative
     assert "CON-001" in narrative and "Recommended next step:" in narrative
     kinds = {a["kind"] for a in data["recommended_actions"]}
@@ -95,7 +95,7 @@ def test_flagship_decision_options_explain_why_disabled(client, headers):
     assert "Approval has not been requested yet" in options["Approve"]["reasons"]
     assert options["Return"]["enabled"]
     assert data["can_request_approval"] is False
-    assert data["request_denied_reason"].startswith("Not ready for AtD")
+    assert data["request_denied_reason"].startswith("Not ready for SG4 (AtD)")
 
 
 def test_readiness_permissions_for_options_and_validation(client, headers):
@@ -357,7 +357,7 @@ def test_atd_full_flow_ready_request_approve_and_return(client, headers, fresh_s
     olm, irm = t.olm_user_id, t.irm_user_id
 
     data = _readiness(client, headers, tid)
-    assert data["verdict"] == "Ready" and data["verdict_label"] == "Ready for AtD"
+    assert data["verdict"] == "Ready" and data["verdict_label"] == "Ready for SG4 (AtD)"
     assert data["can_request_approval"] is True
     assert [a["kind"] for a in data["recommended_actions"]] == ["request_approval"]
     options = {o["outcome"]: o for o in data["decision_options"]}

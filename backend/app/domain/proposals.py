@@ -254,11 +254,12 @@ def _item_denial(db: Session, user: User, row: OrionProposal, t: Transition) -> 
     item = _item_of(db, t.id, row.payload["item_id"])
     if item is None:
         return f"{row.payload['item_id']} is no longer an item of {t.id}"
-    if item.playbook_item.lens == "Compliance":
-        if user.id == item.owner_user_id:
-            return None
-        return transition_denial(db, user, t, Perm.UPDATE_C_STATUS)
-    return transition_denial(db, user, t, Perm.UPDATE_BT_STATUS)
+    from app.domain.items import lens_denial
+
+    lens = item.playbook_item.lens
+    if lens == "Compliance" and user.id == item.owner_user_id:
+        return None
+    return lens_denial(db, user, t, lens, owner_id=item.owner_user_id)
 
 
 def accept_denial(db: Session, user: User, row: OrionProposal) -> str | None:

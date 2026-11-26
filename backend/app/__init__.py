@@ -1,1 +1,1 @@
-"""Orion – Operate Readiness Agent (demo backend)."""
+"""Orion – Operate Readiness Intelligence & Orchestration Navigator (demo backend)."""

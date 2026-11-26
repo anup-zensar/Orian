@@ -1,12 +1,11 @@
 // FR-012 Transitions list: searchable, filterable register of all transitions (spec 8.3).
-import { Button, Caption1, Tooltip } from '@fluentui/react-components';
+import { Button, Tooltip } from '@fluentui/react-components';
 import { Add20Regular } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { PageHeader } from '../../components/PageHeader';
-import { plural } from '../../lib/format';
 import { useMe } from '../users/api';
 import { useTransitions } from './api';
 import { FilterBar } from './FilterBar';
@@ -51,9 +50,6 @@ export function TransitionsPage() {
         <ErrorState error={q.error} onRetry={() => void q.refetch()} />
       ) : q.data && q.data.length > 0 ? (
         <>
-          <Caption1 role="status" style={{ display: 'block', marginBottom: 8 }}>
-            {plural(q.data.length, 'transition')}
-          </Caption1>
           <TransitionRegisterTable rows={q.data} />
         </>
       ) : (

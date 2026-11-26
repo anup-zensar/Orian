@@ -269,15 +269,23 @@
         "EV-11": 0,
         "EV-12": 84,
         "EV-13": 9
+      },
+      "custom_fields": {
+        "project_status": "Executing",
+        "application_tier": "Prime"
+      },
+      "custom_dates_days": {
+        "atd_date": 21,
+        "ato_date": 120
       }
     },
     {
       "id": "TR-0003",
-      "name": "Virtual SME",
+      "name": "Charger monitoring platform",
       "servicenow_project_id": "PRJ0041111",
-      "portfolio": "GCC",
-      "region": "Europe & South Africa",
-      "market": "Netherlands",
+      "portfolio": "eMobility",
+      "region": "Asia Pacific",
+      "market": "Singapore",
       "project_type": "Agentic AI",
       "current_gate": "SG3",
       "or_focal_user_id": "U01",
@@ -296,15 +304,23 @@
         "blocker": "Support model not agreed with SOM"
       },
       "risk_tier": 2,
-      "tier_status": "Confirmed"
+      "tier_status": "Confirmed",
+      "custom_fields": {
+        "project_status": "Executing",
+        "application_tier": "Essential"
+      },
+      "custom_dates_days": {
+        "atd_date": 75,
+        "ato_date": 165
+      }
     },
     {
       "id": "TR-0005",
-      "name": "Fleet card portal upgrade",
+      "name": "Fleet telematics integration",
       "servicenow_project_id": "PRJ0041185",
       "portfolio": "Fleets",
-      "region": "Asia Pacific",
-      "market": "Philippines",
+      "region": "Americas",
+      "market": "USA",
       "project_type": "Normal",
       "current_gate": "SG2",
       "or_focal_user_id": "U01",
@@ -323,7 +339,15 @@
         "blocker": ""
       },
       "risk_tier": null,
-      "tier_status": null
+      "tier_status": null,
+      "custom_fields": {
+        "project_status": "Planning",
+        "application_tier": "Essential"
+      },
+      "custom_dates_days": {
+        "atd_date": 130,
+        "ato_date": 220
+      }
     },
     {
       "id": "TR-0008",
@@ -350,15 +374,23 @@
         "blocker": "DOMS/POS IP & network baseline missing for 42 sites"
       },
       "risk_tier": null,
-      "tier_status": null
+      "tier_status": null,
+      "custom_fields": {
+        "project_status": "Executing",
+        "application_tier": "Super Prime"
+      },
+      "custom_dates_days": {
+        "atd_date": 4,
+        "ato_date": 95
+      }
     },
     {
       "id": "TR-0011",
-      "name": "Card authorisation switch",
+      "name": "Retail site circuit migration",
       "servicenow_project_id": "PRJ0041407",
-      "portfolio": "Retail Site Systems",
+      "portfolio": "Telecoms",
       "region": "Europe & South Africa",
-      "market": "Germany",
+      "market": "Multi-market",
       "project_type": "Infrastructure",
       "current_gate": "SG6_ATO",
       "or_focal_user_id": "U01",
@@ -377,7 +409,15 @@
         "blocker": ""
       },
       "risk_tier": null,
-      "tier_status": null
+      "tier_status": null,
+      "custom_fields": {
+        "project_status": "Operating",
+        "application_tier": "Super Prime"
+      },
+      "custom_dates_days": {
+        "atd_date": -70,
+        "ato_date": 10
+      }
     },
     {
       "id": "TR-0014",
@@ -404,7 +444,15 @@
         "blocker": "Consent & privacy evidence for IRM pending"
       },
       "risk_tier": null,
-      "tier_status": null
+      "tier_status": null,
+      "custom_fields": {
+        "project_status": "Operating",
+        "application_tier": "Maintenance"
+      },
+      "custom_dates_days": {
+        "atd_date": -40,
+        "ato_date": 45
+      }
     }
   ]
 }

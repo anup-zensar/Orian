@@ -334,10 +334,10 @@ def _my_kpis(
         ),
         KpiTileOut(
             key="critical_gaps",
-            label="Critical gaps",
+            label="Critical gaps/risks",
             value=critical,
             tone="danger" if critical > 0 else "neutral",
-            hint="Open critical gaps in my transitions",
+            hint="Open critical gaps/risks in my transitions",
             link="/transitions?mine=true&has_critical=true",
         ),
     ]

@@ -127,7 +127,6 @@ def build_transition_detail(
 
     return TransitionDetailOut(
         **summary.model_dump(),
-        servicenow_project_id=t.servicenow_project_id,
         description=t.description or "",
         investment_type=t.investment_type,
         delivery_method=t.delivery_method,
@@ -153,7 +152,6 @@ def build_transition_detail(
         requires_tiering=requires,
         has_ai_profile=scope_domain.has_ai_profile(db, t.project_type),
         has_eval_metrics=scope_domain.has_eval_metrics(db, t.project_type),
-        custom_fields=dict(t.custom_fields or {}),
         tier=tier_info,
         checklist_banner=banner,
         item_counts=item_counts,

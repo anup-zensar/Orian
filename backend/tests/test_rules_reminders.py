@@ -130,7 +130,7 @@ def test_r4_ready_for_gate():
     (c,) = evaluate_r4(cfg, [_t()], items)
     assert c.recipient_user_id == "U01" and c.kind == "Approval request"
     assert c.action == {"type": "request_approval", "gate": "SG4_ATD"}
-    assert c.payload["subject"] == "Ready for AtD - request OLM approval"
+    assert c.payload["subject"] == "Ready for SG4 (AtD) - request OLM approval"
     assert c.autonomous_eligible is False and c.subject_key == "ready:SG4_ATD"
     assert evaluate_r4(cfg, [_t()], [*items, _i("C")]) == []  # an open item blocks
     assert evaluate_r4(cfg, [_t(open_approval_chain=True)], items) == []

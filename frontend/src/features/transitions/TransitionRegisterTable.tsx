@@ -1,7 +1,15 @@
-// Transition register (spec 8.2 columns, 8.3). Used by the Transitions page.
-import { useMemo, useState, type MouseEvent } from 'react';
+// Transition register (spec 8.2 columns, 8.3; CR-03 item 6). One implementation, used by the Transitions
+// page and the Control tower. Columns come from configuration (gate labels, custom fields flagged
+// "show in list"); the same column definitions feed the on-screen table and the CSV download.
+import { useMemo, useState, type MouseEvent, type ReactNode } from 'react';
 import {
+  Button,
   Caption1,
+  Menu,
+  MenuItem,
+  MenuList,
+  MenuPopover,
+  MenuTrigger,
   Table,
   TableBody,
   TableCell,
@@ -13,18 +21,19 @@ import {
   tokens,
   type TableColumnId,
 } from '@fluentui/react-components';
-import { Star16Filled } from '@fluentui/react-icons';
+import { ArrowDownload16Regular, Star16Filled } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router';
 import { AppLink } from '../../components/AppLink';
 import { DataTable } from '../../components/DataTable';
 import { RagChip } from '../../components/RagChip';
-import { daysLabel, formatDate, toRag } from '../../lib/format';
+import { formatDate, plural, toRag } from '../../lib/format';
 import { lensColors, ragColors, type Lens } from '../../theme/tokens';
-import type { TransitionSummary } from '../../api/types';
+import type { IntakeFieldRef, TransitionSummary } from '../../api/types';
 import { useReference } from '../reference/api';
+import { useIntakeFields, useOptionLabel } from '../reference/options';
 
 const useStyles = makeStyles({
-  table: { minWidth: '1000px', tableLayout: 'auto' },
+  table: { minWidth: '1100px', tableLayout: 'auto' },
   row: { cursor: 'pointer' },
   // The last column (RAG) stays visible inside the horizontal scroll; the first is sticky via DataTable.
   stickyRight: {
@@ -40,14 +49,21 @@ const useStyles = makeStyles({
     zIndex: 3,
     backgroundColor: tokens.colorNeutralBackground1,
   },
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalM,
+    marginBottom: tokens.spacingVerticalS,
+  },
   name: { display: 'flex', flexDirection: 'column', minWidth: 0 },
   nameLine: { display: 'inline-flex', alignItems: 'center', gap: tokens.spacingHorizontalXS },
   star: { color: ragColors.Amber.border, display: 'inline-flex' },
   // Lens bars keep a fixed width; the table scrolls inside DataTable instead of hiding them.
-  lenses: { display: 'flex', flexDirection: 'column', gap: '2px', width: '120px' },
+  lenses: { display: 'flex', flexDirection: 'column', gap: '2px', width: '190px' },
   lens: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS },
-  lensLetter: {
-    width: '12px',
+  lensName: {
+    width: '76px',
     fontSize: tokens.fontSizeBase100,
     fontWeight: tokens.fontWeightSemibold,
   },
@@ -55,7 +71,6 @@ const useStyles = makeStyles({
   fill: { height: '100%' },
   pct: { width: '34px', textAlign: 'right', fontSize: tokens.fontSizeBase100 },
   critical: { color: ragColors.Red.foreground, fontWeight: tokens.fontWeightSemibold },
-  overdue: { color: ragColors.Red.foreground },
   cell: { display: 'flex', flexDirection: 'column' },
   nowrap: { whiteSpace: 'nowrap', minWidth: '96px' },
 });
@@ -63,48 +78,33 @@ const useStyles = makeStyles({
 interface Column {
   id: string;
   label: string;
-  /** Sort key; undefined = not sortable. */
+  /** Plain text of the cell: the CSV value and the sort key. */
+  text: (t: TransitionSummary) => string;
+  /** Numeric sort key when text would sort wrongly; undefined = sort by text. */
   sort?: (t: TransitionSummary) => string | number;
+  cell: (t: TransitionSummary) => ReactNode;
+  nowrap?: boolean;
+  /** Stays visible at the right edge while the table scrolls. */
+  sticky?: boolean;
 }
 
-// Columns as spec 8.2 (Portfolio and Region / market share one cell): Transition, Portfolio / region, Type, Gate, Lenses, Readiness,
-// Gaps, Next decision, OR focal, RAG.
 const RAG_ORDER: Record<string, number> = { Red: 0, Amber: 1, Green: 2, Grey: 3 };
-const COLUMNS: Column[] = [
-  { id: 'name', label: 'Transition', sort: (t) => t.name.toLowerCase() },
-  { id: 'portfolio', label: 'Portfolio / region', sort: (t) => `${t.portfolio} ${t.region}` },
-  { id: 'type', label: 'Type', sort: (t) => t.project_type },
-  { id: 'gate', label: 'Gate', sort: (t) => t.current_gate_short },
-  { id: 'lenses', label: 'Lenses (B / T / C)' },
-  { id: 'readiness', label: 'Readiness %', sort: (t) => t.overall_readiness },
-  { id: 'gaps', label: 'Gaps', sort: (t) => t.critical_gaps * 1000 + t.open_gaps },
-  {
-    id: 'decision',
-    label: 'Next decision',
-    sort: (t) => t.days_to_next_decision ?? Number.MAX_SAFE_INTEGER,
-  },
-  { id: 'focal', label: 'OR focal', sort: (t) => t.or_focal.name },
-  { id: 'rag', label: 'RAG', sort: (t) => RAG_ORDER[toRag(t.rag)] },
-];
 
-const LENS_LETTERS: [Lens, string][] = [
-  ['Business', 'B'],
-  ['Technical', 'T'],
-  ['Compliance', 'C'],
-];
+// Written in full, in the order the client asked for.
+const LENSES: Lens[] = ['Business', 'Compliance', 'Technical'];
 
-/** Three mini bars; each carries its letter and a % label, so colour is never the only signal. */
+/** Three mini bars; each carries its name and a % label, so colour is never the only signal. */
 function LensBars({ t }: { t: TransitionSummary }) {
   const s = useStyles();
   return (
     <div className={s.lenses} role="group" aria-label="Readiness by lens">
-      {LENS_LETTERS.map(([lens, letter]) => {
+      {LENSES.map((lens) => {
         const pct = t.lens_readiness[lens];
         const c = lensColors[lens];
         return (
-          <div key={lens} className={s.lens} title={`${lens} ${pct}%`}>
-            <span className={s.lensLetter} style={{ color: c.foreground }} aria-hidden>
-              {letter}
+          <div key={lens} className={s.lens}>
+            <span className={s.lensName} style={{ color: c.foreground }}>
+              {lens}
             </span>
             <span className={s.track} style={{ backgroundColor: c.background }} aria-hidden>
               <span
@@ -116,10 +116,7 @@ function LensBars({ t }: { t: TransitionSummary }) {
                 }}
               />
             </span>
-            <span className={s.pct} aria-hidden>
-              {pct}%
-            </span>
-            <span style={{ position: 'absolute', left: -9999 }}>{`${lens} ${pct}%`}</span>
+            <span className={s.pct}>{pct}%</span>
           </div>
         );
       })}
@@ -127,35 +124,178 @@ function LensBars({ t }: { t: TransitionSummary }) {
   );
 }
 
-export function TransitionRegisterTable({ rows }: { rows: TransitionSummary[] }) {
+/** Value of one custom field as text: dropdown -> option label, date -> formatted, yes/no -> Yes / No. */
+function customText(
+  f: IntakeFieldRef,
+  t: TransitionSummary,
+  optionLabel: (list: string, value: string) => string,
+): string {
+  const v = t.custom_fields[f.key];
+  if (v === undefined || v === null || v === '') return '–';
+  if (f.type === 'boolean') return v ? 'Yes' : 'No';
+  if (f.type === 'date') return formatDate(String(v));
+  const list = f.option_list;
+  const one = (x: unknown) =>
+    list && f.type !== 'user' ? optionLabel(list, String(x)) : String(x);
+  return Array.isArray(v) ? v.map(one).join(', ') : one(v);
+}
+
+function useColumns(): Column[] {
   const s = useStyles();
-  const navigate = useNavigate();
-  const [sort, setSort] = useState<{ id: string; dir: 'ascending' | 'descending' } | null>(null);
-  // Names set in Admin, also for inactive types and portfolios (an unknown code shows itself).
   const { data: reference } = useReference();
+  const optionLabel = useOptionLabel();
+  // Admin decides which custom fields are columns ("Show it as a column in the transitions list").
+  const custom = useIntakeFields().filter((f) => !f.builtin && f.show_in_list);
+  // Names set in Admin, also for inactive types and portfolios (an unknown code shows itself).
   const typeLabels = new Map(
     (reference?.project_types ?? []).map((p) => [p.code, p.label || p.code]),
   );
   const portfolioLabels = new Map(
     (reference?.portfolio_details ?? []).map((p) => [p.name, p.label || p.name]),
   );
+  const typeLabel = (t: TransitionSummary) => typeLabels.get(t.project_type) ?? t.project_type;
+  const portfolioLabel = (t: TransitionSummary) => portfolioLabels.get(t.portfolio) ?? t.portfolio;
+
+  const gateOrder = (reference?.gates ?? []).map((g) => g.code);
+
+  return [
+    {
+      id: 'name',
+      label: 'Transition',
+      text: (t) => `${t.name} (${t.id})`,
+      sort: (t) => t.name.toLowerCase(),
+      cell: (t) => (
+        <div className={s.name}>
+          <span className={s.nameLine}>
+            {t.is_flagship && (
+              <span className={s.star} role="img" aria-label="Flagship transition">
+                <Star16Filled />
+              </span>
+            )}
+            <AppLink to={`/transitions/${t.id}/overview`}>{t.name}</AppLink>
+          </span>
+          <Caption1>{t.id}</Caption1>
+        </div>
+      ),
+    },
+    {
+      id: 'project_id',
+      label: 'Project ID',
+      text: (t) => t.servicenow_project_id ?? '',
+      cell: (t) => t.servicenow_project_id ?? '–',
+      nowrap: true,
+    },
+    {
+      id: 'portfolio',
+      label: 'Portfolio',
+      text: portfolioLabel,
+      cell: portfolioLabel,
+    },
+    {
+      id: 'region',
+      label: 'Region',
+      text: (t) => t.region,
+      cell: (t) => (
+        <div className={s.cell}>
+          <span>{t.region}</span>
+          <Caption1>{t.market}</Caption1>
+        </div>
+      ),
+    },
+    { id: 'type', label: 'Type', text: typeLabel, cell: typeLabel },
+    {
+      id: 'gate',
+      label: 'Gate',
+      text: (t) => t.current_gate_short,
+      cell: (t) => t.current_gate_short,
+      sort: (t) => gateOrder.indexOf(t.current_gate),
+      nowrap: true,
+    },
+    ...custom.map((f): Column => ({
+      id: f.key,
+      label: f.label,
+      text: (t) => customText(f, t, optionLabel),
+      cell: (t) => customText(f, t, optionLabel),
+      // ISO dates sort correctly as text; the display text ("9 Mar 2027") does not
+      sort: f.type === 'date' ? (t) => String(t.custom_fields[f.key] ?? '') : undefined,
+      nowrap: true,
+    })),
+    {
+      id: 'readiness',
+      label: 'Readiness',
+      text: (t) =>
+        `${t.overall_readiness}% (${LENSES.map((l) => `${l} ${t.lens_readiness[l]}%`).join(', ')})`,
+      sort: (t) => t.overall_readiness,
+      cell: (t) => (
+        <div className={s.cell}>
+          <strong>{t.overall_readiness}%</strong>
+          <LensBars t={t} />
+        </div>
+      ),
+    },
+    {
+      id: 'gaps',
+      label: 'Critical gaps/risks',
+      text: (t) => String(t.critical_gaps),
+      sort: (t) => t.critical_gaps * 1000 + t.open_gaps,
+      cell: (t) => (
+        <div className={s.cell}>
+          <span className={t.critical_gaps > 0 ? s.critical : undefined}>{t.critical_gaps}</span>
+          <Caption1>{t.open_gaps} open</Caption1>
+        </div>
+      ),
+    },
+    { id: 'focal', label: 'OR focal', text: (t) => t.or_focal.name, cell: (t) => t.or_focal.name },
+    {
+      id: 'rag',
+      label: 'RAG',
+      text: (t) => (toRag(t.rag) === 'Grey' ? 'Not started' : toRag(t.rag)),
+      sort: (t) => RAG_ORDER[toRag(t.rag)],
+      cell: (t) => <RagChip rag={toRag(t.rag)} />,
+      nowrap: true,
+      sticky: true,
+    },
+  ];
+}
+
+// A leading = + - @ would run as a formula in Excel; a leading quote keeps it text.
+const csvCell = (v: string) => `"${(/^[=+\-@\t\r]/.test(v) ? "'" + v : v).replace(/"/g, '""')}"`;
+
+/** Excel opens UTF-8 CSV correctly only with a BOM. */
+function downloadCsv(columns: Column[], rows: TransitionSummary[]) {
+  const lines = [columns.map((c) => c.label), ...rows.map((t) => columns.map((c) => c.text(t)))];
+  const blob = new Blob(['﻿' + lines.map((l) => l.map(csvCell).join(',')).join('\r\n')], {
+    type: 'text/csv;charset=utf-8',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'transitions.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export function TransitionRegisterTable({ rows }: { rows: TransitionSummary[] }) {
+  const s = useStyles();
+  const navigate = useNavigate();
+  const columns = useColumns();
+  const [sort, setSort] = useState<{ id: string; dir: 'ascending' | 'descending' } | null>(null);
 
   const sorted = useMemo(() => {
-    const col = COLUMNS.find((c) => c.id === sort?.id);
-    if (!sort || !col?.sort) return rows;
-    const key = col.sort;
+    const col = columns.find((c) => c.id === sort?.id);
+    if (!sort || !col) return rows;
+    const key = col.sort ?? ((t: TransitionSummary) => col.text(t).toLowerCase());
     const factor = sort.dir === 'ascending' ? 1 : -1;
     return [...rows].sort((a, b) => {
       const x = key(a);
       const y = key(b);
       return (x < y ? -1 : x > y ? 1 : 0) * factor;
     });
-  }, [rows, sort]);
+  }, [rows, columns, sort]);
 
-  const open = (id: string) => navigate(`/transitions/${id}/overview`);
   const onRowClick = (e: MouseEvent, id: string) => {
     if ((e.target as HTMLElement).closest('a')) return; // the name link navigates itself
-    open(id);
+    navigate(`/transitions/${id}/overview`);
   };
   const onSort = (id: TableColumnId) => {
     const key = String(id);
@@ -167,85 +307,55 @@ export function TransitionRegisterTable({ rows }: { rows: TransitionSummary[] })
   };
 
   return (
-    <DataTable label="Transition register" stickyFirstColumn>
-      <Table sortable aria-label="Transition register" className={s.table}>
-        <TableHeader>
-          <TableRow>
-            {COLUMNS.map((c) => (
-              <TableHeaderCell
-                key={c.id}
-                className={mergeClasses(
-                  c.id === 'rag' && s.headRight,
-                  (c.id === 'gate' || c.id === 'rag') && s.nowrap,
-                )}
-                sortDirection={sort?.id === c.id ? sort.dir : undefined}
-                onClick={c.sort ? () => onSort(c.id) : undefined}
-                style={c.sort ? undefined : { cursor: 'default' }}
-              >
-                {c.label}
-              </TableHeaderCell>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sorted.map((t) => {
-            const days = t.days_to_next_decision;
-            return (
+    <>
+      <div className={s.toolbar}>
+        <Caption1 role="status">{plural(rows.length, 'transition')}</Caption1>
+        <Menu>
+          <MenuTrigger disableButtonEnhancement>
+            <Button className="no-print" size="small" icon={<ArrowDownload16Regular />}>
+              Download
+            </Button>
+          </MenuTrigger>
+          <MenuPopover>
+            <MenuList>
+              <MenuItem onClick={() => downloadCsv(columns, sorted)}>Excel (.csv)</MenuItem>
+              <MenuItem onClick={() => window.print()}>PDF (print to PDF)</MenuItem>
+            </MenuList>
+          </MenuPopover>
+        </Menu>
+      </div>
+      <DataTable label="Transition register" stickyFirstColumn>
+        <Table sortable aria-label="Transition register" className={s.table}>
+          <TableHeader>
+            <TableRow>
+              {columns.map((c) => (
+                <TableHeaderCell
+                  key={c.id}
+                  className={mergeClasses(c.sticky && s.headRight, c.nowrap && s.nowrap)}
+                  sortDirection={sort?.id === c.id ? sort.dir : undefined}
+                  onClick={() => onSort(c.id)}
+                >
+                  {c.label}
+                </TableHeaderCell>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sorted.map((t) => (
               <TableRow key={t.id} className={s.row} onClick={(e) => onRowClick(e, t.id)}>
-                <TableCell>
-                  <div className={s.name}>
-                    <span className={s.nameLine}>
-                      {t.is_flagship && (
-                        <span className={s.star} role="img" aria-label="Flagship transition">
-                          <Star16Filled />
-                        </span>
-                      )}
-                      <AppLink to={`/transitions/${t.id}/overview`}>{t.name}</AppLink>
-                    </span>
-                    <Caption1>{t.id}</Caption1>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className={s.cell}>
-                    <span>{portfolioLabels.get(t.portfolio) ?? t.portfolio}</span>
-                    <Caption1>
-                      {t.region} · {t.market}
-                    </Caption1>
-                  </div>
-                </TableCell>
-                <TableCell>{typeLabels.get(t.project_type) ?? t.project_type}</TableCell>
-                <TableCell className={s.nowrap}>{t.current_gate_short}</TableCell>
-                <TableCell>
-                  <LensBars t={t} />
-                </TableCell>
-                <TableCell>
-                  <strong>{t.overall_readiness}%</strong>
-                </TableCell>
-                <TableCell>
-                  <div className={s.cell}>
-                    <span>{t.open_gaps} open</span>
-                    {t.critical_gaps > 0 && (
-                      <Caption1 className={s.critical}>{t.critical_gaps} critical</Caption1>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className={s.cell}>
-                    <span>{formatDate(t.next_decision_date)}</span>
-                    <Caption1 className={days !== null && days < 0 ? s.overdue : undefined}>
-                      {t.next_decision_date ? daysLabel(days) : 'No decision date'}
-                    </Caption1>
-                  </div>
-                </TableCell>
-                <TableCell>{t.or_focal.name}</TableCell>
-                <TableCell className={mergeClasses(s.stickyRight, s.nowrap)}>
-                  <RagChip rag={toRag(t.rag)} />
-                </TableCell>
+                {columns.map((c) => (
+                  <TableCell
+                    key={c.id}
+                    className={mergeClasses(c.sticky && s.stickyRight, c.nowrap && s.nowrap)}
+                  >
+                    {c.cell(t)}
+                  </TableCell>
+                ))}
               </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </DataTable>
+            ))}
+          </TableBody>
+        </Table>
+      </DataTable>
+    </>
   );
 }

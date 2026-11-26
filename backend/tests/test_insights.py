@@ -38,7 +38,7 @@ def test_dashboard_insights_deterministic_and_flagship(client, headers):
     assert crit == ["TR-0008:critical-gap", "TR-0014:critical-gap", "TR-0001:critical-gap"]
     top = next(i for i in first["insights"] if i["id"] == "TR-0001:critical-gap")
     assert top["text"] == (
-        "Mobility Knowledge Agent: AtD in 21 days, blocked by 1 critical gap "
+        "Mobility Knowledge Agent: SG4 (AtD) in 21 days, blocked by 1 critical gap/risk "
         "(S45-014 Agent / Use Case has undergone red-teaming exercise). Draft a chaser?"
     )
     assert [a["label"] for a in top["actions"]] == ["Open gaps", "Draft a chaser"]
@@ -82,7 +82,7 @@ def test_transition_insights(client, headers):
     body = _ins(client, headers, scope="transition", id="TR-0008")
     assert body["scope_id"] == "TR-0008"
     texts = " ".join(i["text"] for i in body["insights"])
-    assert "AtD in 4 days" in texts
+    assert "SG4 (AtD) in 4 days" in texts
     assert "Lowest lens: Technical at 49%" in texts
     assert "Top gaps:" in texts
     assert 3 <= len(body["insights"]) <= 5

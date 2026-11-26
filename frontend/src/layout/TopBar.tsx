@@ -18,8 +18,9 @@ import {
   mergeClasses,
   tokens,
 } from '@fluentui/react-components';
-import { Sparkle20Filled, Sparkle20Regular } from '@fluentui/react-icons';
+import { Sparkle20Regular } from '@fluentui/react-icons';
 import { useAuth } from '../auth/useAuth';
+import { OrionLogo } from '../components/OrionLogo';
 import { NotificationsBell } from '../features/notifications/NotificationsBell';
 import { useMe, useUsers } from '../features/users/api';
 import { ai, palette } from '../theme/orionTheme';
@@ -47,16 +48,6 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
     flexShrink: 0,
   },
-  mark: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '28px',
-    height: '28px',
-    borderRadius: '8px',
-    backgroundColor: ai.main,
-    color: tokens.colorNeutralForegroundInverted,
-  },
   wordmark: {
     fontSize: '20px',
     fontWeight: tokens.fontWeightBold,
@@ -65,7 +56,8 @@ const useStyles = makeStyles({
   },
   tagline: {
     color: tokens.colorNeutralForeground3,
-    '@media (max-width: 1100px)': { display: 'none' },
+    fontSize: '11px',
+    '@media (max-width: 1280px)': { display: 'none' },
   },
   search: { flexGrow: 1, flexShrink: 1, minWidth: 0, maxWidth: '420px' },
   spacer: { flexGrow: 1 },
@@ -102,11 +94,9 @@ export function TopBar(props: { orionOpen: boolean; onToggleOrion: () => void })
     <header className={s.header}>
       <div className={s.bar}>
         <div className={s.brand}>
-          <span className={s.mark} aria-hidden>
-            <Sparkle20Filled />
-          </span>
+          <OrionLogo />
           <span className={s.wordmark}>Orion</span>
-          <Caption1 className={s.tagline}>Operate Readiness Agent</Caption1>
+          <Caption1 className={s.tagline}>Operate Readiness Intelligence &amp; Orchestration Navigator</Caption1>
         </div>
 
         <SearchBox

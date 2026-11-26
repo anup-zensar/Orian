@@ -371,13 +371,12 @@ def test_flavour_rules_alias_carries_the_project_type_fields(client, headers):
     rules = client.get(f"{API}/admin/flavour-rules", headers=headers(ADMIN)).json()["rules"]
     ai = next(r for r in rules if r["project_type"] == "Agentic AI")
     assert ai["checklists"] == ["FRAMEWORK", "AI_PLAYBOOK"] and ai["requires_tiering"] is True
-    assert ai["label"] == "Agentic AI" and ai["has_ai_profile"] and ai["has_eval_metrics"]
+    assert ai["label"] == "AI Transition" and ai["has_ai_profile"] and ai["has_eval_metrics"]
     assert ai["required_intake_fields"] == ["audience", "write_actions", "sensitive_data"]
     assert [r["project_type"] for r in rules] == [
         "Normal",
-        "Infrastructure",
         "Agentic AI",
-        "Combined",
+        "Infrastructure",
     ]
 
 

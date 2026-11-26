@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Orion – Operate Readiness Agent API",
+    "title": "Orion – Operate Readiness Intelligence & Orchestration Navigator API",
     "description": "Demo API. Every external system and AI capability is a mock behind an interface.",
     "version": "0.1.0"
   },
@@ -250,10 +250,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Case-insensitive search in transition id, name, market and OR focal name",
+              "description": "Case-insensitive search in transition id, name, market, ServiceNow project ID and OR focal name",
               "title": "Q"
             },
-            "description": "Case-insensitive search in transition id, name, market and OR focal name"
+            "description": "Case-insensitive search in transition id, name, market, ServiceNow project ID and OR focal name"
           },
           {
             "name": "decision_within_days",
@@ -754,10 +754,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Case-insensitive search in transition id, name, market and OR focal name",
+              "description": "Case-insensitive search in transition id, name, market, ServiceNow project ID and OR focal name",
               "title": "Q"
             },
-            "description": "Case-insensitive search in transition id, name, market and OR focal name"
+            "description": "Case-insensitive search in transition id, name, market, ServiceNow project ID and OR focal name"
           },
           {
             "name": "decision_within_days",
@@ -1458,7 +1458,7 @@
           "items"
         ],
         "summary": "List Items",
-        "description": "Checklist for one transition (spec 8.7 a/b, FR-031). Any signed-in user.\n\n* 404 when the transition does not exist.\n* Before the assessment is launched (``assessment_launched_at`` null) there are no TransitionItems:\n  return ``items=[]``, zero summaries and zero counts (not an error).\n* ``filters.gate`` defaults to the transition's ``current_gate``; unless ``all_gates`` is true only\n  items whose ``due_gate`` is at or before it (``GATE_ORDER``) are returned. Unknown gate code: 422.\n* ``applicability`` defaults to \"applies\" (Applies); \"excluded\" = Not applicable (tier, project type,\n  portfolio or manual N/A, ``excluded_by`` says which); \"to_confirm\"; \"all\".\n* ``mine`` = items owned by the current user; ``owner`` = a user id; ``q`` searches id/title/\n  description/owner name. ``status`` and ``lens`` are exact matches.\n* ``summary`` always has three rows (Business, Technical, Compliance) for the EFFECTIVE gate over\n  applicable items (BR-020: done / in progress / not started / open gaps / critical gaps / readiness\n  percent, items covered by an open condition due after the current gate count as done-equivalent per\n  the shared readiness rule). It ignores the lens/source/status/owner/q filters.\n* ``excluded_count`` / ``excluded_by_tier_count`` count the transition's Not applicable items\n  (all gates) so the UI can show \"N items excluded by tier\".\n* Sort: due gate order, lens order (Business, Technical, Compliance), playbook ``sort_order``.\n* Per-row ``can_edit`` / ``edit_denied_reason`` are computed for the current user: Compliance items\n  need ``Perm.UPDATE_C_STATUS`` (IRM), Business/Technical need ``Perm.UPDATE_BT_STATUS``\n  (OR focal, PM, Architect, OLM); the reason is ``DENIAL_REASONS`` of the missing permission.",
+        "description": "Checklist for one transition (spec 8.7 a/b, FR-031). Any signed-in user.\n\n* 404 when the transition does not exist.\n* Before the assessment is launched (``assessment_launched_at`` null) there are no TransitionItems:\n  return ``items=[]``, zero summaries and zero counts (not an error).\n* ``filters.gate`` defaults to the transition's ``current_gate``; unless ``all_gates`` is true only\n  items whose ``due_gate`` is at or before it (``GATE_ORDER``) are returned. Unknown gate code: 422.\n* ``applicability`` defaults to \"applies\" (Applies); \"excluded\" = Not applicable (tier, project type,\n  portfolio or manual N/A, ``excluded_by`` says which); \"to_confirm\"; \"all\".\n* ``mine`` = items owned by the current user; ``owner`` = a user id; ``q`` searches id/title/\n  description/owner name. ``status`` and ``lens`` are exact matches.\n* ``summary`` always has three rows (Business, Technical, Compliance) for the EFFECTIVE gate over\n  applicable items (BR-020: done / in progress / not started / open gaps / critical gaps / readiness\n  percent, items covered by an open condition due after the current gate count as done-equivalent per\n  the shared readiness rule). It ignores the lens/source/status/owner/q filters.\n* ``excluded_count`` / ``excluded_by_tier_count`` count the transition's Not applicable items\n  (all gates) so the UI can show \"N items excluded by tier\".\n* Sort: due gate order, lens order (Business, Technical, Compliance), playbook ``sort_order``.\n* Per-row ``can_edit`` / ``edit_denied_reason`` are computed for the current user: Compliance items\n  need ``Perm.UPDATE_C_STATUS`` (IRM, OLM, OR focal), Business need ``Perm.UPDATE_BT_STATUS`` (OR focal,\n  PM, OLM), Technical need that or ``Perm.UPDATE_T_STATUS`` (Architect); the reason is\n  ``DENIAL_REASONS`` of the missing permission, or \"Checklist is locked after Agreement to Operate\"\n  (items of any gate stay editable until AtO is approved; ``rules.item_edit``).",
         "operationId": "list_items_api_v1_transitions__transition_id__items_get",
         "parameters": [
           {
@@ -1671,7 +1671,7 @@
           "items"
         ],
         "summary": "Patch Item",
-        "description": "Update one TransitionItem (``item_id`` is the integer TransitionItem.id). Only fields in\n``body.model_fields_set`` are applied. Enforces BR-030 / spec 7.5 and writes ONE AuditEvent\n(entity \"TransitionItem\", action \"updated\", before/after of changed fields, actor_type Human).\n``last_updated_by`` = user, ``last_updated_source`` = \"Human\". Orion never calls this (BR-050).\n\nErrors:\n* 404 item not found.\n* 403 (reason from ``DENIAL_REASONS``): status change on a Compliance item without\n  ``Perm.UPDATE_C_STATUS``; status change on a B/T item without ``Perm.UPDATE_BT_STATUS``;\n  ``design_effectiveness`` without ``Perm.UPDATE_C_STATUS``; ``applicability`` / N/A on a B/T item\n  without ``Perm.CONFIRM_SCOPE`` (OR focal); N/A on a Compliance item without\n  ``Perm.UPDATE_C_STATUS`` (IRM). Owner and note changes: ``Perm.UPDATE_BT_STATUS`` for B/T items,\n  ``Perm.UPDATE_C_STATUS`` or the item's current owner for Compliance items.\n* 422 invalid input (reasons list): status not in ``STATUSES_BY_LENS[lens]``; unknown owner user;\n  ``gap_severity`` not Critical/Major/Minor.\n* 409 business-rule violation (reasons list):\n  - status Gap / Non-compliant needs ``gap_severity`` AND a non-empty note (given now or already on\n    the item);\n  - N/A / Not applicable status (or applicability \"Not applicable\") needs ``na_reason``; applicability\n    \"Not applicable\" also sets the lens N/A status, applicability \"Applies\" restores \"Not started\"\n    when the item was N/A;\n  - \"Compliant with conditions\" requires ``body.condition`` (owner, due_gate, text) and creates the\n    Condition via ``app.domain.conditions.create_condition`` (set_at_gate = transition.current_gate,\n    actor Human); due gate must not be before the current gate;\n  - \"Compliant\" requires design_effectiveness Yes or N/A (given now or stored);\n  - the item's transition is Closed; or the assessment has not been launched.\n* Leaving a Gap status clears ``gap_severity``. Leaving \"Compliant with conditions\" does NOT close\n  the Condition automatically. Setting Complete/Compliant on an item with an Open condition leaves the\n  condition open (humans close it).\nReturns the refreshed ``ItemOut`` (can_edit computed for the caller).",
+        "description": "Update one TransitionItem (``item_id`` is the integer TransitionItem.id). Only fields in\n``body.model_fields_set`` are applied. Enforces BR-030 / spec 7.5 and writes ONE AuditEvent\n(entity \"TransitionItem\", action \"updated\", before/after of changed fields, actor_type Human).\n``last_updated_by`` = user, ``last_updated_source`` = \"Human\". Orion never calls this (BR-050).\n\nErrors:\n* 404 item not found.\n* 403 (reason from ``DENIAL_REASONS``): status change on a Compliance item without\n  ``Perm.UPDATE_C_STATUS``; status change on a B/T item without the lens permission above;\n  ``design_effectiveness`` without ``Perm.UPDATE_C_STATUS``; ``applicability`` / N/A on a B/T item\n  without ``Perm.CONFIRM_SCOPE`` (OR focal); N/A on a Compliance item without\n  ``Perm.UPDATE_C_STATUS`` (IRM). Owner and note changes: ``Perm.UPDATE_BT_STATUS`` for B/T items,\n  ``Perm.UPDATE_C_STATUS`` or the item's current owner for Compliance items.\n* 422 invalid input (reasons list): status not in ``STATUSES_BY_LENS[lens]``; unknown owner user;\n  ``gap_severity`` not Critical/Major/Minor.\n* 409 business-rule violation (reasons list):\n  - status Gap / Non-compliant needs ``gap_severity`` AND a non-empty note (given now or already on\n    the item);\n  - N/A / Not applicable status (or applicability \"Not applicable\") needs ``na_reason``; applicability\n    \"Not applicable\" also sets the lens N/A status, applicability \"Applies\" restores \"Not started\"\n    when the item was N/A;\n  - \"Compliant with conditions\" requires ``body.condition`` (owner, due_gate, text) and creates the\n    Condition via ``app.domain.conditions.create_condition`` (set_at_gate = transition.current_gate,\n    actor Human); due gate must not be before the current gate;\n  - \"Compliant\" requires design_effectiveness Yes or N/A (given now or stored);\n  - the item's transition is Closed; or the assessment has not been launched.\n* Leaving a Gap status clears ``gap_severity``. Leaving \"Compliant with conditions\" does NOT close\n  the Condition automatically. Setting Complete/Compliant on an item with an Open condition leaves the\n  condition open (humans close it).\nReturns the refreshed ``ItemOut`` (can_edit computed for the caller).",
         "operationId": "patch_item_api_v1_items__item_id__patch",
         "parameters": [
           {
@@ -3035,7 +3035,7 @@
           "ai-playbook"
         ],
         "summary": "Get Eval Metrics",
-        "description": "Eval metrics table for the transition's tier (spec 7.5, 8.7 j).\n\n* 404 unknown transition. 409 when the project type has no eval metrics (its \"Has eval metrics\"\n  switch is off; Agentic AI and Combined have it on): \"Eval metrics apply to AI flavours only\".\n* Tier = confirmed tier if confirmed, else the proposed tier, else ``null`` (then the lowest tier's\n  targets are shown and ``tier`` is null). Rows = EvalTarget for that tier ordered by sort_order, joined\n  with the EvalResult of the transition.\n* ``status``: \"not evaluated\" when no result; for ``evaluation == \"auto\"`` pass/fail is computed from\n  ``operator`` / ``value`` vs ``result_number`` (abs<= means absolute value <= value); for manual\n  metrics from the stored ``passed`` toggle.\n* ``banner`` = \"Targets currently identical for all tiers - tier-specific thresholds to be confirmed\n  by the S&T team (editable in Admin).\" while ``targets_confirmed`` is false, else \"\".\n* ``failed_count`` counts fail rows (Technical blockers at SG4_ATD), ``not_evaluated_count`` the rest\n  (warning only).",
+        "description": "Eval metrics table for the transition's tier (spec 7.5, 8.7 j).\n\n* 404 unknown transition. 409 when the project type has no eval metrics (its \"Has eval metrics\"\n  switch is off; Agentic AI has it on): \"Eval metrics apply to AI flavours only\".\n* Tier = confirmed tier if confirmed, else the proposed tier, else ``null`` (then the lowest tier's\n  targets are shown and ``tier`` is null). Rows = EvalTarget for that tier ordered by sort_order, joined\n  with the EvalResult of the transition.\n* ``status``: \"not evaluated\" when no result; for ``evaluation == \"auto\"`` pass/fail is computed from\n  ``operator`` / ``value`` vs ``result_number`` (abs<= means absolute value <= value); for manual\n  metrics from the stored ``passed`` toggle.\n* ``banner`` = \"Targets currently identical for all tiers - tier-specific thresholds to be confirmed\n  by the S&T team (editable in Admin).\" while ``targets_confirmed`` is false, else \"\".\n* ``failed_count`` counts fail rows (Technical blockers at SG4_ATD), ``not_evaluated_count`` the rest\n  (warning only).",
         "operationId": "get_eval_metrics_api_v1_transitions__transition_id__eval_metrics_get",
         "parameters": [
           {
@@ -5559,10 +5559,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Case-insensitive search in transition id, name, market and OR focal name",
+              "description": "Case-insensitive search in transition id, name, market, ServiceNow project ID and OR focal name",
               "title": "Q"
             },
-            "description": "Case-insensitive search in transition id, name, market and OR focal name"
+            "description": "Case-insensitive search in transition id, name, market, ServiceNow project ID and OR focal name"
           },
           {
             "name": "decision_within_days",
@@ -18792,6 +18792,11 @@
             "title": "Show On Overview",
             "default": false
           },
+          "show_in_list": {
+            "type": "boolean",
+            "title": "Show In List",
+            "default": false
+          },
           "filterable": {
             "type": "boolean",
             "title": "Filterable",
@@ -18976,6 +18981,11 @@
             "title": "Show On Overview",
             "default": false
           },
+          "show_in_list": {
+            "type": "boolean",
+            "title": "Show In List",
+            "default": false
+          },
           "filterable": {
             "type": "boolean",
             "title": "Filterable",
@@ -19137,6 +19147,11 @@
           "show_on_overview": {
             "type": "boolean",
             "title": "Show On Overview",
+            "default": false
+          },
+          "show_in_list": {
+            "type": "boolean",
+            "title": "Show In List",
             "default": false
           },
           "filterable": {
@@ -19356,6 +19371,17 @@
               }
             ],
             "title": "Show On Overview"
+          },
+          "show_in_list": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Show In List"
           },
           "filterable": {
             "anyOf": [
@@ -27573,7 +27599,7 @@
               }
             ],
             "title": "Q",
-            "description": "Case-insensitive search in transition id, name, market and OR focal name"
+            "description": "Case-insensitive search in transition id, name, market, ServiceNow project ID and OR focal name"
           },
           "decision_within_days": {
             "anyOf": [
@@ -27664,6 +27690,23 @@
           "market": {
             "type": "string",
             "title": "Market"
+          },
+          "servicenow_project_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Servicenow Project Id"
+          },
+          "custom_fields": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Custom Fields",
+            "default": {}
           },
           "project_type": {
             "type": "string",

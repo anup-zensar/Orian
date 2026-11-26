@@ -24,6 +24,9 @@ export const FILTER_KEYS = [
 export type FilterKey = (typeof FILTER_KEYS)[number];
 /** `?cf_<key>=value` filters on the custom fields an Admin marked "filterable". */
 export type CustomFilterKey = `cf_${string}`;
+/** URL parameter of a custom field: its key, with the cf_ prefix added when the key has none. */
+export const customFilterKey = (fieldKey: string): CustomFilterKey =>
+  (fieldKey.startsWith('cf_') ? fieldKey : `cf_${fieldKey}`) as CustomFilterKey;
 type AnyKey = FilterKey | CustomFilterKey;
 interface RemovedFilter {
   key: AnyKey;
@@ -91,7 +94,7 @@ export function useUrlFilters() {
       new Map(
         intakeFields
           .filter((f) => !f.builtin && f.filterable && f.active)
-          .map((f) => [f.key, f.type] as const),
+          .map((f) => [customFilterKey(f.key), f.type] as const),
       ),
     [intakeFields],
   );

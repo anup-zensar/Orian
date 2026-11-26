@@ -378,7 +378,7 @@ def test_ac03_framework_only_types(client, headers, db, fresh_seed, project_type
     assert counts[("COMMON", "Applies")] == 1 and counts[("COMMON", "To confirm")] == 1
 
 
-@pytest.mark.parametrize("project_type", ["Agentic AI", "Combined"])
+@pytest.mark.parametrize("project_type", ["Agentic AI"])
 def test_ac03_ai_types_tier_2_excludes_tier_3_4_items(
     client, headers, db, fresh_seed, project_type
 ):
@@ -617,11 +617,11 @@ def test_patch_project_type_after_launch_switches_flavour(client, headers, db, f
     excluded = [i for i in _items(db, tid).values() if i.excluded_by == "project_type"]
     assert len(excluded) == 208
 
-    # back to Combined: the tier assessment is still there, so Tier 2 applies again
-    to_combined = client.patch(
-        f"{API}/transitions/{tid}", json={"project_type": "Combined"}, headers=headers()
+    # back to Agentic AI: the tier assessment is still there, so Tier 2 applies again
+    to_ai = client.patch(
+        f"{API}/transitions/{tid}", json={"project_type": "Agentic AI"}, headers=headers()
     )
-    assert to_combined.status_code == 200
+    assert to_ai.status_code == 200
     counts = _by_source(db, tid)
     assert counts[("AI_PLAYBOOK", "Applies")] == 208
     assert counts[("AI_PLAYBOOK", "Not applicable")] == 8

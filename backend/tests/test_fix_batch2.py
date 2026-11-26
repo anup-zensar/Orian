@@ -273,7 +273,7 @@ def test_r1_message_uses_the_stage_gate_not_atd(db, fresh_seed):
     )
     assert _message_context(cand, t, users)["gate_short"] == "SG3"
     t.current_gate = "SG4_ATD"
-    assert _message_context(cand, t, users)["gate_short"] == "AtD"
+    assert _message_context(cand, t, users)["gate_short"] == "SG4 (AtD)"
     db.rollback()
 
 

@@ -53,7 +53,7 @@ export function AssessmentFilters(props: {
   const ref = useReference();
   const users = useUsers();
   // draft is the text being typed; null = show the URL value (so back/clear stay in sync)
-  const hasMore = !!(values.gate || values.source || values.owner || values.excluded);
+  const hasMore = !!(values.source || values.owner || values.excluded);
   const [moreToggled, setMoreToggled] = useState(false);
   // opens by itself when a hidden filter is set (deep link, the 'view' banner link)
   const showMore = moreToggled || hasMore;
@@ -85,7 +85,7 @@ export function AssessmentFilters(props: {
             Up to {g.short}
           </option>
         ))}
-        <option value="all">All gates</option>
+        <option value="all">All gates (incl. upcoming)</option>
       </Select>
     </Field>
   );
@@ -125,6 +125,7 @@ export function AssessmentFilters(props: {
             ))}
           </Select>
         </Field>
+        {gate}
         <div className={s.switchCell}>
           <Switch
             label="Only my items"
@@ -135,7 +136,6 @@ export function AssessmentFilters(props: {
       </FormGrid>
       {showMore && (
         <FormGrid minColWidth={180} className={s.controls}>
-          {gate}
           <Field label="Source">
             <Select
               value={values.source}

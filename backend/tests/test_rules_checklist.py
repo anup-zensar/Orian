@@ -74,7 +74,7 @@ def test_golden_set_mandatory_applies_others_to_confirm(library):
     assert not any(p.portfolio not in (None, "Telecoms") for p in planned)
 
 
-@pytest.mark.parametrize("project_type", ["Agentic AI", "Combined"])
+@pytest.mark.parametrize("project_type", ["Agentic AI"])
 def test_tier2_ai_items_and_exclusions_ac03(library, project_type):
     planned = assemble(library, project_type, "GCC", tier=2, checklists=WITH_AI)
     counts = summarize_counts(planned)

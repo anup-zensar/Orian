@@ -224,6 +224,8 @@ def to_summary(m: TransitionMetrics) -> TransitionSummaryOut:
         portfolio=t.portfolio,
         region=t.region,
         market=t.market,
+        servicenow_project_id=t.servicenow_project_id,
+        custom_fields=dict(t.custom_fields or {}),
         project_type=t.project_type,
         current_gate=t.current_gate,
         current_gate_short=GATE_SHORT[t.current_gate],

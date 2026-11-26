@@ -190,7 +190,7 @@ class TransitionDetailOut(BaseModel):
     target_gate: str | None
     sites: list[SiteOut]
     roles: RolesOut
-    flavour_label: str  # e.g. "Agentic AI · GCC · Global"
+    flavour_label: str  # e.g. "AI Transition · GCC · Global"
     # Project-type switches (Admin: Project types) - the UI shows tiering, the AI profile and the eval
     # table from these, never from the project type's name.
     requires_tiering: bool

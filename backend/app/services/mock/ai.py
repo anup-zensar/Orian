@@ -45,6 +45,10 @@ def _s(n: int, word: str) -> str:
     return f"{n} {word}" if n == 1 else f"{n} {word}s"
 
 
+def _crit(n: int) -> str:
+    return f"{n} critical gap/risk" if n == 1 else f"{n} critical gaps/risks"
+
+
 def _when(f: Mapping[str, Any]) -> str | None:
     """``AtD in 21 days`` / ``AtD overdue by 2 days`` / None when there is no decision date."""
     days = f.get("days")
@@ -61,7 +65,7 @@ def _when(f: Mapping[str, Any]) -> str | None:
 def _risk_parts(f: Mapping[str, Any]) -> str:
     parts = []
     if f["critical_gaps"] > 0:
-        parts.append(_s(f["critical_gaps"], "critical gap"))
+        parts.append(_crit(f["critical_gaps"]))
     if not f.get("launched", True):
         parts.append("assessment not launched yet")
     elif f["lowest_lens_pct"] < 70:
@@ -120,7 +124,7 @@ def _dashboard_insights(data: Mapping[str, Any]) -> list[dict[str, Any]]:
         out.append(
             _insight(
                 f"{f['id']}:critical-gap",
-                f"{lead} {_s(n, 'critical gap')} ({what})."
+                f"{lead} {_crit(n)} ({what})."
                 + ("" if data["user"].get("role") == "LEADERSHIP" else " Draft a chaser?"),
                 "critical",
                 f["id"],

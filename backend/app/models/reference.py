@@ -200,6 +200,7 @@ class IntakeField(TimestampMixin, Base):
     section: Mapped[str] = mapped_column(String(60), default="")
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     show_on_overview: Mapped[bool] = mapped_column(Boolean, default=False)
+    show_in_list: Mapped[bool] = mapped_column(Boolean, default=False)
     filterable: Mapped[bool] = mapped_column(Boolean, default=False)
     form: Mapped[str] = mapped_column(String(20), default="intake")  # intake | ai_profile
     min: Mapped[float | None] = mapped_column(Float, nullable=True)

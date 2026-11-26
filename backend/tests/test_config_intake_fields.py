@@ -97,7 +97,7 @@ def test_custom_field_required_for_one_project_type(client, headers, db, fresh_s
     )
     missing = _create(client, headers, project_type="Normal")
     assert missing.status_code == 422
-    assert missing.json()["reasons"] == ["Cost centre is required for Normal"]
+    assert missing.json()["reasons"] == ["Cost centre is required for Standard Transition"]
     assert _create(client, headers, {"cf_cost_centre": "CC-42"}).status_code == 201
     # other project types are not asked
     assert _create(client, headers, project_type="Infrastructure").status_code == 201
@@ -232,11 +232,11 @@ def test_built_in_field_labels_come_from_configuration(client, headers, db, fres
         client, headers, project_type="Agentic AI", write_actions="No", sensitive_data="No"
     )
     assert res.status_code == 422
-    assert res.json()["reasons"] == ["Who will use it is required for Agentic AI"]
+    assert res.json()["reasons"] == ["Who will use it is required for AI Transition"]
 
 
 def test_required_fields_default_to_todays_behaviour(client, headers, fresh_seed):
-    for project_type in ("Agentic AI", "Combined"):
+    for project_type in ("Agentic AI",):
         res = _create(client, headers, project_type=project_type)
         assert res.status_code == 422
         assert len(res.json()["reasons"]) == 3

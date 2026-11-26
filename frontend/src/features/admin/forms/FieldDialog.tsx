@@ -60,6 +60,7 @@ export function FieldDialog(props: { field?: IntakeFieldAdmin; onClose: () => vo
   const [appliesPortfolios, setAppliesPortfolios] = useState(field?.applies_to_portfolios ?? []);
   const [onOverview, setOnOverview] = useState(field?.show_on_overview ?? false);
   const [filterable, setFilterable] = useState(field?.filterable ?? false);
+  const [inList, setInList] = useState(field?.show_in_list ?? false);
   const [min, setMin] = useState(field?.min != null ? String(field.min) : '');
   const [max, setMax] = useState(field?.max != null ? String(field.max) : '');
   const [maxLength, setMaxLength] = useState(
@@ -97,6 +98,7 @@ export function FieldDialog(props: { field?: IntakeFieldAdmin; onClose: () => vo
       applies_to_portfolios: appliesPortfolios,
       show_on_overview: onOverview,
       filterable,
+      show_in_list: inList,
       min: type === 'number' ? toNumber(min) : null,
       max: type === 'number' ? toNumber(max) : null,
       max_length: type === 'text' || type === 'textarea' ? toNumber(maxLength) : null,
@@ -261,6 +263,11 @@ export function FieldDialog(props: { field?: IntakeFieldAdmin; onClose: () => vo
                   label="Show the answer on the transition overview"
                   checked={onOverview}
                   onChange={(_, d) => setOnOverview(d.checked)}
+                />
+                <Switch
+                  label="Show it as a column in the transitions list"
+                  checked={inList}
+                  onChange={(_, d) => setInList(d.checked)}
                 />
                 <DisabledReason
                   reason={

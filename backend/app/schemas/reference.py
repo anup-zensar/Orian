@@ -151,6 +151,7 @@ class IntakeFieldRefOut(BaseModel):
     section: str = ""
     sort_order: int = 0
     show_on_overview: bool = False
+    show_in_list: bool = False
     filterable: bool = False
     form: str = "intake"
     min: float | None = None

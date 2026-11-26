@@ -486,5 +486,5 @@ def test_approval_request_draft_uses_the_saved_template(client, headers, db, fre
     _save(db, "approval_request", subject="Please approve {{gate_short}} - {{transition_name}}")
     transition = db.get(Transition, "TR-0001")
     to, cc, text = approval_request_message(db, transition, "SG4_ATD", db.get(User, "U01"))
-    assert text["subject"] == f"Please approve AtD - {transition.name}"
+    assert text["subject"] == f"Please approve SG4 (AtD) - {transition.name}"
     assert to and cc  # To = first approver, Cc = OR focal (unchanged by templates)

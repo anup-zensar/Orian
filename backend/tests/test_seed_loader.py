@@ -59,9 +59,9 @@ def test_row_counts(db):
     assert count(db, PlaybookItem, PlaybookItem.source == "COMMON") == 2
     assert count(db, EvalTarget) == 152  # 38 metrics x tiers 1-4
     assert count(db, Portfolio) == 6
-    assert count(db, FlavourRule) == 4
+    assert count(db, FlavourRule) == 3
     assert count(db, ReminderRule) == 7
-    ai_transitions = count(db, Transition, Transition.project_type.in_(["Agentic AI", "Combined"]))
+    ai_transitions = count(db, Transition, Transition.project_type.in_(["Agentic AI"]))
     assert count(db, TierAssessment) == ai_transitions == 2
     assert count(db, AIProfile) == ai_transitions
 
@@ -334,3 +334,14 @@ def test_config_seed_matches_the_simplified_admin(db):
     assert "tier_rules" not in conf and not {"cfg.gates", "cfg.labels", "cfg.lenses"} & set(
         conf["settings"]
     )
+
+
+def test_sample_custom_fields_and_dates_are_loaded(db):
+    """CR-03: sample transitions carry project status / tier and AtD / AtO dates (days from today)."""
+    today = clock.today()
+    for src in seed_json("sample_transitions.json")["transitions"]:
+        stored = db.get(Transition, src["id"]).custom_fields
+        for key, value in src["custom_fields"].items():
+            assert stored[key] == value
+        for key, days in src["custom_dates_days"].items():
+            assert stored[key] == (today + timedelta(days=days)).isoformat()

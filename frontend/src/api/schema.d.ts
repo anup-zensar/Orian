@@ -442,8 +442,10 @@ export interface paths {
          *       (all gates) so the UI can show "N items excluded by tier".
          *     * Sort: due gate order, lens order (Business, Technical, Compliance), playbook ``sort_order``.
          *     * Per-row ``can_edit`` / ``edit_denied_reason`` are computed for the current user: Compliance items
-         *       need ``Perm.UPDATE_C_STATUS`` (IRM), Business/Technical need ``Perm.UPDATE_BT_STATUS``
-         *       (OR focal, PM, Architect, OLM); the reason is ``DENIAL_REASONS`` of the missing permission.
+         *       need ``Perm.UPDATE_C_STATUS`` (IRM, OLM, OR focal), Business need ``Perm.UPDATE_BT_STATUS`` (OR focal,
+         *       PM, OLM), Technical need that or ``Perm.UPDATE_T_STATUS`` (Architect); the reason is
+         *       ``DENIAL_REASONS`` of the missing permission, or "Checklist is locked after Agreement to Operate"
+         *       (items of any gate stay editable until AtO is approved; ``rules.item_edit``).
          */
         get: operations["list_items_api_v1_transitions__transition_id__items_get"];
         put?: never;
@@ -477,7 +479,7 @@ export interface paths {
          *     Errors:
          *     * 404 item not found.
          *     * 403 (reason from ``DENIAL_REASONS``): status change on a Compliance item without
-         *       ``Perm.UPDATE_C_STATUS``; status change on a B/T item without ``Perm.UPDATE_BT_STATUS``;
+         *       ``Perm.UPDATE_C_STATUS``; status change on a B/T item without the lens permission above;
          *       ``design_effectiveness`` without ``Perm.UPDATE_C_STATUS``; ``applicability`` / N/A on a B/T item
          *       without ``Perm.CONFIRM_SCOPE`` (OR focal); N/A on a Compliance item without
          *       ``Perm.UPDATE_C_STATUS`` (IRM). Owner and note changes: ``Perm.UPDATE_BT_STATUS`` for B/T items,
@@ -889,7 +891,7 @@ export interface paths {
          * @description Eval metrics table for the transition's tier (spec 7.5, 8.7 j).
          *
          *     * 404 unknown transition. 409 when the project type has no eval metrics (its "Has eval metrics"
-         *       switch is off; Agentic AI and Combined have it on): "Eval metrics apply to AI flavours only".
+         *       switch is off; Agentic AI has it on): "Eval metrics apply to AI flavours only".
          *     * Tier = confirmed tier if confirmed, else the proposed tier, else ``null`` (then the lowest tier's
          *       targets are shown and ``tier`` is null). Rows = EvalTarget for that tier ordered by sort_order, joined
          *       with the EvalResult of the transition.
@@ -5271,6 +5273,11 @@ export interface components {
              */
             show_on_overview: boolean;
             /**
+             * Show In List
+             * @default false
+             */
+            show_in_list: boolean;
+            /**
              * Filterable
              * @default false
              */
@@ -5350,6 +5357,11 @@ export interface components {
              * @default false
              */
             show_on_overview: boolean;
+            /**
+             * Show In List
+             * @default false
+             */
+            show_in_list: boolean;
             /**
              * Filterable
              * @default false
@@ -5447,6 +5459,11 @@ export interface components {
              */
             show_on_overview: boolean;
             /**
+             * Show In List
+             * @default false
+             */
+            show_in_list: boolean;
+            /**
              * Filterable
              * @default false
              */
@@ -5496,6 +5513,8 @@ export interface components {
             section?: string | null;
             /** Show On Overview */
             show_on_overview?: boolean | null;
+            /** Show In List */
+            show_in_list?: boolean | null;
             /** Filterable */
             filterable?: boolean | null;
             /** Min */
@@ -8751,7 +8770,7 @@ export interface components {
             type?: string | null;
             /**
              * Q
-             * @description Case-insensitive search in transition id, name, market and OR focal name
+             * @description Case-insensitive search in transition id, name, market, ServiceNow project ID and OR focal name
              */
             q?: string | null;
             /**
@@ -8795,6 +8814,15 @@ export interface components {
             region: string;
             /** Market */
             market: string;
+            /** Servicenow Project Id */
+            servicenow_project_id?: string | null;
+            /**
+             * Custom Fields
+             * @default {}
+             */
+            custom_fields: {
+                [key: string]: unknown;
+            };
             /** Project Type */
             project_type: string;
             /** Current Gate */
@@ -9306,7 +9334,7 @@ export interface operations {
                 rag?: string | null;
                 /** @description Project type, e.g. Agentic AI */
                 type?: string | null;
-                /** @description Case-insensitive search in transition id, name, market and OR focal name */
+                /** @description Case-insensitive search in transition id, name, market, ServiceNow project ID and OR focal name */
                 q?: string | null;
                 /** @description Next decision date between today and today + N days */
                 decision_within_days?: number | null;
@@ -9500,7 +9528,7 @@ export interface operations {
                 rag?: string | null;
                 /** @description Project type, e.g. Agentic AI */
                 type?: string | null;
-                /** @description Case-insensitive search in transition id, name, market and OR focal name */
+                /** @description Case-insensitive search in transition id, name, market, ServiceNow project ID and OR focal name */
                 q?: string | null;
                 /** @description Next decision date between today and today + N days */
                 decision_within_days?: number | null;
@@ -12070,7 +12098,7 @@ export interface operations {
                 rag?: string | null;
                 /** @description Project type, e.g. Agentic AI */
                 type?: string | null;
-                /** @description Case-insensitive search in transition id, name, market and OR focal name */
+                /** @description Case-insensitive search in transition id, name, market, ServiceNow project ID and OR focal name */
                 q?: string | null;
                 /** @description Next decision date between today and today + N days */
                 decision_within_days?: number | null;

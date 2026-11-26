@@ -28,7 +28,7 @@ function ClosureChecklist({ readiness }: { readiness: Readiness }) {
   const rows: Array<{ label: string; ok: boolean }> = [
     { label: 'UD-002 Hypercare tracker complete (no open hypercare items)', ok: openItems === 0 },
     {
-      label: 'UD-003 No open defects (Critical gaps cleared)',
+      label: 'UD-003 No open defects (Critical gaps/risks cleared)',
       ok: readiness.critical_gaps.length === 0,
     },
     {

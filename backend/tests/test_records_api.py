@@ -153,7 +153,7 @@ def test_list_conditions_seed(client, headers):
     assert (
         con1["item_id"] == "S3-019"
         and con1["due_gate"] == "SG4_ATD"
-        and con1["due_gate_short"] == "AtD"
+        and con1["due_gate_short"] == "SG4 (AtD)"
     )
     assert con1["covers_now"] is False  # due at the current gate, not after it
     assert (

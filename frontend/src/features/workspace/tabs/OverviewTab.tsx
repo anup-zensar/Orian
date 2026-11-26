@@ -141,7 +141,7 @@ function LensCards({ detail }: { detail: TransitionDetail }) {
                 {l.open_gaps} gaps
               </Badge>
               <Badge appearance="outline" color={l.critical_gaps ? 'danger' : 'informative'}>
-                {l.critical_gaps} critical
+                {l.critical_gaps} critical gaps/risks
               </Badge>
             </div>
             <Caption1>{l.question}</Caption1>

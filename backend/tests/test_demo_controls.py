@@ -231,13 +231,13 @@ def test_fast_forward_and_ac07_ready(client, headers, fresh_seed, db):
     assert out["transition_id"] == "TR-0001"
     assert out["items_completed"] > 0 and out["evals_passing"] > 0
     assert out["readiness"] is not None
-    # storyline step 9: rule R4 has drafted "Ready for AtD" (a draft only, nothing sent)
+    # storyline step 9: rule R4 has drafted "Ready for SG4 (AtD)" (a draft only, nothing sent)
     assert out["r4_drafts"] == 1
     from app.models import OrionDraft
 
     db.expire_all()
     r4 = db.scalars(select(OrionDraft).where(OrionDraft.transition_id == "TR-0001")).all()
-    ready = [d for d in r4 if "Ready for AtD" in d.subject]
+    ready = [d for d in r4 if "Ready for SG4 (AtD)" in d.subject]
     assert [d.status for d in ready] == ["Draft"]
     # the draft IS the approval request: To = the OLM, Cc = the OR focal (Asha sends it)
     from app.models import User

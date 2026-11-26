@@ -213,7 +213,7 @@ def test_approve_blocks_on_open_items_critical_compliance_and_failed_evals():
     assert "Critical gap K is open" in text
     assert "Compliance item C is open" in text
     assert "Eval metric below target: Hallucination rate 3.1% vs ≤ 2%" in text
-    assert "open item(s) due by AtD are not covered (B1, K)" in text
+    assert "open item(s) due by SG4 (AtD) are not covered (B1, K)" in text
 
 
 def test_approve_with_conditions_allows_business_technical_only():
@@ -229,7 +229,7 @@ def test_approve_with_conditions_allows_business_technical_only():
     bad_due = validate_decision(
         c, "Approve with conditions", [cond("B1", "SG4_ATD"), cond("T1", "SG6_ATO")]
     )
-    assert any("due gate must be after AtD" in r for r in bad_due.reasons)
+    assert any("due gate must be after SG4 (AtD)" in r for r in bad_due.reasons)
 
 
 def test_approve_with_conditions_still_blocked_by_critical_compliance_eval():

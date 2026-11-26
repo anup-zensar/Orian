@@ -151,9 +151,8 @@ def test_defaults_work_without_any_config_rows(fresh_seed, db) -> None:
     assert cfg.option_values(db, "severities") == ["Critical", "Major", "Minor"]
     assert [p.code for p in cfg.project_types(db)] == [
         "Normal",
-        "Infrastructure",
         "Agentic AI",
-        "Combined",
+        "Infrastructure",
     ]
     assert cfg.critical_severity(db) == "Critical"
     cfg.validate_option(db, "severities", "Major")

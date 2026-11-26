@@ -88,7 +88,7 @@ def _critical_gaps(m: TransitionMetrics, critical: str) -> list[str]:
             and not i.covered
         ):
             out.append(
-                f"{m.transition.name}: {i.playbook_item_id} {_short(i.title)} is a critical gap"
+                f"{m.transition.name}: {i.playbook_item_id} {_short(i.title)} is a critical gap/risk"
             )
     return out
 

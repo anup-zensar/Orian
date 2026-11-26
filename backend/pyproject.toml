@@ -1,7 +1,7 @@
 [project]
 name = "orion-backend"
 version = "0.1.0"
-description = "Orion – Operate Readiness Agent (demo backend)"
+description = "Orion – Operate Readiness Intelligence & Orchestration Navigator (demo backend)"
 requires-python = ">=3.14"
 
 [tool.black]

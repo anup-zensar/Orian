@@ -310,6 +310,7 @@ class IntakeFieldAdminOut(BaseModel):
     section: str = ""
     sort_order: int = 0
     show_on_overview: bool = False
+    show_in_list: bool = False
     filterable: bool = False
     form: FieldForm = "intake"
     min: float | None = None
@@ -336,6 +337,7 @@ class IntakeFieldCreateIn(BaseModel):
     applies_to_portfolios: list[Text80] = Field(default_factory=list, max_length=30)
     section: Text80 = "Additional details"
     show_on_overview: bool = False
+    show_in_list: bool = False
     filterable: bool = False
     form: FieldForm = "intake"
     min: float | None = None
@@ -361,6 +363,7 @@ class IntakeFieldUpdateIn(BaseModel):
     applies_to_portfolios: list[Text80] | None = Field(default=None, max_length=30)
     section: Text80 | None = None
     show_on_overview: bool | None = None
+    show_in_list: bool | None = None
     filterable: bool | None = None
     min: float | None = None
     max: float | None = None

@@ -106,9 +106,7 @@ export function MyWorkCard({ rows, total }: { rows: WorkItem[]; total: number })
                   <TableHeaderCell>Transition</TableHeaderCell>
                   <TableHeaderCell>Status</TableHeaderCell>
                   <TableHeaderCell>Due</TableHeaderCell>
-                  <TableHeaderCell>
-                    <span style={{ position: 'absolute', left: -9999 }}>Open</span>
-                  </TableHeaderCell>
+                  <TableHeaderCell>Action</TableHeaderCell>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -191,7 +189,7 @@ export function PortfolioTiles({ tiles }: { tiles: PortfolioTile[] }) {
                   {t.average_readiness === null ? 'n/a' : `${t.average_readiness}%`}
                 </Caption1>
                 <Caption1>Decisions in 14 days: {t.decisions_14d}</Caption1>
-                <Caption1>Critical gaps: {t.critical_gaps}</Caption1>
+                <Caption1>Critical gaps/risks: {t.critical_gaps}</Caption1>
               </div>
             </div>
           ))}

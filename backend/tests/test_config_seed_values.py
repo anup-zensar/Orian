@@ -107,11 +107,10 @@ def test_roles_seeded_with_todays_labels_and_slots(db) -> None:
 def test_project_types_portfolios_checklists(db) -> None:
     assert [p.code for p in cfg.project_types(db)] == [
         "Normal",
-        "Infrastructure",
         "Agentic AI",
-        "Combined",
+        "Infrastructure",
     ]
-    assert cfg.project_type(db, "Combined").has_ai_profile
+    assert cfg.project_type(db, "Agentic AI").has_ai_profile
     assert cfg.portfolio(db, "Retail Site Systems").requires_sites
     assert not cfg.portfolio(db, "GCC").requires_sites
     defs = {c.code: c for c in cfg.checklist_defs(db)}
@@ -127,7 +126,7 @@ def test_library_applies_to_all_types_is_stored_as_empty(db) -> None:
     ):
         assert item.applies_to_project_types == []
     assert db.query(PlaybookItem).filter(PlaybookItem.default_owner_role.is_(None)).count() >= 0
-    legacy_all = {"Agentic AI", "Normal", "Combined", "Infrastructure"}
+    legacy_all = {"Agentic AI", "Normal", "Infrastructure"}
     assert not [
         i
         for i in db.query(PlaybookItem).all()
@@ -146,6 +145,7 @@ def test_intake_fields_seeded_in_form_order(db) -> None:
     keys = [f.key for f in cfg.intake_fields(db)]
     assert keys == [
         "name",
+        "servicenow_project_id",
         "project_type",
         "portfolio",
         "region",
@@ -163,6 +163,10 @@ def test_intake_fields_seeded_in_form_order(db) -> None:
         "olm_user_id",
         "irm_user_id",
         "next_decision_date",
+        "project_status",
+        "application_tier",
+        "atd_date",
+        "ato_date",
     ]
     assert {"audience", "write_actions", "sensitive_data"} <= set(
         cfg.required_fields_for(db, "Agentic AI")
@@ -171,7 +175,9 @@ def test_intake_fields_seeded_in_form_order(db) -> None:
     assert {"name", "project_type", "portfolio", "region", "or_focal_user_id"} <= set(
         cfg.required_fields_for(db, "Normal")
     )
-    assert db.query(IntakeField).filter(IntakeField.builtin.is_(False)).count() == 0
+    assert (
+        db.query(IntakeField).filter(IntakeField.builtin.is_(False)).count() == 4
+    )  # CR-03 sample fields
 
 
 def test_approval_chains_flag_the_mock_step(db) -> None:

@@ -46,7 +46,7 @@ def test_sorted_by_days_then_name(client, headers):
 
 def test_retail_portfolio_storyline_step_2(client, headers):
     rows = _get(client, headers, portfolio="Retail Site Systems")
-    assert sorted(_ids(rows)) == ["TR-0008", "TR-0011"]
+    assert _ids(rows) == ["TR-0008"]  # one sample transition per portfolio (A-109)
     pos = next(r for r in rows if r["id"] == "TR-0008")
     assert pos["name"] == "Forecourt POS refresh"
     assert pos["rag"] == "Red"
@@ -57,7 +57,7 @@ def test_retail_portfolio_storyline_step_2(client, headers):
 def test_flagship_row(client, headers):
     row = next(r for r in _get(client, headers) if r["id"] == "TR-0001")
     assert row["current_gate"] == "SG4_ATD"
-    assert row["current_gate_short"] == "AtD"
+    assert row["current_gate_short"] == "SG4 (AtD)"
     assert row["critical_gaps"] == 1
     assert row["or_focal"]["id"] == "U01"
     assert row["assessment_launched"] is True

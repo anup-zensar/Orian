@@ -25,8 +25,6 @@ from app.schemas.common import PersonRef
 
 router = APIRouter(tags=["approvals"], dependencies=[Depends(get_current_user)])
 
-CHIP_LABELS = {"SG4_ATD": "ATD", "SG6_ATO": "ATO"}
-
 
 def _person(users: dict[str, User], user_id: str | None) -> PersonRef | None:
     if not user_id:
@@ -76,11 +74,7 @@ def approval_out(db: Session, request: ApprovalRequest, viewer: User) -> Approva
         transition_id=request.transition_id,
         transition_name=transition.name if transition else request.transition_id,
         gate=request.gate,
-        gate_short=(
-            CHIP_LABELS.get(request.gate, GATE_SHORT.get(request.gate, request.gate))
-            if request.gate
-            else None
-        ),
+        gate_short=GATE_SHORT.get(request.gate, request.gate) if request.gate else None,
         subject_id=request.subject_id,
         subject_label=request.subject_label,
         status=request.status,  # type: ignore[arg-type]
