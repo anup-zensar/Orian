@@ -16,6 +16,7 @@ import { SectionCard } from '../../../components/SectionCard';
 import { DecisionPanel } from '../../gates/DecisionPanel';
 import { ReadinessCard } from '../../gates/ReadinessCard';
 import { useGates, useReadiness, type GateOverview } from '../../gates/api';
+import { plural } from '../../../lib/format';
 import type { TabProps } from '../types';
 
 const useStyles = makeStyles({
@@ -44,15 +45,15 @@ function GatePanel(props: {
   return (
     <SectionCard
       id={`gate-${gate.code}`}
-      title={`${gate.short} · ${gate.label}`}
+      title={/^SG/.test(gate.label) ? gate.label : `${gate.short} · ${gate.label}`}
       actions={
         <div className={s.head}>
           <Badge appearance="tint" color={stateColor(gate.state)}>
             {stateLabel(gate.state)}
           </Badge>
-          <Badge appearance="outline">{gate.type.replace('_', ' ')}</Badge>
+          {gate.type === 'decision' && <Badge appearance="outline">Decision gate</Badge>}
           {gate.carried_items > 0 && (
-            <Badge appearance="outline">{gate.carried_items} carried items</Badge>
+            <Badge appearance="outline">{plural(gate.carried_items, 'carried item')}</Badge>
           )}
           <Button
             size="small"

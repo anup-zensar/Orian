@@ -50,13 +50,14 @@ import type { TabProps } from '../types';
 const useStyles = makeStyles({
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
     gap: tokens.spacingHorizontalL,
     marginBottom: tokens.spacingVerticalL,
   },
   two: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
+    alignItems: 'start',
     gap: tokens.spacingHorizontalL,
     marginBottom: tokens.spacingVerticalL,
   },
@@ -437,7 +438,7 @@ export function OverviewTab({ transitionId }: TabProps) {
           {detail.item_counts && (
             <Body1
               as="p"
-              style={{ margin: `${tokens.spacingVerticalS} 0 ${tokens.spacingVerticalL}` }}
+              style={{ margin: `${tokens.spacingVerticalM} 0 ${tokens.spacingVerticalL}` }}
             >
               <strong>Items in scope:</strong>{' '}
               {itemCountsParts(detail.item_counts, detail.risk_tier).join(' · ')} ·{' '}

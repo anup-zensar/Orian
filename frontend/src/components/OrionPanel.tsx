@@ -26,8 +26,8 @@ const useStyles = makeStyles({
     display: 'inline-flex',
     alignItems: 'center',
     gap: tokens.spacingHorizontalS,
-    fontSize: tokens.fontSizeBase400,
-    lineHeight: tokens.lineHeightBase400,
+    fontSize: tokens.fontSizeBase300,
+    lineHeight: tokens.lineHeightBase300,
     fontWeight: tokens.fontWeightSemibold,
   },
   mark: {

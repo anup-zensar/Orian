@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Badge, Button, Caption1, makeStyles, tokens } from '@fluentui/react-components';
+import { Badge, Body1, Button, Caption1, makeStyles, tokens } from '@fluentui/react-components';
 import { ChevronDownRegular, ChevronUpRegular } from '@fluentui/react-icons';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
@@ -129,7 +129,7 @@ export function SupportModelModule({ transitionId }: TabProps) {
             landscape={landscape}
           />
         ) : (
-          <Caption1>Nothing generated yet. Add inputs and generate the support model.</Caption1>
+          <Body1>Nothing generated yet. Add inputs and generate the support model.</Body1>
         )}
       </Section>
 
@@ -137,7 +137,7 @@ export function SupportModelModule({ transitionId }: TabProps) {
         {hasLandscape ? (
           <ExportStep transitionId={transitionId} model={model} />
         ) : (
-          <Caption1>Export is available once the support model is generated.</Caption1>
+          <Body1>Export is available once the support model is generated.</Body1>
         )}
       </Section>
     </div>

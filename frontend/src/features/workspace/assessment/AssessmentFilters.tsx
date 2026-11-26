@@ -79,7 +79,7 @@ export function AssessmentFilters(props: {
   const gate = (
     <Field label="Gate">
       <Select value={values.gate} onChange={(_, d) => update({ gate: d.value || undefined })}>
-        <option value="">Current gate and earlier</option>
+        <option value="">Current gate & earlier</option>
         {(ref.data?.gates ?? []).map((g) => (
           <option key={g.code} value={g.code}>
             Up to {g.short}

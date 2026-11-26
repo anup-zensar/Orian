@@ -41,9 +41,9 @@ const useStyles = makeStyles({
 
 /** Column widths (the table layout is fixed, so widths come from the header row). */
 const HEADER_WIDTH: Record<string, number | undefined> = {
-  ID: 56,
+  ID: 72,
   Title: 140,
-  Item: 120,
+  Item: 140,
   Type: 80,
   'Submitted by': 96,
   Status: 90,
@@ -162,7 +162,11 @@ export function EvidenceTab({ transitionId }: TabProps) {
               <TableRow>
                 {['ID', 'Title', 'Item', 'Type', 'Submitted by', 'Status', 'Review', ''].map(
                   (h) => (
-                    <TableHeaderCell key={h || 'actions'} style={{ width: HEADER_WIDTH[h] }}>
+                    <TableHeaderCell
+                      key={h || 'actions'}
+                      className={h === '' ? s.stickyEnd : undefined}
+                      style={{ width: HEADER_WIDTH[h] }}
+                    >
                       {h}
                     </TableHeaderCell>
                   ),
@@ -172,7 +176,7 @@ export function EvidenceTab({ transitionId }: TabProps) {
             <TableBody>
               {list.data.map((ev) => (
                 <TableRow key={ev.id}>
-                  <TableCell>{ev.id}</TableCell>
+                  <TableCell style={{ whiteSpace: 'nowrap' }}>{ev.id}</TableCell>
                   <TableCell className={c.wrapCell}>
                     <div>{ev.title}</div>
                     {typeMeta(ev.type).needs === 'url' && ev.url && isHttp(ev.url) && (
@@ -214,7 +218,7 @@ export function EvidenceTab({ transitionId }: TabProps) {
                     {ev.reviewed_by ? `${ev.reviewed_by.name}, ${formatDate(ev.reviewed_at)}` : '–'}
                     {ev.review_note && <div className={s.muted}>{ev.review_note}</div>}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className={s.stickyEnd}>
                     <div className={s.row}>
                       {ev.status !== 'Accepted' && (
                         <GuardedButton

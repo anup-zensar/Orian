@@ -117,7 +117,7 @@ export function OutboxPage() {
   return (
     <div className={s.page}>
       <PageHeader title="Outbox" subtitle="Sent emails and Teams cards (mock)." />
-      <MessageBar intent="warning">
+      <MessageBar intent="warning" layout="multiline">
         <MessageBarBody>
           Mock mode – in production this calls Microsoft Graph POST /users/{'{orion-mailbox}'}
           /sendMail and the Orion Teams bot.

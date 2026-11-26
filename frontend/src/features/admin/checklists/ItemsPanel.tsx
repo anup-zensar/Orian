@@ -136,9 +136,11 @@ export function ItemsPanel() {
                       Edit
                     </Button>
                   </TableCell>
-                  <TableCell>{it.id}</TableCell>
+                  <TableCell style={{ whiteSpace: 'nowrap' }}>{it.id}</TableCell>
                   <TableCell style={{ minWidth: 220 }}>{it.title}</TableCell>
-                  <TableCell title={it.source}>{it.source_label || it.source}</TableCell>
+                  <TableCell title={it.source} style={{ minWidth: 180 }}>
+                    {it.source_label || it.source}
+                  </TableCell>
                   <TableCell>
                     {ref?.gates.find((g) => g.code === it.gate)?.short ?? it.gate}
                   </TableCell>

@@ -4,6 +4,8 @@ import {
   fieldClassNames,
   inputClassNames,
   makeStaticStyles,
+  messageBarBodyClassNames,
+  messageBarClassNames,
   selectClassNames,
   spinButtonClassNames,
   tabClassNames,
@@ -49,6 +51,13 @@ const useStaticStyles = makeStaticStyles([
       width: '3px !important',
     },
     [`.${tabClassNames.root}[aria-selected='true']`]: { fontWeight: 600 },
+    // MessageBar text wraps (Fluent keeps it on one line and cuts it off on narrow screens).
+    [`.${messageBarClassNames.root}`]: { minWidth: 0, height: 'auto' },
+    [`.${messageBarBodyClassNames.root}`]: {
+      minWidth: 0,
+      whiteSpace: 'normal',
+      overflowWrap: 'anywhere',
+    },
   },
   // Print / "Save as PDF" of the register: page content only, no navigation, top bar or filters.
   // A plain CSS string: makeStaticStyles objects cannot nest @media.

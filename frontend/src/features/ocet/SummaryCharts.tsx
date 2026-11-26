@@ -17,7 +17,7 @@ import { fmtFull, fmtK } from './format';
 const useStyles = makeStyles({
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))',
     gap: tokens.spacingHorizontalL,
   },
   wrap: { overflowX: 'auto', minWidth: 0 },
@@ -39,14 +39,14 @@ const useStyles = makeStyles({
 });
 
 const PALETTE = [
-  tokens.colorPaletteBlueBackground2,
-  tokens.colorPaletteTealBackground2,
-  tokens.colorPaletteMarigoldBackground2,
-  tokens.colorPalettePurpleBackground2,
-  tokens.colorPaletteRedBackground2,
-  tokens.colorPaletteGreenBackground2,
-  tokens.colorPaletteDarkOrangeBackground2,
-  tokens.colorPaletteBerryBackground2,
+  tokens.colorPaletteBlueForeground2,
+  tokens.colorPaletteTealForeground2,
+  tokens.colorPaletteMarigoldForeground2,
+  tokens.colorPalettePurpleForeground2,
+  tokens.colorPaletteRedForeground2,
+  tokens.colorPaletteGreenForeground2,
+  tokens.colorPaletteDarkOrangeForeground2,
+  tokens.colorPaletteBerryForeground2,
 ];
 
 const yTick = (v: number) => fmtK(v);
@@ -116,12 +116,16 @@ export function SummaryCharts({ data }: { data: OcetOut }) {
           style={{ height: 280 }}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={byYear} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
+            <BarChart data={byYear} margin={{ top: 8, right: 8, bottom: 4, left: 8 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="year" tick={{ fontSize: 12 }} />
+              <XAxis dataKey="year" tick={{ fontSize: 12 }} padding={{ left: 24, right: 24 }} />
               <YAxis tickFormatter={yTick} tick={{ fontSize: 12 }} />
               <Tooltip formatter={(v) => fmtK(Number(v))} />
-              <Legend />
+              <Legend
+                formatter={(v) => (
+                  <span style={{ color: tokens.colorNeutralForeground1 }}>{v}</span>
+                )}
+              />
               {cats.map((c, i) => (
                 <Bar
                   key={c.category}
@@ -139,9 +143,9 @@ export function SummaryCharts({ data }: { data: OcetOut }) {
           style={{ height: 280 }}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={totals} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
+            <LineChart data={totals} margin={{ top: 8, right: 8, bottom: 4, left: 8 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="year" tick={{ fontSize: 12 }} />
+              <XAxis dataKey="year" tick={{ fontSize: 12 }} padding={{ left: 24, right: 24 }} />
               <YAxis tickFormatter={yTick} tick={{ fontSize: 12 }} />
               <Tooltip formatter={(v) => fmtK(Number(v))} />
               <Line

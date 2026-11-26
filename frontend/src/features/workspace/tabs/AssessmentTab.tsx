@@ -46,7 +46,7 @@ const useStyles = makeStyles({
   head: {
     display: 'grid',
     gridTemplateColumns: ROW_GRID,
-    columnGap: tokens.spacingHorizontalXS,
+    columnGap: tokens.spacingHorizontalS,
     padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalS} ${tokens.spacingVerticalS} 0`,
     backgroundColor: tokens.colorNeutralBackground3,
     fontWeight: tokens.fontWeightSemibold,
@@ -336,7 +336,7 @@ export function AssessmentTab({ transitionId }: TabProps) {
       )}
       {isFocal && selected.size === 0 && allShownIds.length > 0 && (
         <Button
-          appearance="subtle"
+          appearance="outline"
           size="small"
           style={{ marginBottom: 8 }}
           onClick={() => setSelected(new Set(allShownIds))}
@@ -383,8 +383,8 @@ export function AssessmentTab({ transitionId }: TabProps) {
                     </Button>
                     <Caption1>
                       {plural(g.count, 'item')} due at this gate
-                      {(ref.data?.gates.find((x) => x.code === g.gate)?.order ?? 0) > currentOrder &&
-                        ' · Upcoming, not counted in readiness yet'}
+                      {(ref.data?.gates.find((x) => x.code === g.gate)?.order ?? 0) >
+                        currentOrder && ' · Upcoming, not counted in readiness yet'}
                     </Caption1>
                   </div>
                   {!hidden &&

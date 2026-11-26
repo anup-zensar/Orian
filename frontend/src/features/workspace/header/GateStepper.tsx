@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { CheckmarkCircle20Filled, Diamond16Regular } from '@fluentui/react-icons';
 import { Caption1, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
 import type { TransitionDetail } from '../../transition/api';
@@ -8,9 +9,10 @@ const useStyles = makeStyles({
     margin: 0,
     padding: 0,
     display: 'grid',
-    gridTemplateColumns: 'repeat(7, minmax(80px, 1fr))',
+    gridTemplateColumns: 'repeat(7, minmax(88px, 1fr))',
     gap: tokens.spacingHorizontalXS,
     overflowX: 'auto',
+    position: 'relative',
   },
   step: {
     display: 'flex',
@@ -38,6 +40,7 @@ const useStyles = makeStyles({
     alignItems: 'center',
     gap: tokens.spacingHorizontalXS,
     whiteSpace: 'nowrap',
+    '& svg': { flexShrink: 0 },
   },
   ok: { color: tokens.colorPaletteGreenForeground1 },
   caption: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
@@ -46,11 +49,19 @@ const useStyles = makeStyles({
 /** 7-gate stepper: done gates checked, current highlighted, decision gates marked (spec 8.7). */
 export function GateStepper({ gates }: { gates: TransitionDetail['gates'] }) {
   const s = useStyles();
+  // On narrow screens the stepper scrolls sideways: bring the current gate into view.
+  const current = useRef<HTMLLIElement>(null);
+  useEffect(() => {
+    const el = current.current;
+    const list = el?.parentElement;
+    if (el && list) list.scrollLeft = el.offsetLeft - (list.clientWidth - el.offsetWidth) / 2;
+  }, []);
   return (
     <ol className={s.list} aria-label="Gate progress">
       {gates.map((g) => (
         <li
           key={g.code}
+          ref={g.state === 'current' ? current : undefined}
           className={mergeClasses(
             s.step,
             g.state === 'done' && s.done,

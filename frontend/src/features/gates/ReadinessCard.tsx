@@ -34,7 +34,11 @@ const useStyles = makeStyles({
     flexWrap: 'wrap',
   },
   group: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS },
-  list: { margin: 0, paddingLeft: tokens.spacingHorizontalXL },
+  list: {
+    margin: 0,
+    paddingLeft: tokens.spacingHorizontalXL,
+    '& li': { marginBottom: '2px' },
+  },
   narrative: {
     display: 'flex',
     flexDirection: 'column',
@@ -121,6 +125,10 @@ export function ReadinessCard(props: {
   const roleLabel = useRoleLabel();
   const optionLabel = useOptionLabel();
   const criticalSeverity = useCriticalSeverity();
+  const reference = useReference();
+  // Short gate label from reference data (SG4_ATD -> SG4 (AtD)); falls back to the code.
+  const gateShort = (code: string) =>
+    reference.data?.gates.find((g) => g.code === code)?.short ?? code;
   const navigate = useNavigate();
   const showError = useApiErrorToast();
   const base = `/transitions/${props.transitionId}`;
@@ -232,7 +240,7 @@ export function ReadinessCard(props: {
   return (
     <div className={s.root}>
       <div className={s.verdictRow}>
-        <Badge size="extra-large" appearance="filled" color={verdictColor(r.verdict)}>
+        <Badge size="extra-large" appearance="tint" color={verdictColor(r.verdict)}>
           {r.verdict_label || r.verdict}
         </Badge>
         <Caption1>
@@ -302,7 +310,7 @@ export function ReadinessCard(props: {
               <li key={c.id}>
                 <AppLink to={`${base}/conditions`}>{c.id}</AppLink> {c.text} ·{' '}
                 <Caption1>
-                  due {c.due_gate}
+                  due {gateShort(c.due_gate)}
                   {c.owner ? ` · ${c.owner.name}` : ''}
                   {c.item_id ? ` · item ${c.item_id}` : ''}
                 </Caption1>
@@ -321,7 +329,7 @@ export function ReadinessCard(props: {
                 <AppLink to={itemLink(c.item_id)}>{c.item_id}</AppLink> {c.title} ·{' '}
                 <Caption1>
                   {optionLabel('condition_statuses', c.status)} · {c.condition_id} set at{' '}
-                  {c.set_at_gate}, due {c.due_gate}
+                  {gateShort(c.set_at_gate)}, due {gateShort(c.due_gate)}
                 </Caption1>
               </li>
             ))}
@@ -364,12 +372,17 @@ export function ReadinessCard(props: {
       <div className={s.row}>
         {r.ocet_status != null && (
           <Badge appearance="outline">
-            OCET: <AppLink to={`${base}/ocet`}>{r.ocet_status}</AppLink>
+            <span>
+              OCET: <AppLink to={`${base}/ocet`}>{r.ocet_status}</AppLink>
+            </span>
           </Badge>
         )}
         {r.support_model_status != null && (
           <Badge appearance="outline">
-            Support model: <AppLink to={`${base}/support-model`}>{r.support_model_status}</AppLink>
+            <span>
+              Support model:{' '}
+              <AppLink to={`${base}/support-model`}>{r.support_model_status}</AppLink>
+            </span>
           </Badge>
         )}
       </div>

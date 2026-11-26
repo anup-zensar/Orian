@@ -1,5 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Field, Select, Tab, TabList, makeStyles, tokens } from '@fluentui/react-components';
+import {
+  Field,
+  Select,
+  Tab,
+  TabList,
+  makeStyles,
+  mergeClasses,
+  tokens,
+} from '@fluentui/react-components';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import { cardRadius, cardShadow } from '../../theme/orionTheme';
 import { PageHeader } from '../../components/PageHeader';
@@ -71,7 +79,11 @@ const useStyles = makeStyles({
     borderRadius: cardRadius,
     boxShadow: cardShadow,
   },
-  tab: { justifyContent: 'flex-start', width: '100%' },
+  tab: {
+    justifyContent: 'flex-start',
+    width: '100%',
+    '& .fui-Tab__content': { width: '100%', textAlign: 'left' },
+  },
   picker: {
     width: '100%',
     maxWidth: '360px',
@@ -89,6 +101,7 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     gap: tokens.spacingVerticalL,
   },
+  contentBelowPicker: { flexBasis: '100%' },
 });
 
 /** Admin (FR-100, spec 8.16): configuration of everything a non-developer may change. ADMIN only. */
@@ -136,7 +149,9 @@ export function AdminPage() {
             ))}
           </TabList>
         )}
-        <div className={s.content}>{current?.render()}</div>
+        <div className={mergeClasses(s.content, narrow && s.contentBelowPicker)}>
+          {current?.render()}
+        </div>
       </div>
     </div>
   );

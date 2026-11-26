@@ -21,7 +21,7 @@ import { fmtFull } from './format';
 import { project, type EditLine } from './lineModel';
 
 const useStyles = makeStyles({
-  table: { borderCollapse: 'collapse', width: '100%', minWidth: '1180px' },
+  table: { borderCollapse: 'collapse', width: '100%', minWidth: '1100px' },
   th: {
     textAlign: 'left',
     padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalS}`,
@@ -41,9 +41,9 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
     padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalXS}`,
   },
-  title: { minWidth: '170px' },
-  sel: { minWidth: '104px' },
-  amount: { minWidth: '96px' },
+  title: { minWidth: '150px' },
+  sel: { minWidth: '96px' },
+  amount: { minWidth: '88px' },
   narrow: { minWidth: '72px' },
   calc: { backgroundColor: tokens.colorNeutralBackground2 },
   pop: {

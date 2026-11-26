@@ -25,9 +25,12 @@ const useStyles = makeStyles({
   },
   head: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalXS,
-    justifyContent: 'center',
+    flex: '1 1 100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: tokens.spacingHorizontalM,
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   lens: {
     display: 'flex',

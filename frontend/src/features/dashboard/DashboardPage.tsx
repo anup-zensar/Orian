@@ -1,5 +1,10 @@
 // FR-010 Dashboard (spec 8.1): role-aware home page.
 import { makeStyles, tokens } from '@fluentui/react-components';
+import {
+  ClipboardTask20Regular,
+  DocumentCheckmark20Regular,
+  Person20Regular,
+} from '@fluentui/react-icons';
 import { useNavigate } from 'react-router';
 import { ErrorState } from '../../components/ErrorState';
 import { InsightsCard } from '../../components/InsightsCard';
@@ -27,6 +32,15 @@ const useStyles = makeStyles({
     alignItems: 'start',
   },
 });
+
+/** Distinct icons for the neutral tiles; other tones keep the tone icon. */
+function kpiIcon(key: string, tone?: string) {
+  if (tone && tone !== 'neutral') return undefined;
+  if (/open.?items/.test(key)) return <ClipboardTask20Regular />;
+  if (/approval/.test(key)) return <DocumentCheckmark20Regular />;
+  if (/own/.test(key)) return <Person20Regular />;
+  return undefined;
+}
 
 export function DashboardPage() {
   const s = useStyles();
@@ -76,6 +90,7 @@ export function DashboardPage() {
             value={k.value}
             tone={k.tone}
             hint={k.hint}
+            icon={kpiIcon(k.key, k.tone)}
             caption={/open.?items/.test(k.key) ? 'Checklist items only' : undefined}
             onClick={tileAction(k.key, k.link)}
           />

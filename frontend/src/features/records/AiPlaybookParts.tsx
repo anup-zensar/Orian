@@ -276,11 +276,11 @@ export function EvalCard({ transitionId }: { transitionId: string }) {
             {q.data.failed_count} failing, {q.data.not_evaluated_count} not evaluated.
           </span>
           <DataTable label="Evaluation metrics table">
-            <Table aria-label="Evaluation metrics" size="small" style={{ minWidth: 820 }}>
+            <Table aria-label="Evaluation metrics" size="small" style={{ minWidth: 950 }}>
               <TableHeader>
                 <TableRow>
                   {['Metric', 'Target', 'Result', 'Pass / fail', 'Last evaluated'].map((h, i) => (
-                    <TableHeaderCell key={h} style={{ minWidth: [190, 150, 190, 210, 110][i] }}>
+                    <TableHeaderCell key={h} style={{ minWidth: [260, 150, 170, 250, 120][i] }}>
                       {h}
                     </TableHeaderCell>
                   ))}
@@ -320,7 +320,14 @@ export function EvalCard({ transitionId }: { transitionId: string }) {
                         {isAuto ? (
                           <StatusBadge status={e ? 'not evaluated' : r.status} />
                         ) : (
-                          <div className={s.row}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              flexWrap: 'nowrap',
+                            }}
+                          >
                             <StatusBadge status={e ? 'not evaluated' : r.status} />
                             <Switch
                               label="Passed"

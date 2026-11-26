@@ -56,6 +56,13 @@ const useStyles = makeStyles({
     boxShadow: cardShadow,
   },
   cellEnd: { display: 'flex', alignItems: 'center', minHeight: '32px', minWidth: 0 },
+  // More filters + Clear filters share one cell (two columns wide) so Clear never sits alone on a row.
+  actions: {
+    display: 'flex',
+    alignItems: 'center',
+    minHeight: '32px',
+    '@media (min-width: 700px)': { gridColumn: 'span 2' },
+  },
   tags: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalS, alignItems: 'center' },
 });
 
@@ -195,7 +202,7 @@ export function FilterBar({ filters, update, clear, showMine, notice }: Props) {
             />
           </div>
         )}
-        <div className={s.cellEnd}>
+        <div className={s.actions}>
           <Button
             appearance="subtle"
             aria-expanded={moreOpen}
@@ -204,6 +211,9 @@ export function FilterBar({ filters, update, clear, showMine, notice }: Props) {
             onClick={() => setMore(!moreOpen)}
           >
             More filters{moreSet > 0 ? ` (${moreSet})` : ''}
+          </Button>
+          <Button appearance="subtle" disabled={!hasAny} onClick={clear}>
+            Clear filters
           </Button>
         </div>
         {moreOpen && (
@@ -224,11 +234,6 @@ export function FilterBar({ filters, update, clear, showMine, notice }: Props) {
             ))}
           </>
         )}
-        <div className={s.cellEnd}>
-          <Button appearance="subtle" disabled={!hasAny} onClick={clear}>
-            Clear filters
-          </Button>
-        </div>
       </div>
       {notice && dismissed !== notice && (
         <MessageBar intent="info" role="status" style={{ marginBottom: 8 }}>

@@ -41,7 +41,7 @@ const useStyles = makeStyles({
     display: 'grid',
     gridTemplateColumns: ROW_GRID,
     alignItems: 'center',
-    columnGap: tokens.spacingHorizontalXS,
+    columnGap: tokens.spacingHorizontalS,
     padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS} ${tokens.spacingVerticalXS} 0`,
     backgroundColor: tokens.colorNeutralBackground1,
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
@@ -133,7 +133,8 @@ function ItemRowImpl(p: ItemRowProps) {
         ? ['update_bt_status', 'update_t_status']
         : ['update_bt_status'];
   const canInclude = item.can_edit && scopePerms.some(can);
-  const includeAgain = excluded && item.excluded_by !== 'tier' && item.excluded_by !== 'project_type';
+  const includeAgain =
+    excluded && item.excluded_by !== 'tier' && item.excluded_by !== 'project_type';
 
   const statusSelect = (
     <Select
@@ -258,7 +259,9 @@ function ItemRowImpl(p: ItemRowProps) {
                   secondaryContent={
                     canInclude
                       ? undefined
-                      : (item.edit_denied_reason ?? p.perms.denied[scopePerms[0]] ?? 'Not permitted')
+                      : (item.edit_denied_reason ??
+                        p.perms.denied[scopePerms[0]] ??
+                        'Not permitted')
                   }
                   onClick={() => p.onInclude(item)}
                 >

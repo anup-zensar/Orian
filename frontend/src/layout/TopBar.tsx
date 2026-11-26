@@ -40,6 +40,10 @@ const useStyles = makeStyles({
     height: '56px',
     padding: `0 ${tokens.spacingHorizontalL}`,
     minWidth: 0,
+    '@media (max-width: 700px)': {
+      gap: tokens.spacingHorizontalS,
+      padding: `0 ${tokens.spacingHorizontalS}`,
+    },
   },
   brand: {
     display: 'flex',
@@ -57,13 +61,14 @@ const useStyles = makeStyles({
   tagline: {
     color: tokens.colorNeutralForeground3,
     fontSize: '11px',
-    '@media (max-width: 1280px)': { display: 'none' },
+    '@media (max-width: 1279px)': { display: 'none' },
   },
-  search: { flexGrow: 1, flexShrink: 1, minWidth: 0, maxWidth: '420px' },
+  search: { flexGrow: 1, flexShrink: 1, minWidth: 0, maxWidth: '420px', width: '100%' },
   spacer: { flexGrow: 1 },
-  orionBtn: { flexShrink: 0, fontWeight: tokens.fontWeightSemibold },
+  orionBtn: { flexShrink: 0, minWidth: 'auto', fontWeight: tokens.fontWeightSemibold },
   orionOpen: { outline: `2px solid ${tokens.colorNeutralForeground1}`, outlineOffset: '1px' },
   orionIcon: { color: ai.text, display: 'inline-flex' },
+  userBtn: { minWidth: 'auto', paddingInline: tokens.spacingHorizontalXS, flexShrink: 0 },
   user: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS, minWidth: 0 },
   userText: {
     display: 'flex',
@@ -96,7 +101,9 @@ export function TopBar(props: { orionOpen: boolean; onToggleOrion: () => void })
         <div className={s.brand}>
           <OrionLogo />
           <span className={s.wordmark}>Orion</span>
-          <Caption1 className={s.tagline}>Operate Readiness Intelligence &amp; Orchestration Navigator</Caption1>
+          <Caption1 className={s.tagline}>
+            Operate Readiness Intelligence &amp; Orchestration Navigator
+          </Caption1>
         </div>
 
         <SearchBox
@@ -130,7 +137,7 @@ export function TopBar(props: { orionOpen: boolean; onToggleOrion: () => void })
 
         <Menu>
           <MenuTrigger disableButtonEnhancement>
-            <Button appearance="subtle" aria-label="User menu">
+            <Button className={s.userBtn} appearance="subtle" aria-label="User menu">
               <span className={s.user}>
                 <Avatar name={user?.name ?? '?'} size={28} color="colorful" />
                 <span className={s.userText}>

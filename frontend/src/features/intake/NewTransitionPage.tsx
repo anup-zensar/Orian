@@ -159,6 +159,22 @@ const useStyles = makeStyles({
     minWidth: 0,
   },
   grow: { flex: '1 1 200px', minWidth: 0 },
+  snRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: tokens.spacingHorizontalS,
+    alignItems: 'flex-start',
+    minWidth: 0,
+  },
+  snButton: { marginTop: '24px' },
+  fixedSelect: {
+    '& select:disabled': {
+      color: tokens.colorNeutralForeground1,
+      WebkitTextFillColor: tokens.colorNeutralForeground1,
+      opacity: 1,
+    },
+  },
+  actions: { marginTop: tokens.spacingVerticalM },
   siteRow: {
     display: 'flex',
     flexWrap: 'wrap',
@@ -185,6 +201,7 @@ function SelectField(props: {
   hint?: ReactNode;
   disabled?: boolean;
 }) {
+  const s = useStyles();
   return (
     <Controller
       control={props.control}
@@ -207,6 +224,7 @@ function SelectField(props: {
             onChange={(_, d) => field.onChange(d.value)}
             onBlur={field.onBlur}
             disabled={props.disabled}
+            className={props.disabled ? s.fixedSelect : undefined}
           >
             {!props.disabled && <option value="">Select…</option>}
             {props.options.map((o) => (
@@ -800,7 +818,7 @@ function IntakeForm(props: {
                     <Input {...bind('name')} />
                   </Field>
                 </div>
-                <div className={`${s.row} ${s.full}`}>
+                <div className={`${s.snRow} ${s.full}`}>
                   <Field
                     label={
                       <>
@@ -822,7 +840,7 @@ function IntakeForm(props: {
                       }}
                     />
                   </Field>
-                  <Button onClick={doFetch} disabled={fetchSn.isPending}>
+                  <Button className={s.snButton} onClick={doFetch} disabled={fetchSn.isPending}>
                     {fetchSn.isPending ? 'Fetching…' : 'Fetch from ServiceNow'}
                   </Button>
                 </div>
@@ -1006,7 +1024,7 @@ function IntakeForm(props: {
                 </FormGrid>
               </SectionCard>
             )}
-            <Toolbar align="end">
+            <Toolbar align="end" className={s.actions}>
               <Button onClick={() => navigate('/transitions')}>Cancel</Button>
               {canCreate ? (
                 submit

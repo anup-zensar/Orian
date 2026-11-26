@@ -8,7 +8,7 @@ const useStyles = makeStyles({
     gap: tokens.spacingVerticalM,
     minWidth: 0,
     padding: tokens.spacingVerticalM,
-    paddingInline: tokens.spacingHorizontalL,
+    paddingInline: tokens.spacingHorizontalM,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: tokens.borderRadiusLarge,
     backgroundColor: tokens.colorNeutralBackground1,

@@ -24,14 +24,14 @@ import { CalendarCard, EscalationCard, OperatingRhythmNote } from './SideCards';
 const useStyles = makeStyles({
   tiles: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 125px), 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 170px), 1fr))',
     gap: tokens.spacingHorizontalM,
     marginBottom: tokens.spacingVerticalL,
   },
   // Columns wrap (single column when the content is narrow) instead of squeezing the content.
   pair: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 480px), 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 580px), 1fr))',
     gap: tokens.spacingHorizontalL,
     marginBottom: tokens.spacingVerticalL,
   },
@@ -128,7 +128,6 @@ export function ControlTowerPage() {
                   value={k.value}
                   tone={k.tone}
                   hint={k.hint}
-                  caption={hasFilter ? 'Open in Transitions' : undefined}
                   onClick={hasFilter ? () => navigate(transitionsLink(k.filter)) : undefined}
                 />
               );

@@ -1,4 +1,4 @@
-import { Link } from 'react-router';
+import { AppLink } from '../components/AppLink';
 import { EmptyState } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
 
@@ -8,7 +8,7 @@ export function NotFoundPage() {
       <PageHeader title="Page not found" />
       <EmptyState
         message="This page does not exist."
-        action={<Link to="/">Go to the dashboard</Link>}
+        action={<AppLink to="/">Go to the dashboard</AppLink>}
       />
     </>
   );

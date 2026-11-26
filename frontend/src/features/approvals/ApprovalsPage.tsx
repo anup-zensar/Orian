@@ -272,7 +272,7 @@ function ApprovalTable(props: {
 }) {
   return (
     <DataTable label={props.label}>
-      <Table aria-label={props.label} size="medium">
+      <Table aria-label={props.label} size="medium" style={{ minWidth: 760 }}>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>Request</TableHeaderCell>

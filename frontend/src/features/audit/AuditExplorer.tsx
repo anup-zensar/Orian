@@ -45,7 +45,7 @@ const useStyles = makeStyles({
     gap: tokens.spacingHorizontalM,
   },
   field: { minWidth: '150px' },
-  table: { borderCollapse: 'collapse', width: '100%' },
+  table: { borderCollapse: 'collapse', width: '100%', minWidth: '720px' },
   th: {
     textAlign: 'left',
     padding: tokens.spacingVerticalS,

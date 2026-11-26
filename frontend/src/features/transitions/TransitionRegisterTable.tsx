@@ -17,7 +17,6 @@ import {
   TableHeaderCell,
   TableRow,
   makeStyles,
-  mergeClasses,
   tokens,
   type TableColumnId,
 } from '@fluentui/react-components';
@@ -26,6 +25,7 @@ import { useNavigate } from 'react-router';
 import { AppLink } from '../../components/AppLink';
 import { DataTable } from '../../components/DataTable';
 import { RagChip } from '../../components/RagChip';
+import dayjs from 'dayjs';
 import { formatDate, plural, toRag } from '../../lib/format';
 import { lensColors, ragColors, type Lens } from '../../theme/tokens';
 import type { IntakeFieldRef, TransitionSummary } from '../../api/types';
@@ -33,22 +33,14 @@ import { useReference } from '../reference/api';
 import { useIntakeFields, useOptionLabel } from '../reference/options';
 
 const useStyles = makeStyles({
-  table: { minWidth: '1100px', tableLayout: 'auto' },
+  // Compact table: tight cell padding, headers and cells wrap, so the whole register fits at 1280px.
+  table: {
+    tableLayout: 'auto',
+    '& th, & td': { paddingInline: '4px', minWidth: 0 },
+    // DataTable keeps headers on one line; here they may wrap to two.
+    '& th, & th div': { whiteSpace: 'normal', lineHeight: tokens.lineHeightBase200 },
+  },
   row: { cursor: 'pointer' },
-  // The last column (RAG) stays visible inside the horizontal scroll; the first is sticky via DataTable.
-  stickyRight: {
-    position: 'sticky',
-    right: 0,
-    zIndex: 1,
-    backgroundColor: tokens.colorNeutralBackground1,
-    boxShadow: `-1px 0 0 ${tokens.colorNeutralStroke2}`,
-  },
-  headRight: {
-    position: 'sticky',
-    right: 0,
-    zIndex: 3,
-    backgroundColor: tokens.colorNeutralBackground1,
-  },
   toolbar: {
     display: 'flex',
     alignItems: 'center',
@@ -59,20 +51,19 @@ const useStyles = makeStyles({
   name: { display: 'flex', flexDirection: 'column', minWidth: 0 },
   nameLine: { display: 'inline-flex', alignItems: 'center', gap: tokens.spacingHorizontalXS },
   star: { color: ragColors.Amber.border, display: 'inline-flex' },
-  // Lens bars keep a fixed width; the table scrolls inside DataTable instead of hiding them.
-  lenses: { display: 'flex', flexDirection: 'column', gap: '2px', width: '190px' },
+  lenses: { display: 'flex', flexDirection: 'column', gap: '2px', width: '140px' },
   lens: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS },
   lensName: {
-    width: '76px',
-    fontSize: tokens.fontSizeBase100,
+    width: '62px',
+    fontSize: '11px',
     fontWeight: tokens.fontWeightSemibold,
   },
   track: { flexGrow: 1, minWidth: '30px', height: '6px', borderRadius: '3px', overflow: 'hidden' },
   fill: { height: '100%' },
-  pct: { width: '34px', textAlign: 'right', fontSize: tokens.fontSizeBase100 },
+  pct: { width: '32px', textAlign: 'right', fontSize: '11px' },
   critical: { color: ragColors.Red.foreground, fontWeight: tokens.fontWeightSemibold },
   cell: { display: 'flex', flexDirection: 'column' },
-  nowrap: { whiteSpace: 'nowrap', minWidth: '96px' },
+  nowrap: { whiteSpace: 'nowrap' },
 });
 
 interface Column {
@@ -84,8 +75,10 @@ interface Column {
   sort?: (t: TransitionSummary) => string | number;
   cell: (t: TransitionSummary) => ReactNode;
   nowrap?: boolean;
-  /** Stays visible at the right edge while the table scrolls. */
-  sticky?: boolean;
+  /** On-screen header when it differs from the CSV header. */
+  head?: string;
+  /** CSV only: its value is shown inside another column on screen (Project ID, Type). */
+  csvOnly?: boolean;
 }
 
 const RAG_ORDER: Record<string, number> = { Red: 0, Amber: 1, Green: 2, Grey: 3 };
@@ -129,11 +122,12 @@ function customText(
   f: IntakeFieldRef,
   t: TransitionSummary,
   optionLabel: (list: string, value: string) => string,
+  short = false,
 ): string {
   const v = t.custom_fields[f.key];
   if (v === undefined || v === null || v === '') return '–';
   if (f.type === 'boolean') return v ? 'Yes' : 'No';
-  if (f.type === 'date') return formatDate(String(v));
+  if (f.type === 'date') return short ? dayjs(String(v)).format('D MMM YY') : formatDate(String(v));
   const list = f.option_list;
   const one = (x: unknown) =>
     list && f.type !== 'user' ? optionLabel(list, String(x)) : String(x);
@@ -162,6 +156,7 @@ function useColumns(): Column[] {
     {
       id: 'name',
       label: 'Transition',
+      head: 'Transition · Project ID',
       text: (t) => `${t.name} (${t.id})`,
       sort: (t) => t.name.toLowerCase(),
       cell: (t) => (
@@ -174,7 +169,7 @@ function useColumns(): Column[] {
             )}
             <AppLink to={`/transitions/${t.id}/overview`}>{t.name}</AppLink>
           </span>
-          <Caption1>{t.id}</Caption1>
+          <Caption1>{[t.id, t.servicenow_project_id].filter(Boolean).join(' · ')}</Caption1>
         </div>
       ),
     },
@@ -183,13 +178,19 @@ function useColumns(): Column[] {
       label: 'Project ID',
       text: (t) => t.servicenow_project_id ?? '',
       cell: (t) => t.servicenow_project_id ?? '–',
-      nowrap: true,
+      csvOnly: true,
     },
     {
       id: 'portfolio',
       label: 'Portfolio',
+      head: 'Portfolio · type',
       text: portfolioLabel,
-      cell: portfolioLabel,
+      cell: (t) => (
+        <div className={s.cell}>
+          <span>{portfolioLabel(t)}</span>
+          <Caption1>{typeLabel(t)}</Caption1>
+        </div>
+      ),
     },
     {
       id: 'region',
@@ -202,7 +203,7 @@ function useColumns(): Column[] {
         </div>
       ),
     },
-    { id: 'type', label: 'Type', text: typeLabel, cell: typeLabel },
+    { id: 'type', label: 'Type', text: typeLabel, cell: typeLabel, csvOnly: true },
     {
       id: 'gate',
       label: 'Gate',
@@ -215,10 +216,10 @@ function useColumns(): Column[] {
       id: f.key,
       label: f.label,
       text: (t) => customText(f, t, optionLabel),
-      cell: (t) => customText(f, t, optionLabel),
+      cell: (t) => customText(f, t, optionLabel, true),
       // ISO dates sort correctly as text; the display text ("9 Mar 2027") does not
       sort: f.type === 'date' ? (t) => String(t.custom_fields[f.key] ?? '') : undefined,
-      nowrap: true,
+      nowrap: f.type === 'date',
     })),
     {
       id: 'readiness',
@@ -253,7 +254,6 @@ function useColumns(): Column[] {
       sort: (t) => RAG_ORDER[toRag(t.rag)],
       cell: (t) => <RagChip rag={toRag(t.rag)} />,
       nowrap: true,
-      sticky: true,
     },
   ];
 }
@@ -279,6 +279,7 @@ export function TransitionRegisterTable({ rows }: { rows: TransitionSummary[] })
   const s = useStyles();
   const navigate = useNavigate();
   const columns = useColumns();
+  const shown = columns.filter((c) => !c.csvOnly);
   const [sort, setSort] = useState<{ id: string; dir: 'ascending' | 'descending' } | null>(null);
 
   const sorted = useMemo(() => {
@@ -328,14 +329,14 @@ export function TransitionRegisterTable({ rows }: { rows: TransitionSummary[] })
         <Table sortable aria-label="Transition register" className={s.table}>
           <TableHeader>
             <TableRow>
-              {columns.map((c) => (
+              {shown.map((c) => (
                 <TableHeaderCell
                   key={c.id}
-                  className={mergeClasses(c.sticky && s.headRight, c.nowrap && s.nowrap)}
+                  className={c.nowrap ? s.nowrap : undefined}
                   sortDirection={sort?.id === c.id ? sort.dir : undefined}
                   onClick={() => onSort(c.id)}
                 >
-                  {c.label}
+                  {c.head ?? c.label}
                 </TableHeaderCell>
               ))}
             </TableRow>
@@ -343,11 +344,8 @@ export function TransitionRegisterTable({ rows }: { rows: TransitionSummary[] })
           <TableBody>
             {sorted.map((t) => (
               <TableRow key={t.id} className={s.row} onClick={(e) => onRowClick(e, t.id)}>
-                {columns.map((c) => (
-                  <TableCell
-                    key={c.id}
-                    className={mergeClasses(c.sticky && s.stickyRight, c.nowrap && s.nowrap)}
-                  >
+                {shown.map((c) => (
+                  <TableCell key={c.id} className={c.nowrap ? s.nowrap : undefined}>
                     {c.cell(t)}
                   </TableCell>
                 ))}

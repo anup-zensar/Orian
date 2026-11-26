@@ -205,7 +205,7 @@ export function InputsStep(props: { transitionId: string; model: SupportModel })
           </div>
         ))}
         {model.inputs.files.length === 0 && staged.length === 0 && (
-          <Caption1>No files uploaded yet.</Caption1>
+          <Body1>No files uploaded yet.</Body1>
         )}
         {model.inputs.files.map((f) => (
           <div key={`${f.filename}-${f.uploaded_at}`} className={s.row}>

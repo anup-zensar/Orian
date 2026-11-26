@@ -171,8 +171,11 @@ export function ConditionsTab({ transitionId }: TabProps) {
           <EmptyState message="No exceptions requested." />
         ) : (
           <DataTable label="Exceptions table">
-            <Table aria-label="Exceptions" size="small">
-              <Head cols={['Ref', 'Control item', 'Rationale', 'Status', 'Approval']} />
+            <Table aria-label="Exceptions" size="small" style={{ minWidth: 640 }}>
+              <Head
+                cols={['Ref', 'Control item', 'Rationale', 'Status', 'Approval']}
+                widths={[70, 220, 260, 120, 140]}
+              />
               <TableBody>
                 {exceptions.data.map((e) => (
                   <TableRow key={e.ref}>
@@ -217,8 +220,11 @@ export function ConditionsTab({ transitionId }: TabProps) {
           <EmptyState message="No risks recorded." />
         ) : (
           <DataTable label="Risk register table">
-            <Table aria-label="Risk register" size="small">
-              <Head cols={['ID', 'Title', 'Rating', 'Decision', 'Linked items']} />
+            <Table aria-label="Risk register" size="small" style={{ minWidth: 640 }}>
+              <Head
+                cols={['ID', 'Title', 'Rating', 'Decision', 'Linked items']}
+                widths={[70, 300, 90, 170, 140]}
+              />
               <TableBody>
                 {risks.data.map((r) => (
                   <TableRow key={r.id}>
